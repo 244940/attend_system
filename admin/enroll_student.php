@@ -34,11 +34,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['enrollment_file'])) 
 
 // Handle single student enrollment
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['enroll_student'])) {
-    $student_id = $_POST['student_id'];
-    $course_id = $_POST['course_id'];
-    $group_number = $_POST['group_number']; // Add group number to form and process
-    $enrollmentMessage = enrollStudent($student_id, $course_id, $group_number, $conn);
-    $enrollmentCompleted = true;
+    $student_id = $_POST['student_id'] ?? null;
+    $course_id = $_POST['course_id'] ?? null;
+    $group_number = $_POST['group_number'] ?? null;
+
+    if ($student_id && $course_id && $group_number) {
+        $enrollmentMessage = enrollStudent($student_id, $course_id, $group_number, $conn);
+        $enrollmentCompleted = true;
+    } else {
+        $enrollmentMessage = "Please provide all required fields.";
+    }
 }
 
 

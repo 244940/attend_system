@@ -1,5 +1,9 @@
 <?php
 session_start();
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
+
 require 'database_connection.php'; // Include your database connection
 
 // Admin authentication check
@@ -13,51 +17,253 @@ if (!isAdmin()) {
     exit();
 }
 
-// Insert new user and face encoding
-function insert_face_encoding($conn, $name, $id, $image_path, $user_role) {
-    $command = escapeshellcmd("python process_image.py " . escapeshellarg($image_path));
-    $output = shell_exec($command);
 
-    if (strpos($output, "No face found") !== false || strpos($output, "Error") !== false) {
-        echo "Failed to generate encoding for $name\_$id<br>";
-        return false;
+// Handle multiple file uploads and user creation
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_users'])) {
+    $user_role = $_POST['role'];
+    $upload_dir = 'uploads/';
+    
+    // Create uploads directory if it doesn't exist
+    if (!file_exists($upload_dir)) {
+        mkdir($upload_dir, 0777, true);
     }
-
-    $encoding = $output;
-    $stmt = $conn->prepare("INSERT INTO users (name, id, face_encoding, user_role) VALUES (?, ?, ?, ?)");
-    $stmt->bind_param("ssss", $name, $id, $encoding, $user_role);
-
-    if ($stmt->execute()) {
-        echo "User $name with ID $id inserted successfully.<br>";
+    
+    // Process each uploaded file
+    foreach ($_FILES['user_images']['tmp_name'] as $key => $tmp_name) {
+        $file_name = $_FILES['user_images']['name'][$key];
+        $file_error = $_FILES['user_images']['error'][$key];
         
-        // Insert into the respective table based on the role
-        $user_id = $stmt->insert_id;
-        $email = $name . '@example.com';
-        $hashed_password = NULL;
+        // Skip files with upload errors
+        if ($file_error !== UPLOAD_ERR_OK) {
+            echo "Error uploading file $file_name: " . get_upload_error_message($file_error) . "<br>";
+            continue;
+        }
+        
+        // Extract name and ID from filename (format: Name_ID.jpg)
+        $file_info = pathinfo($file_name);
+        $name_id = explode('_', $file_info['filename']);
+        
+        if (count($name_id) !== 2) {
+            echo "Invalid filename format for $file_name. Expected format: Name_ID.jpg<br>";
+            continue;
+        }
+        
+        $name = $name_id[0];
+        $id = $name_id[1];
+        
+        // Create unique filename to prevent overwriting
+        $unique_filename = uniqid() . '_' . $file_name;
+        $image_path = $upload_dir . $unique_filename;
+        
+        // Move uploaded file
+        if (move_uploaded_file($tmp_name, $image_path)) {
+            // Insert user and face encoding
+            if (insert_face_encoding($conn, $name, $id, $image_path, $user_role)) {
+                echo "Successfully added user: $name (ID: $id)<br>";
+            }
+        } else {
+            echo "Failed to move uploaded file $file_name<br>";
+        }
+    }
+}
 
-        if ($user_role === 'student') {
-            $student_stmt = $conn->prepare("INSERT INTO students (user_id, name, email, hashed_password) VALUES (?, ?, ?, ?)");
-            $student_stmt->bind_param("isss", $user_id, $name, $email, $hashed_password);
-            $student_stmt->execute();
-            $student_stmt->close();
-        } elseif ($user_role === 'teacher') {
-            $teacher_stmt = $conn->prepare("INSERT INTO teachers (user_id, name, email, hashed_password) VALUES (?, ?, ?, ?)");
-            $teacher_stmt->bind_param("isss", $user_id, $name, $email, $hashed_password);
-            $teacher_stmt->execute();
-            $teacher_stmt->close();
-        } elseif ($user_role === 'admin') {
-            $admin_stmt = $conn->prepare("INSERT INTO admins (id, admin_name, email, hashed_password) VALUES (?, ?, ?, ?)");
-            $admin_stmt->bind_param("isss", $user_id, $name, $email, $hashed_password);
-            $admin_stmt->execute();
-            $admin_stmt->close();
+// Helper function to get upload error messages
+function get_upload_error_message($error_code) {
+    switch ($error_code) {
+        case UPLOAD_ERR_INI_SIZE:
+            return "The uploaded file exceeds the upload_max_filesize directive in php.ini";
+        case UPLOAD_ERR_FORM_SIZE:
+            return "The uploaded file exceeds the MAX_FILE_SIZE directive in the HTML form";
+        case UPLOAD_ERR_PARTIAL:
+            return "The uploaded file was only partially uploaded";
+        case UPLOAD_ERR_NO_FILE:
+            return "No file was uploaded";
+        case UPLOAD_ERR_NO_TMP_DIR:
+            return "Missing a temporary folder";
+        case UPLOAD_ERR_CANT_WRITE:
+            return "Failed to write file to disk";
+        case UPLOAD_ERR_EXTENSION:
+            return "File upload stopped by extension";
+        default:
+            return "Unknown upload error";
+    }
+}
+
+// Modified insert_face_encoding function with compatible transaction handling
+function insert_face_encoding($conn, $name, $id, $image_path, $user_role) {
+    try {
+        // Get the absolute path to the Python script
+        $script_dir = __DIR__;  // Current directory of the PHP file
+        $python_script = $script_dir . DIRECTORY_SEPARATOR . 'process_image.py';
+        
+        // Debug: Log paths to check they're correct
+        error_log("Script directory: " . $script_dir);
+        error_log("Python script path: " . $python_script);
+        error_log("Image path: " . $image_path);
+
+        // Check if Python script exists
+        if (!file_exists($python_script)) {
+            throw new Exception("Python script not found at: " . $python_script);
         }
 
-    } else {
-        echo "Error inserting user: " . $stmt->error;
+        // Check if image file exists
+        if (!file_exists($image_path)) {
+            throw new Exception("Image file not found at: " . $image_path);
+        }
+
+        // On Windows, use python command explicitly with proper path escaping
+        if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {
+            $command = sprintf(
+                'python "%s" "%s"',
+                str_replace('\\', '\\\\', $python_script),
+                str_replace('\\', '\\\\', $image_path)
+            );
+        } else {
+            // On Unix-like systems
+            $command = sprintf(
+                'python3 %s %s',
+                escapeshellarg($python_script),
+                escapeshellarg($image_path)
+            );
+        }
+
+        // Debug: Log the command being executed
+        error_log("Executing command: " . $command);
+
+        // Execute command and capture output
+        $output = shell_exec($command . " 2>&1");
+        
+        if ($output === null) {
+            throw new Exception("Failed to execute Python script. Command: " . $command);
+        }
+
+        // Debug output
+        error_log("Python script output: " . $output);
+        
+        // Decode JSON response
+        $result = json_decode(trim($output), true);
+        
+        if (json_last_error() !== JSON_ERROR_NONE) {
+            throw new Exception("Invalid JSON output from Python script: " . $output);
+        }
+        
+        if ($result['status'] === 'error') {
+            throw new Exception("Python script error: " . $result['message']);
+        }
+        
+        // Decode the base64 encoding back to binary
+        $encoding_binary = base64_decode($result['encoding']);
+        
+        // Start transaction
+        $conn->autocommit(FALSE);
+        
+        // Generate email if not provided
+        $email = strtolower(str_replace(' ', '.', $name)) . '@example.com';
+        
+        // Insert into users table with binary encoding
+        $stmt = $conn->prepare("INSERT INTO users (name, id, face_encoding, user_role) VALUES (?, ?, ?, ?)");
+        $stmt->bind_param("ssss", $name, $id, $encoding_binary, $user_role);
+        
+        if (!$stmt->execute()) {
+            throw new Exception("Error inserting into users table: " . $stmt->error);
+        }
+        
+        // Insert into role-specific table
+        switch ($user_role) {
+            case 'admin':
+                $role_stmt = $conn->prepare("INSERT INTO admins (id, admin_name, email, hashed_password, password_changed) VALUES (?, ?, ?, NULL, 0)");
+                $role_stmt->bind_param("sss", $id, $name, $email);
+                break;
+                
+            case 'student':
+                $role_stmt = $conn->prepare("INSERT INTO students (user_id, name, email, hashed_password, password_changed) VALUES (?, ?, ?, NULL, 0)");
+                $role_stmt->bind_param("sss", $id, $name, $email);
+                break;
+                
+            case 'teacher':
+                $role_stmt = $conn->prepare("INSERT INTO teachers (user_id, name, email, hashed_password, password_changed) VALUES (?, ?, ?, NULL, 0)");
+                $role_stmt->bind_param("sss", $id, $name, $email);
+                break;
+                
+            default:
+                throw new Exception("Invalid user role: " . $user_role);
+        }
+        
+        if (!$role_stmt->execute()) {
+            throw new Exception("Error inserting into role table: " . $role_stmt->error);
+        }
+        
+        // Commit transaction
+        if (!$conn->commit()) {
+            throw new Exception("Failed to commit transaction");
+        }
+        
+        $conn->autocommit(TRUE);
+        $stmt->close();
+        $role_stmt->close();
+        
+        return true;
+        
+    } catch (Exception $e) {
+        if ($conn) {
+            $conn->rollback();
+            $conn->autocommit(TRUE);
+        }
+        error_log("Error in insert_face_encoding: " . $e->getMessage());
+        echo "Error adding user $name: " . $e->getMessage() . "<br>";
+        return false;
     }
-    $stmt->close();
-    return true;
 }
+
+// Add this function to verify the setup
+function verify_setup() {
+    try {
+        $script_dir = __DIR__;
+        $python_script = $script_dir . DIRECTORY_SEPARATOR . 'process_image.py';
+        
+        // Check Python script existence
+        if (!file_exists($python_script)) {
+            throw new Exception("Python script not found at: " . $python_script);
+        }
+        
+        // Check Python installation
+        $python_version = shell_exec('python --version 2>&1');
+        if (!$python_version) {
+            throw new Exception("Python is not installed or not in PATH");
+        }
+        
+        // Check uploads directory
+        $upload_dir = $script_dir . DIRECTORY_SEPARATOR . 'uploads';
+        if (!file_exists($upload_dir)) {
+            if (!mkdir($upload_dir, 0777, true)) {
+                throw new Exception("Failed to create uploads directory");
+            }
+        }
+        
+        if (!is_writable($upload_dir)) {
+            throw new Exception("Uploads directory is not writable");
+        }
+        
+        return true;
+    } catch (Exception $e) {
+        error_log("Setup verification failed: " . $e->getMessage());
+        echo "Setup Error: " . $e->getMessage() . "<br>";
+        return false;
+    }
+}
+
+// Function to test the Python script directly
+function test_python_script() {
+    $test_image = "path/to/test/image.jpg";  // Replace with a real test image path
+    $command = escapeshellcmd("python3 process_image.py " . escapeshellarg($test_image));
+    $output = shell_exec($command . " 2>&1");
+    
+    echo "Python script test output:<br>";
+    echo htmlspecialchars($output) . "<br>";
+    
+    return $output !== null;
+}
+
 
 // Handle user deletion
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_user'])) {

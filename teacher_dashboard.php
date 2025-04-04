@@ -28,6 +28,8 @@ $teacher_id = $teacher_data['teacher_id'];
 $teacher_name = $teacher_data['name'];
 $stmt->close();
 
+
+
 // Get distinct days where teacher has courses
 $days_query = "
     SELECT DISTINCT day_of_week 

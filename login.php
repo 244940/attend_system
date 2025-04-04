@@ -116,8 +116,26 @@ $conn->close();
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login Form</title>
     <link rel="stylesheet" href="style t.css">
+
     <style>
+        
+
         body {
+
+            
+            background-image: url('assets/bb.jpg'); /* เปลี่ยนเป็น URL ของภาพพื้นหลังที่ต้องการ */
+            background-size: cover; /* ให้ภาพพื้นหลังครอบคลุมทั้งหน้า */
+            background-position: center; /* จัดตำแหน่งภาพพื้นหลังให้อยู่ตรงกลาง */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh; /* ให้มีความสูงเต็มหน้าจอ */
+            margin: 0;
+        
+
+            
+            
+
             font-family: Arial, sans-serif;
             background-color: #f4f4f4;
             margin: 0;
@@ -126,6 +144,19 @@ $conn->close();
             justify-content: center;
             align-items: center;
             height: 100vh;
+        }
+        /* เลเยอร์เบลอ */
+        .blur-background {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-image: url('bb.jpg'); /* ใช้ภาพเดียวกับพื้นหลัง */
+            background-size: cover;
+            background-position: center;
+            filter: blur(3px); /* กำหนดความเบลอ */
+            z-index: -1; /* ทำให้เลเยอร์อยู่ด้านหลัง */
         }
         .form-box {
             background-color: white;
@@ -194,6 +225,7 @@ $conn->close();
             margin-bottom: 10px;
         }
     </style>
+
 </head>
 <body>
     <section>
