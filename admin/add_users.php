@@ -311,9 +311,10 @@ function insert_face_encoding($conn, $name, $id, $image_path, $user_role) {
         <a href="manage_users.php">Back to Manage Users</a>
     </div>
 
+    <!--
     <footer>
         <p>© <?php echo date("Y"); ?> University Admin Dashboard. All rights reserved.</p>
-        
     </footer>
+    -->
 </body>
 </html>
