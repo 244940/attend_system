@@ -43,83 +43,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_user'])) {
 
         $stmt->bind_param("s", $user_id);
         if ($stmt->execute()) {
-            echo "User with ID $user_id deleted successfully.<br>";
+            $stmt->close();
+            $_SESSION['success_message'] = "User with ID $user_id deleted successfully.";
+            header("Location: manage_users.php");
+            exit();
         } else {
-            throw new Exception("Error deleting user: " . $stmt->error);
+            $error = $stmt->error;
+            $stmt->close();
+            throw new Exception("Error deleting user: $error");
         }
-        $stmt->close();
     } catch (Exception $e) {
-        error_log("Delete user error: " . $e->getMessage());
-        echo "Error deleting user: " . $e->getMessage() . "<br>";
+        error_log("Delete user error for user_id=$user_id: " . $e->getMessage());
+        $_SESSION['error_message'] = "Error deleting user: " . $e->getMessage();
+        header("Location: manage_users.php");
+        exit();
     }
 }
 
-// Fetch and display users with search and sort functionality
-function getUsers($conn) {
-    // Initialize the base query using UNION ALL to combine users from admins, teachers, and students
-    $query = "
-        SELECT admin_id AS id, admin_name AS name, email, 'admin' AS user_role FROM admins
-        UNION ALL
-        SELECT teacher_id AS id, name, email, 'teacher' AS user_role FROM teachers
-        UNION ALL
-        SELECT student_id AS id, name, email, 'student' AS user_role FROM students
-    ";
-
-    // Handle search
-    $conditions = [];
-    if (isset($_GET['search']) && !empty($_GET['search'])) {
-        $search = $conn->real_escape_string($_GET['search']);
-        $conditions[] = "name LIKE '%$search%'";
-    }
-
-    // Add WHERE clause if there are search conditions
-    if (!empty($conditions)) {
-        $where_clause = " WHERE " . implode(" AND ", $conditions);
-        $query = "
-            SELECT * FROM (
-                SELECT admin_id AS id, admin_name AS name, email, 'admin' AS user_role FROM admins
-                UNION ALL
-                SELECT teacher_id AS id, name, email, 'teacher' AS user_role FROM teachers
-                UNION ALL
-                SELECT student_id AS id, name, email, 'student' AS user_role FROM students
-            ) AS combined_users
-            $where_clause
-        ";
-    }
-
-    // Handle sorting
-    $sort_column = isset($_GET['sort']) ? $_GET['sort'] : 'name';
-    $sort_order = isset($_GET['order']) && $_GET['order'] === 'desc' ? 'DESC' : 'ASC';
-
-    // Validate sort column to prevent SQL injection
-    $valid_columns = ['name', 'id', 'user_role'];
-    if (!in_array($sort_column, $valid_columns)) {
-        $sort_column = 'name'; // Default to name if invalid
-    }
-
-    $query .= " ORDER BY $sort_column $sort_order";
-
-    // Debug: Log the query
-    error_log("Executing query: $query");
-
-    // Execute the query
-    $result = $conn->query($query);
-    if ($result === false) {
-        error_log("Query error: " . $conn->error);
-        return [];
-    }
-
-    $users = [];
-    while ($row = $result->fetch_assoc()) {
-        $users[] = $row;
-    }
-    return $users;
-}
-
-// Update user information and handle role change
+// Handle user update from Sidebar
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_user'])) {
     $user_id = $_POST['user_id'];
     $name = $_POST['name'];
+    $name_en = $_POST['name_en'];
+    $email = $_POST['email'];
+    $citizen_id = $_POST['citizen_id'];
+    $gender = $_POST['gender'];
+    $birth_date = $_POST['birth_date'];
+    $phone_number = $_POST['phone_number'];
     $user_role = $_POST['user_role'];
 
     try {
@@ -165,38 +115,97 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_user'])) {
             $remove_stmt->close();
         }
 
-        // Insert into new role's table
+        // Insert into new role's table with updated data
         if ($user_role === 'student') {
-            $email = $name . '@example.com';
-            $stmt = $conn->prepare("INSERT INTO students (student_id, name, email, citizen_id, gender, birth_date, phone_number, hashed_password, password_changed) VALUES (?, ?, ?, '0000000000000', 'other', '2000-01-01', '0000000000', NULL, 0)");
-            $stmt->bind_param("sss", $user_id, $name, $email);
+            $stmt = $conn->prepare("INSERT INTO students (student_id, name, name_en, email, citizen_id, gender, birth_date, phone_number, hashed_password, password_changed) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, 0)");
+            $stmt->bind_param("ssssssss", $user_id, $name, $name_en, $email, $citizen_id, $gender, $birth_date, $phone_number);
         } elseif ($user_role === 'teacher') {
-            $email = $name . '@example.com';
-            $stmt = $conn->prepare("INSERT INTO teachers (teacher_id, name, email, citizen_id, gender, birth_date, phone_number, hashed_password, password_changed) VALUES (?, ?, ?, '0000000000000', 'other', '2000-01-01', '0000000000', NULL, 0)");
-            $stmt->bind_param("sss", $user_id, $name, $email);
+            $stmt = $conn->prepare("INSERT INTO teachers (teacher_id, name, name_en, email, citizen_id, gender, birth_date, phone_number, hashed_password, password_changed) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, 0)");
+            $stmt->bind_param("ssssssss", $user_id, $name, $name_en, $email, $citizen_id, $gender, $birth_date, $phone_number);
         } elseif ($user_role === 'admin') {
-            $email = $name . '@example.com';
-            $stmt = $conn->prepare("INSERT INTO admins (admin_id, admin_name, email, citizen_id, gender, birth_date, phone_number, hashed_password, password_changed) VALUES (?, ?, ?, '0000000000000', 'other', '2000-01-01', '0000000000', NULL, 0)");
-            $stmt->bind_param("sss", $user_id, $name, $email);
+            $stmt = $conn->prepare("INSERT INTO admins (admin_id, admin_name, name_en, email, citizen_id, gender, birth_date, phone_number, hashed_password, password_changed) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, 0)");
+            $stmt->bind_param("ssssssss", $user_id, $name, $name_en, $email, $citizen_id, $gender, $birth_date, $phone_number);
         } else {
             throw new Exception("Invalid new user role: $user_role");
         }
 
         if ($stmt->execute()) {
-            echo "User updated successfully.<br>";
+            $stmt->close();
+            $conn->commit();
+            $_SESSION['success_message'] = "User updated successfully.";
+            header("Location: manage_users.php");
+            exit();
         } else {
-            throw new Exception("Error updating user: " . $stmt->error);
+            $error = $stmt->error;
+            $stmt->close();
+            throw new Exception("Error updating user: $error");
         }
-        $stmt->close();
-
-        $conn->commit();
-        $conn->autocommit(TRUE);
     } catch (Exception $e) {
         $conn->rollback();
+        error_log("Update user error for user_id=$user_id: " . $e->getMessage());
+        $_SESSION['error_message'] = "Error updating user: " . $e->getMessage();
+        header("Location: manage_users.php");
+        exit();
+    } finally {
         $conn->autocommit(TRUE);
-        error_log("Update user error: " . $e->getMessage());
-        echo "Error updating user: " . $e->getMessage() . "<br>";
     }
+}
+
+// Fetch and display users with search and sort functionality
+function getUsers($conn) {
+    $base_query = "
+        SELECT admin_id AS id, admin_name AS name, name_en, email, citizen_id, gender, birth_date, phone_number, 'admin' AS user_role FROM admins
+        UNION ALL
+        SELECT teacher_id AS id, name, name_en, email, citizen_id, gender, birth_date, phone_number, 'teacher' AS user_role FROM teachers
+        UNION ALL
+        SELECT student_id AS id, name, name_en, email, citizen_id, gender, birth_date, phone_number, 'student' AS user_role FROM students
+    ";
+
+    // Handle search
+    if (isset($_GET['search']) && !empty($_GET['search'])) {
+        $search = $_GET['search'];
+        $query = "
+            SELECT * FROM (
+                $base_query
+            ) AS combined_users
+            WHERE name LIKE ?
+        ";
+        $stmt = $conn->prepare($query);
+        $search_param = "%$search%";
+        $stmt->bind_param("s", $search_param);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $users = [];
+        while ($row = $result->fetch_assoc()) {
+            $users[] = $row;
+        }
+        $stmt->close();
+        return $users;
+    }
+
+    // Handle sorting
+    $sort_column = isset($_GET['sort']) ? $_GET['sort'] : 'name';
+    $sort_order = isset($_GET['order']) && $_GET['order'] === 'desc' ? 'DESC' : 'ASC';
+
+    $valid_columns = ['name', 'id', 'user_role'];
+    if (!in_array($sort_column, $valid_columns)) {
+        $sort_column = 'name';
+    }
+
+    $query = $base_query . " ORDER BY $sort_column $sort_order";
+
+    $result = $conn->query($query);
+    if ($result === false) {
+        error_log("Query error: " . $conn->error);
+        return [];
+    }
+
+    $users = [];
+    while ($row = $result->fetch_assoc()) {
+        $users[] = $row;
+    }
+    $result->free();
+    return $users;
 }
 
 ?>
@@ -227,7 +236,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_user'])) {
             color: white;
             padding: 15px 20px;
             text-align: left;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
             display: flex;
             justify-content: space-between;
             align-items: center;
@@ -290,13 +299,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_user'])) {
             background-color: #ecf0f1;
             height: 100%;
             overflow-y: auto;
+            position: relative;
         }
 
         .user-list {
             background-color: white;
             padding: 20px;
             border-radius: 8px;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
             margin-bottom: 20px;
             width: 100%;
         }
@@ -337,6 +347,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_user'])) {
             text-decoration: underline;
         }
 
+        tr {
+            cursor: pointer;
+        }
+
+        tr:hover {
+            background-color: #f5f5f5;
+        }
+
         footer {
             text-align: center;
             padding: 10px;
@@ -345,32 +363,106 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_user'])) {
             width: 100%;
         }
 
-        .modal {
-            display: none;
+        .details-sidebar {
             position: fixed;
-            z-index: 1;
-            left: 0;
             top: 0;
-            width: 100%;
+            right: -350px;
+            width: 350px;
             height: 100%;
-            overflow: auto;
-            background-color: rgb(0,0,0);
-            background-color: rgba(0,0,0,0.4);
-        }
-
-        .modal-content {
-            background-color: #fefefe;
-            margin: 15% auto;
+            background-color: white;
+            box-shadow: -2px 0 5px rgba(0,0,0,0.3);
             padding: 20px;
-            border: 1px solid #888;
-            width: 80%;
+            z-index: 1000;
+            transition: right 0.3s ease-in-out;
+            overflow-y: auto;
         }
 
-        .close {
-            color: #aaa;
-            float: right;
-            font-size: 28px;
+        .details-sidebar.open {
+            right: 0;
+        }
+
+        .details-sidebar h2 {
+            margin-top: 0;
+            font-size: 24px;
+            color: #2980b9;
+        }
+
+        .details-sidebar form {
+            margin-top: 20px;
+        }
+
+        .details-sidebar label {
+            display: block;
+            margin: 10px 0 5px;
             font-weight: bold;
+        }
+
+        .details-sidebar input,
+        .details-sidebar select {
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+
+        .details-sidebar input[readonly] {
+            background-color: #f0f0f0;
+        }
+
+        .details-sidebar button {
+            padding: 10px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 10px;
+            margin-top: 10px;
+        }
+
+        .details-sidebar .save-btn {
+            background-color: #2980b9;
+            color: white;
+        }
+
+        .details-sidebar .save-btn:hover {
+            background-color: #3498db;
+        }
+
+        .details-sidebar .delete-btn {
+            background-color: #e74c3c;
+            color: white;
+        }
+
+        .details-sidebar .delete-btn:hover {
+            background-color: #c0392b;
+        }
+
+        .details-sidebar .close-btn {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            font-size: 24px;
+            cursor: pointer;
+            color: #e74c3c;
+        }
+
+        .message {
+            padding: 10px;
+            margin-bottom: 20px;
+            border-radius: 4px;
+            width: 100%;
+            text-align: center;
+        }
+
+        .success {
+            background-color: #d4edda;
+            color: #155724;
+        }
+
+        .error {
+            background-color: #f8d7da;
+            color: #721c24;
         }
     </style>
 </head>
@@ -387,7 +479,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_user'])) {
             <ul>
                 <li><a href="admin_dashboard.php">Dashboard</a></li>
                 <li><a href="manage_users.php">Manage Users</a></li>
-                <li><a href="add_user.php">Add User</a></li>
+                <li><a href="add_users.php">Add User</a></li>
                 <li><a href="add_course.php">Add Course</a></li>
                 <li><a href="enroll_student.php">Enroll Student</a></li>
                 <li><a href="logout.php">Logout</a></li>
@@ -397,6 +489,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_user'])) {
         <div class="main-content">
             <section class="dashboard-section" id="manage-users">
                 <h2>Manage Users</h2>
+
+                <!-- Display Flash Messages -->
+                <?php
+                if (isset($_SESSION['success_message'])) {
+                    echo '<div class="message success">' . htmlspecialchars($_SESSION['success_message']) . '</div>';
+                    unset($_SESSION['success_message']);
+                }
+                if (isset($_SESSION['error_message'])) {
+                    echo '<div class="message error">' . htmlspecialchars($_SESSION['error_message']) . '</div>';
+                    unset($_SESSION['error_message']);
+                }
+                ?>
 
                 <!-- Search Bar -->
                 <div class="search-bar">
@@ -421,33 +525,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_user'])) {
                                 <th style="border: 1px solid #ddd; padding: 8px;">
                                     <a href="?sort=user_role&order=<?php echo (isset($_GET['sort']) && $_GET['sort'] === 'user_role' && isset($_GET['order']) && $_GET['order'] === 'asc') ? 'desc' : 'asc'; ?>&search=<?php echo isset($_GET['search']) ? htmlspecialchars($_GET['search']) : ''; ?>">Role</a>
                                 </th>
-                                <th style="border: 1px solid #ddd; padding: 8px;">Actions</th>
                             </tr>
                         </thead>
                         <tbody>
                             <?php
-                            // Fetch and display users in a table
                             $users = getUsers($conn);
                             if (!empty($users)) {
                                 foreach ($users as $user):
                             ?>
-                            <tr>
+                            <tr onclick="showDetails('<?php echo htmlspecialchars($user['id']); ?>', '<?php echo htmlspecialchars($user['name']); ?>', '<?php echo htmlspecialchars($user['name_en']); ?>', '<?php echo htmlspecialchars($user['email']); ?>', '<?php echo htmlspecialchars($user['citizen_id']); ?>', '<?php echo htmlspecialchars($user['gender']); ?>', '<?php echo htmlspecialchars($user['birth_date']); ?>', '<?php echo htmlspecialchars($user['phone_number']); ?>', '<?php echo htmlspecialchars($user['user_role']); ?>')">
                                 <td style="border: 1px solid #ddd; padding: 8px;"><?php echo htmlspecialchars($user['name']); ?></td>
                                 <td style="border: 1px solid #ddd; padding: 8px;"><?php echo htmlspecialchars($user['id']); ?></td>
                                 <td style="border: 1px solid #ddd; padding: 8px;"><?php echo htmlspecialchars($user['user_role']); ?></td>
-                                <td style="border: 1px solid #ddd; padding: 8px;">
-                                    <button type="button" onclick="openModal('<?php echo htmlspecialchars($user['id']); ?>', '<?php echo htmlspecialchars($user['name']); ?>', '<?php echo htmlspecialchars($user['user_role']); ?>')" style="background-color: #f39c12; color: white; border: none; padding: 5px 10px; cursor: pointer;">Edit</button>
-                                    <form action="manage_users.php" method="POST" style="display: inline;">
-                                        <input type="hidden" name="user_id" value="<?php echo htmlspecialchars($user['id']); ?>">
-                                        <input type="hidden" name="user_role" value="<?php echo htmlspecialchars($user['user_role']); ?>">
-                                        <button type="submit" name="delete_user" style="background-color: #e74c3c; color: white; border: none; padding: 5px 10px; cursor: pointer;" onclick="return confirm('Are you sure you want to delete this user?');">Delete</button>
-                                    </form>
-                                </td>
                             </tr>
                             <?php
                                 endforeach;
                             } else {
-                                echo "<tr><td colspan='4' style='border: 1px solid #ddd; padding: 8px; text-align: center;'>No users found</td></tr>";
+                                echo "<tr><td colspan='3' style='border: 1px solid #ddd; padding: 8px; text-align: center;'>No users found</td></tr>";
                             }
                             ?>
                         </tbody>
@@ -455,46 +549,62 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_user'])) {
                 </div>
             </section>
 
-            <!-- Edit User Modal -->
-            <div id="editUserModal" class="modal" style="display:none;">
-                <div class="modal-content">
-                    <span class="close" onclick="closeModal()">×</span>
-                    <h2>Edit User</h2>
-                    <form id="editUserForm" method="POST" action="">
-                        <input type="hidden" name="user_id" id="editUserId">
-                        <label for="editUserIdDisplay">User ID:</label>
-                        <input type="text" name="user_id_display" id="editUserIdDisplay" readonly>
-                        <label for="editUserName">Name:</label>
-                        <input type="text" name="name" id="editUserName" required>
-                        <label for="editUserRole">Role:</label>
-                        <select name="user_role" id="editUserRole" required>
-                            <option value="">Select Role</option>
-                            <option value="student">Student</option>
-                            <option value="teacher">Teacher</option>
-                            <option value="admin">Admin</option>
-                        </select>
-                        <button type="submit" name="update_user">Update User</button>
-                    </form>
-                </div>
+            <!-- Details Sidebar -->
+            <div id="detailsSidebar" class="details-sidebar">
+                <span class="close-btn" onclick="closeDetails()">×</span>
+                <h2>User Details</h2>
+                <form method="POST" action="">
+                    <input type="hidden" name="user_id" id="detailId">
+                    <input type="hidden" name="user_role" id="detailRoleHidden">
+                    <label for="detailName">Name (TH):</label>
+                    <input type="text" name="name" id="detailName" required>
+                    <label for="detailNameEn">Name (EN):</label>
+                    <input type="text" name="name_en" id="detailNameEn" required>
+                    <label for="detailEmail">Email:</label>
+                    <input type="email" name="email" id="detailEmail" required>
+                    <label for="detailCitizenId">Citizen ID:</label>
+                    <input type="text" name="citizen_id" id="detailCitizenId" pattern="\d{13}" required>
+                    <label for="detailGender">Gender:</label>
+                    <select name="gender" id="detailGender" required>
+                        <option value="male">Male</option>
+                        <option value="female">Female</option>
+                        <option value="other">Other</option>
+                    </select>
+                    <label for="detailBirthDate">Birth Date:</label>
+                    <input type="date" name="birth_date" id="detailBirthDate" required>
+                    <label for="detailPhoneNumber">Phone Number:</label>
+                    <input type="text" name="phone_number" id="detailPhoneNumber" pattern="\d{9,10}" required>
+                    <label for="detailRole">Role:</label>
+                    <select name="user_role" id="detailRole" required>
+                        <option value="student">Student</option>
+                        <option value="teacher">Teacher</option>
+                        <option value="admin">Admin</option>
+                    </select>
+                    <button type="submit" name="update_user" class="save-btn">Save Changes</button>
+                    <button type="submit" name="delete_user" class="delete-btn" onclick="return confirm('Are you sure you want to delete this user?');">Delete User</button>
+                </form>
             </div>
 
             <script type='text/javascript'>
-                function openModal(userId, userName, userRole) {
-                    document.getElementById('editUserId').value = userId;
-                    document.getElementById('editUserIdDisplay').value = userId;
-                    document.getElementById('editUserName').value = userName;
-                    document.getElementById('editUserRole').value = userRole;
-                    document.getElementById('editUserModal').style.display = 'block';
+                function showDetails(id, name, nameEn, email, citizenId, gender, birthDate, phoneNumber, role) {
+                    document.getElementById('detailId').value = id;
+                    document.getElementById('detailName').value = name;
+                    document.getElementById('detailNameEn').value = nameEn;
+                    document.getElementById('detailEmail').value = email;
+                    document.getElementById('detailCitizenId').value = citizenId;
+                    document.getElementById('detailGender').value = gender;
+                    document.getElementById('detailBirthDate').value = birthDate;
+                    document.getElementById('detailPhoneNumber').value = phoneNumber;
+                    document.getElementById('detailRole').value = role;
+                    document.getElementById('detailRoleHidden').value = role;
+
+                    const sidebar = document.getElementById('detailsSidebar');
+                    sidebar.classList.add('open');
                 }
 
-                function closeModal() {
-                    document.getElementById('editUserModal').style.display = 'none';
-                }
-
-                window.onclick = function(event) {
-                    if (event.target == document.getElementById('editUserModal')) {
-                        closeModal();
-                    }
+                function closeDetails() {
+                    const sidebar = document.getElementById('detailsSidebar');
+                    sidebar.classList.remove('open');
                 }
             </script>
         </div>

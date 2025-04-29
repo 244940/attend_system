@@ -8,6 +8,7 @@ require 'vendor/autoload.php';
 
 use PhpOffice\PhpSpreadsheet\IOFactory;
 
+// Authentication check
 if (!isset($_SESSION['user_id']) || ($_SESSION['user_role'] !== 'admin' && $_SESSION['user_role'] !== 'teacher')) {
     header("Location: login.php");
     exit();
@@ -15,8 +16,6 @@ if (!isset($_SESSION['user_id']) || ($_SESSION['user_role'] !== 'admin' && $_SES
 
 // Initialize variables
 $teacher_id = null;
-$error = null;
-$success = null;
 
 // If the user is a teacher, get their teacher_id
 if ($_SESSION['user_role'] === 'teacher') {
@@ -25,7 +24,9 @@ if ($_SESSION['user_role'] === 'teacher') {
     $stmt->execute();
     $result = $stmt->get_result();
     if ($result->num_rows === 0) {
-        die("Error: Teacher not found.");
+        $_SESSION['error_message'] = "Teacher not found.";
+        header("Location: teacher_dashboard.php");
+        exit();
     }
     $teacher_id = $result->fetch_assoc()['teacher_id'];
     $stmt->close();
@@ -51,7 +52,6 @@ function validate_year($year) {
 }
 
 function insert_course($conn, $course_data, $default_teacher_id) {
-    // Add default values and null checks for all fields
     $course_name = isset($course_data['course_name']) ? trim($course_data['course_name']) : '';
     $course_code = isset($course_data['course_code']) ? trim($course_data['course_code']) : '';
     $teacher_id = isset($course_data['teacher_id']) && !empty($course_data['teacher_id']) ? 
@@ -63,14 +63,12 @@ function insert_course($conn, $course_data, $default_teacher_id) {
     $semester = isset($course_data['semester']) ? strtolower(trim($course_data['semester'])) : '';
     $c_year = isset($course_data['c_year']) ? trim($course_data['c_year']) : '';
 
-    // Validate that all required fields are present
     if (empty($course_name) || empty($course_code) || empty($day_of_week) || 
         !$start_time || !$end_time || empty($group_number) || 
         empty($semester) || empty($c_year)) {
         return "Incomplete data or invalid time format for course: " . ($course_code ?: 'Unknown code');
     }
 
-    // Validate semester and year
     if (!validate_semester($semester)) {
         return "Invalid semester for course: $course_code. Must be 'first', 'second', or 'summer'.";
     }
@@ -84,7 +82,6 @@ function insert_course($conn, $course_data, $default_teacher_id) {
         return "Invalid day of the week for course: $course_code. Allowed values: " . implode(', ', $valid_days);
     }
 
-    // Check for exact duplicate (comparing all relevant attributes)
     $check_stmt = $conn->prepare(
         "SELECT course_id FROM courses 
          WHERE course_code = ? AND semester = ? AND c_year = ? AND group_number = ? 
@@ -103,7 +100,6 @@ function insert_course($conn, $course_data, $default_teacher_id) {
     }
     $check_stmt->close();
 
-    // Check for time conflict for the same teacher
     $conflict_stmt = $conn->prepare(
         "SELECT c.course_code, c.group_number 
          FROM courses c 
@@ -131,7 +127,6 @@ function insert_course($conn, $course_data, $default_teacher_id) {
     }
     $conflict_stmt->close();
 
-    // Insert the new course into the database
     $stmt = $conn->prepare(
         "INSERT INTO courses 
          (course_name, course_code, teacher_id, day_of_week, start_time, end_time, group_number, semester, c_year) 
@@ -151,13 +146,39 @@ function insert_course($conn, $course_data, $default_teacher_id) {
         return $error;
     }
 }
+
+// Handle single course addition
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_single_course'])) {
+    $course_data = [
+        'course_name' => $_POST['course_name'],
+        'course_code' => $_POST['course_code'],
+        'teacher_id' => $_POST['teacher_id'],
+        'day_of_week' => $_POST['day_of_week'],
+        'start_time' => $_POST['start_time'],
+        'end_time' => $_POST['end_time'],
+        'group_number' => $_POST['group_number'],
+        'semester' => $_POST['semester'],
+        'c_year' => $_POST['c_year']
+    ];
+
+    $result = insert_course($conn, $course_data, $teacher_id);
+    if ($result === null) {
+        $_SESSION['success_message'] = "Course {$_POST['course_code']} added successfully.";
+    } else if (strpos($result, 'SKIP:') === 0) {
+        $_SESSION['success_message'] = $result;
+    } else {
+        $_SESSION['error_message'] = $result;
+    }
+    header("Location: add_course.php");
+    exit();
+}
+
 // Function to manually parse CSV
 function parse_csv($file_path) {
     $rows = array_map(function($line) {
         return str_getcsv($line, ',', '"', '\\');
     }, file($file_path));
     
-    // Remove any UTF-8 BOM if present
     if (!empty($rows[0])) {
         $rows[0][0] = preg_replace('/[\x00-\x1F\x80-\xFF]/', '', $rows[0][0]);
     }
@@ -171,32 +192,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['upload_file']) && iss
     $file_type = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
 
     if ($file_type != "csv" && $file_type != "xlsx") {
-        $error = "Only CSV and XLSX files are allowed.";
+        $_SESSION['error_message'] = "Only CSV and XLSX files are allowed.";
     } else {
         try {
             $rows = [];
             if ($file_type == "csv") {
                 $rows = parse_csv($file['tmp_name']);
-            } else { // xlsx
+            } else {
                 if (class_exists('ZipArchive')) {
                     $reader = IOFactory::createReader('Xlsx');
                     $spreadsheet = $reader->load($file['tmp_name']);
                     $worksheet = $spreadsheet->getActiveSheet();
                     $rows = $worksheet->toArray();
                 } else {
-                    $error = "XLSX processing requires the ZIP extension. Please use CSV format instead.";
+                    $_SESSION['error_message'] = "XLSX processing requires the ZIP extension. Please use CSV format instead.";
+                    header("Location: add_course.php");
+                    exit();
                 }
             }
 
             if (!empty($rows)) {
-                $header = array_shift($rows); // Get header row
+                $header = array_shift($rows);
                 
-                // Normalize header names
                 $header = array_map(function($h) {
                     return trim(strtolower(str_replace(' ', '_', $h)));
                 }, $header);
                 
-                // Replace 'year' with 'c_year' if present
                 $header = array_map(function($h) {
                     return $h === 'year' ? 'c_year' : $h;
                 }, $header);
@@ -204,22 +225,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['upload_file']) && iss
                 $required_columns = ['course_name', 'course_code', 'teacher_id', 'day_of_week', 
                                    'start_time', 'end_time', 'group_number', 'semester', 'c_year'];
                 
-                // Verify all required columns are present
                 $missing_columns = array_diff($required_columns, $header);
                 if (!empty($missing_columns)) {
-                    $error = "Missing required columns: " . implode(', ', $missing_columns);
+                    $_SESSION['error_message'] = "Missing required columns: " . implode(', ', $missing_columns);
                 } else {
                     $success_count = 0;
                     $skip_count = 0;
                     $errors = [];
             
                     foreach ($rows as $row_index => $row) {
-                        // Skip empty rows
                         if (empty(array_filter($row))) {
                             continue;
                         }
             
-                        // Ensure row has same number of elements as header
                         if (count($row) !== count($header)) {
                             $errors[] = "Row " . ($row_index + 2) . " has incorrect number of columns";
                             continue;
@@ -227,11 +245,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['upload_file']) && iss
             
                         $course_data = array_combine($header, $row);
                         
-                        // Clean and validate data before insertion
                         foreach ($course_data as $key => &$value) {
                             $value = trim($value);
                             if ($key === 'start_time' || $key === 'end_time') {
-                                // Ensure time format is correct
                                 if (!preg_match('/^\d{1,2}:\d{2}(:\d{2})?$/', $value)) {
                                     $errors[] = "Invalid time format in row " . ($row_index + 2) . " for " . $key;
                                     continue 2;
@@ -250,17 +266,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['upload_file']) && iss
                         }
                     }
             
-                    $success = "Successfully added $success_count courses. Skipped $skip_count duplicate courses.";
+                    $_SESSION['success_message'] = "Successfully added $success_count courses. Skipped $skip_count duplicate courses.";
                     if (!empty($errors)) {
-                        $error = "Errors occurred:\n" . implode("\n", $errors);
+                        $_SESSION['error_message'] = "Errors occurred:\n" . implode("\n", $errors);
                     }
                 }
-            
             }
         } catch (Exception $e) {
-            $error = "Error processing file: " . $e->getMessage();
+            $_SESSION['error_message'] = "Error processing file: " . $e->getMessage();
         }
     }
+    header("Location: add_course.php");
+    exit();
 }
 
 $conn->close();
@@ -272,59 +289,105 @@ $conn->close();
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Add New Course</title>
+    <link rel="stylesheet" href="admin-styles.css">
     <style>
-        * {
-            box-sizing: border-box;
+        body, html {
             margin: 0;
             padding: 0;
+            font-family: Arial, sans-serif;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            background-image: url('assets/bb.jpg');
+            background-size: cover;
+            background-position: center;
         }
 
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            line-height: 1.6;
-            color: #333;
+        .top-bar {
+            width: 100%;
+            background-color: #2980b9;
+            color: white;
+            padding: 15px 20px;
+            text-align: left;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .top-bar h1 {
+            margin: 0;
+            font-size: 24px;
+        }
+
+        .admin-container {
+            display: flex;
+            flex: 1;
+            width: 100%;
+            height: calc(100vh - 70px);
+            background: rgba(255, 255, 255, 0.9);
+        }
+
+        .sidebar {
+            width: 250px;
+            background-color: #2c3e50;
+            color: white;
             padding: 20px;
-            background-color: #f5f5f5;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            height: 100%;
         }
 
-        .container {
-            max-width: 800px;
-            margin: 0 auto;
-            background-color: white;
-            padding: 30px;
-            border-radius: 10px;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        .sidebar ul {
+            list-style-type: none;
+            padding: 0;
+            width: 100%;
         }
 
-        h1 {
-            color: #2c3e50;
-            margin-bottom: 30px;
+        .sidebar ul li {
+            margin: 15px 0;
             text-align: center;
-            font-size: 2em;
         }
 
-        h2 {
-            color: #34495e;
-            margin: 25px 0 15px 0;
-            font-size: 1.5em;
+        .sidebar ul li a {
+            color: white;
+            text-decoration: none;
+            display: block;
+            padding: 10px;
+            transition: background 0.3s;
         }
 
-        .alert {
-            padding: 12px;
+        .sidebar ul li a:hover {
+            background-color: #34495e;
             border-radius: 5px;
-            margin-bottom: 20px;
         }
 
-        .alert-error {
-            background-color: #fee2e2;
-            color: #dc2626;
-            border: 1px solid #fecaca;
+        .main-content {
+            flex: 1;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background-color: #ecf0f1;
+            height: 100%;
+            overflow-y: auto;
         }
 
-        .alert-success {
-            background-color: #dcfce7;
-            color: #16a34a;
-            border: 1px solid #bbf7d0;
+        .form-container {
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 800px;
+            margin: 20px auto;
+        }
+
+        .form-container h2 {
+            margin-top: 0;
+            color: #2980b9;
+            font-size: 1.5em;
         }
 
         .form-group {
@@ -392,105 +455,160 @@ $conn->close();
         .back-button:hover {
             background-color: #4b5563;
         }
+
+        .message {
+            padding: 10px;
+            margin-bottom: 20px;
+            border-radius: 4px;
+            width: 100%;
+            text-align: center;
+        }
+
+        .success {
+            background-color: #d4edda;
+            color: #155724;
+        }
+
+        .error {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+
+        footer {
+            text-align: center;
+            padding: 10px;
+            background-color: #34495e;
+            color: white;
+            width: 100%;
+        }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>Add a New Course</h1>
-
-        <?php if (isset($error)): ?>
-            <div class="alert alert-error">
-                <?php echo nl2br(htmlspecialchars($error)); ?>
-            </div>
-        <?php endif; ?>
-
-        <?php if (isset($success)): ?>
-            <div class="alert alert-success">
-                <?php echo htmlspecialchars($success); ?>
-            </div>
-        <?php endif; ?>
-
-        <h2>Add Single Course</h2>
-<form action="add_course.php" method="POST">
-    <div class="form-group">
-        <label for="course_name">Course Name</label>
-        <input type="text" id="course_name" name="course_name" required>
-    </div>
-
-    <div class="form-group">
-        <label for="course_code">Course Code</label>
-        <input type="text" id="course_code" name="course_code" required>
-    </div>
-
-    <div class="form-group">
-        <label for="semester">Semester</label>
-        <select id="semester" name="semester" required>
-            <option value="first">First</option>
-            <option value="second">Second</option>
-            <option value="summer">Summer</option>
-        </select>
-    </div>
-
-    <div class="form-group">
-        <label for="c_year">Year</label>
-        <input type="number" id="c_year" name="c_year" min="1901" max="2155" 
-               value="<?php echo date('Y'); ?>" required>
-    </div>
-
-    <div class="form-group">
-        <label for="day_of_week">Day of the Week</label>
-        <select id="day_of_week" name="day_of_week" required>
-            <option value="Monday">Monday</option>
-            <option value="Tuesday">Tuesday</option>
-            <option value="Wednesday">Wednesday</option>
-            <option value="Thursday">Thursday</option>
-            <option value="Friday">Friday</option>
-            <option value="Saturday">Saturday</option>
-            <option value="Sunday">Sunday</option>
-        </select>
-    </div>
-
-    <div class="form-group">
-        <label for="start_time">Start Time</label>
-        <input type="time" id="start_time" name="start_time" required>
-    </div>
-
-    <div class="form-group">
-        <label for="end_time">End Time</label>
-        <input type="time" id="end_time" name="end_time" required>
-    </div>
-
-    <div class="form-group">
-        <label for="group_number">Group Number</label>
-        <input type="number" id="group_number" name="group_number" required>
-    </div>
-
-    <div class="form-group">
-        <label for="teacher_id">Teacher ID</label>
-        <input type="text" id="teacher_id" name="teacher_id" required>
-    </div>
-
-    <button type="submit" name="add_single_course">Add Course</button>
-</form>
-
-
-        <h2>Upload Courses via CSV or XLSX</h2>
-        <form action="add_course.php" method="POST" enctype="multipart/form-data">
-            <div class="file-upload">
-                <label for="course_file">Select CSV or XLSX file</label>
-                <input type="file" name="course_file" id="course_file" accept=".csv, .xlsx" required>
-                <button type="submit" name="upload_file">Upload File</button>
-            </div>
-        </form>
-
-        <div class="file-info">
-            <strong>Required columns:</strong>
-            <p>course_name, course_code, teacher_id, day_of_week, start_time, end_time, group_number, semester, c_year</p>
+    <div class="top-bar">
+        <h1>Add New Course</h1>
+        <div class="user-info">
+            <span>Welcome, <?php echo htmlspecialchars($_SESSION['user_name']); ?> (<?php echo htmlspecialchars($_SESSION['user_email']); ?>)</span>
         </div>
-
-        <a href="<?php echo ($_SESSION['user_role'] === 'admin') ? 'admin_dashboard.php' : 'teacher_dashboard.php'; ?>">
-            <button class="back-button">Back to Dashboard</button>
-        </a>
     </div>
+
+    <div class="admin-container">
+        <aside class="sidebar">
+            <ul>
+                <li><a href="<?php echo ($_SESSION['user_role'] === 'admin') ? 'admin_dashboard.php' : 'teacher_dashboard.php'; ?>">Dashboard</a></li>
+                <?php if ($_SESSION['user_role'] === 'admin'): ?>
+                    <li><a href="manage_users.php">Manage Users</a></li>
+                    <li><a href="add_users.php">Add User</a></li>
+                <?php endif; ?>
+                <li><a href="add_course.php">Add Course</a></li>
+                <li><a href="enroll_student.php">Enroll Student</a></li>
+                <li><a href="logout.php">Logout</a></li>
+            </ul>
+        </aside>
+
+        <div class="main-content">
+            <section class="dashboard-section" id="add-course">
+                <div class="form-container">
+                    <h2>Add Single Course</h2>
+
+                    <!-- Display Flash Messages -->
+                    <?php
+                    if (isset($_SESSION['success_message'])) {
+                        echo '<div class="message success">' . htmlspecialchars($_SESSION['success_message']) . '</div>';
+                        unset($_SESSION['success_message']);
+                    }
+                    if (isset($_SESSION['error_message'])) {
+                        echo '<div class="message error">' . htmlspecialchars($_SESSION['error_message']) . '</div>';
+                        unset($_SESSION['error_message']);
+                    }
+                    ?>
+
+                    <form action="add_course.php" method="POST">
+                        <div class="form-group">
+                            <label for="course_name">Course Name</label>
+                            <input type="text" id="course_name" name="course_name" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="course_code">Course Code</label>
+                            <input type="text" id="course_code" name="course_code" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="semester">Semester</label>
+                            <select id="semester" name="semester" required>
+                                <option value="first">First</option>
+                                <option value="second">Second</option>
+                                <option value="summer">Summer</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="c_year">Year</label>
+                            <input type="number" id="c_year" name="c_year" min="1901" max="2155" 
+                                   value="<?php echo date('Y'); ?>" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="day_of_week">Day of the Week</label>
+                            <select id="day_of_week" name="day_of_week" required>
+                                <option value="Monday">Monday</option>
+                                <option value="Tuesday">Tuesday</option>
+                                <option value="Wednesday">Wednesday</option>
+                                <option value="Thursday">Thursday</option>
+                                <option value="Friday">Friday</option>
+                                <option value="Saturday">Saturday</option>
+                                <option value="Sunday">Sunday</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="start_time">Start Time</label>
+                            <input type="time" id="start_time" name="start_time" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="end_time">End Time</label>
+                            <input type="time" id="end_time" name="end_time" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="group_number">Group Number</label>
+                            <input type="number" id="group_number" name="group_number" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="teacher_id">Teacher ID</label>
+                            <input type="text" id="teacher_id" name="teacher_id" 
+                                   <?php echo ($_SESSION['user_role'] === 'teacher') ? 'readonly value="' . htmlspecialchars($teacher_id) . '"' : 'required'; ?>>
+                        </div>
+
+                        <button type="submit" name="add_single_course">Add Course</button>
+                    </form>
+
+                    <h2>Upload Courses via CSV or XLSX</h2>
+                    <form action="add_course.php" method="POST" enctype="multipart/form-data">
+                        <div class="file-upload">
+                            <label for="course_file">Select CSV or XLSX file</label>
+                            <input type="file" name="course_file" id="course_file" accept=".csv, .xlsx" required>
+                            <button type="submit" name="upload_file">Upload File</button>
+                        </div>
+                    </form>
+
+                    <div class="file-info">
+                        <strong>Required columns:</strong>
+                        <p>course_name, course_code, teacher_id, day_of_week, start_time, end_time, group_number, semester, c_year</p>
+                    </div>
+
+                    <a href="<?php echo ($_SESSION['user_role'] === 'admin') ? 'admin_dashboard.php' : 'teacher_dashboard.php'; ?>">
+                        <button class="back-button">Back to Dashboard</button>
+                    </a>
+                </div>
+            </section>
+        </div>
+    </div>
+
+    <footer>
+        <p>© <?php echo date("Y"); ?> University Admin Dashboard. All rights reserved.</p>
+    </footer>
 </body>
 </html>
