@@ -13,6 +13,7 @@ function isAdmin() {
 
 // Redirect non-admin users
 if (!isAdmin()) {
+    error_log("Unauthorized access: user_id=" . ($_SESSION['user_id'] ?? 'unset') . ", user_role=" . ($_SESSION['user_role'] ?? 'unset'));
     header("Location: login.php");
     exit();
 }
@@ -20,21 +21,49 @@ if (!isAdmin()) {
 // Handle user deletion
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_user'])) {
     $user_id = $_POST['user_id'];
-    $stmt = $conn->prepare("DELETE FROM users WHERE id = ?");
-    $stmt->bind_param("i", $user_id);
+    $user_role = $_POST['user_role'];
 
-    if ($stmt->execute()) {
-        echo "User with ID $user_id deleted successfully.<br>";
-    } else {
-        echo "Error deleting user: " . $stmt->error . "<br>";
+    try {
+        $stmt = null;
+        if ($user_role === 'admin') {
+            $stmt = $conn->prepare("DELETE FROM admins WHERE admin_id = ?");
+        } elseif ($user_role === 'teacher') {
+            $stmt = $conn->prepare("DELETE FROM teachers WHERE teacher_id = ?");
+        } elseif ($user_role === 'student') {
+            // Delete related enrollments first
+            $delete_enrollments = $conn->prepare("DELETE FROM enrollments WHERE student_id = ?");
+            $delete_enrollments->bind_param("s", $user_id);
+            $delete_enrollments->execute();
+            $delete_enrollments->close();
+
+            $stmt = $conn->prepare("DELETE FROM students WHERE student_id = ?");
+        } else {
+            throw new Exception("Invalid user role: $user_role");
+        }
+
+        $stmt->bind_param("s", $user_id);
+        if ($stmt->execute()) {
+            echo "User with ID $user_id deleted successfully.<br>";
+        } else {
+            throw new Exception("Error deleting user: " . $stmt->error);
+        }
+        $stmt->close();
+    } catch (Exception $e) {
+        error_log("Delete user error: " . $e->getMessage());
+        echo "Error deleting user: " . $e->getMessage() . "<br>";
     }
-    $stmt->close();
 }
 
 // Fetch and display users with search and sort functionality
 function getUsers($conn) {
-    // Initialize the base query
-    $query = "SELECT * FROM users";
+    // Initialize the base query using UNION ALL to combine users from admins, teachers, and students
+    $query = "
+        SELECT admin_id AS id, admin_name AS name, email, 'admin' AS user_role FROM admins
+        UNION ALL
+        SELECT teacher_id AS id, name, email, 'teacher' AS user_role FROM teachers
+        UNION ALL
+        SELECT student_id AS id, name, email, 'student' AS user_role FROM students
+    ";
 
     // Handle search
     $conditions = [];
@@ -45,7 +74,17 @@ function getUsers($conn) {
 
     // Add WHERE clause if there are search conditions
     if (!empty($conditions)) {
-        $query .= " WHERE " . implode(" AND ", $conditions);
+        $where_clause = " WHERE " . implode(" AND ", $conditions);
+        $query = "
+            SELECT * FROM (
+                SELECT admin_id AS id, admin_name AS name, email, 'admin' AS user_role FROM admins
+                UNION ALL
+                SELECT teacher_id AS id, name, email, 'teacher' AS user_role FROM teachers
+                UNION ALL
+                SELECT student_id AS id, name, email, 'student' AS user_role FROM students
+            ) AS combined_users
+            $where_clause
+        ";
     }
 
     // Handle sorting
@@ -60,8 +99,16 @@ function getUsers($conn) {
 
     $query .= " ORDER BY $sort_column $sort_order";
 
+    // Debug: Log the query
+    error_log("Executing query: $query");
+
     // Execute the query
     $result = $conn->query($query);
+    if ($result === false) {
+        error_log("Query error: " . $conn->error);
+        return [];
+    }
+
     $users = [];
     while ($row = $result->fetch_assoc()) {
         $users[] = $row;
@@ -75,36 +122,45 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_user'])) {
     $name = $_POST['name'];
     $user_role = $_POST['user_role'];
 
-    $stmt = $conn->prepare("UPDATE users SET name = ?, user_role = ? WHERE id = ?");
-    $stmt->bind_param("ssi", $name, $user_role, $user_id);
-
-    if ($stmt->execute()) {
-        echo "User updated successfully.<br>";
+    try {
+        $conn->autocommit(FALSE);
 
         // Fetch previous role
-        $old_role_stmt = $conn->prepare("SELECT user_role FROM users WHERE id = ?");
-        $old_role_stmt->bind_param("i", $user_id);
+        $old_role_query = "
+            SELECT 'admin' AS user_role FROM admins WHERE admin_id = ?
+            UNION ALL
+            SELECT 'teacher' AS user_role FROM teachers WHERE teacher_id = ?
+            UNION ALL
+            SELECT 'student' AS user_role FROM students WHERE student_id = ?
+            LIMIT 1
+        ";
+        $old_role_stmt = $conn->prepare($old_role_query);
+        $old_role_stmt->bind_param("sss", $user_id, $user_id, $user_id);
         $old_role_stmt->execute();
-        $old_role_stmt->bind_result($old_role);
-        $old_role_stmt->fetch();
+        $old_role_result = $old_role_stmt->get_result();
+        $old_role = $old_role_result->fetch_assoc()['user_role'] ?? null;
         $old_role_stmt->close();
+
+        if (!$old_role) {
+            throw new Exception("User with ID $user_id not found.");
+        }
 
         // Remove from the previous role's table
         if ($old_role === 'student') {
             $delete_enrollments = $conn->prepare("DELETE FROM enrollments WHERE student_id = ?");
-            $delete_enrollments->bind_param("i", $user_id);
+            $delete_enrollments->bind_param("s", $user_id);
             $delete_enrollments->execute();
             $delete_enrollments->close();
 
-            $remove_stmt = $conn->prepare("DELETE FROM students WHERE user_id = ?");
+            $remove_stmt = $conn->prepare("DELETE FROM students WHERE student_id = ?");
         } elseif ($old_role === 'teacher') {
-            $remove_stmt = $conn->prepare("DELETE FROM teachers WHERE user_id = ?");
+            $remove_stmt = $conn->prepare("DELETE FROM teachers WHERE teacher_id = ?");
         } elseif ($old_role === 'admin') {
-            $remove_stmt = $conn->prepare("DELETE FROM admins WHERE id = ?");
+            $remove_stmt = $conn->prepare("DELETE FROM admins WHERE admin_id = ?");
         }
 
         if (isset($remove_stmt)) {
-            $remove_stmt->bind_param("i", $user_id);
+            $remove_stmt->bind_param("s", $user_id);
             $remove_stmt->execute();
             $remove_stmt->close();
         }
@@ -112,28 +168,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_user'])) {
         // Insert into new role's table
         if ($user_role === 'student') {
             $email = $name . '@example.com';
-            $stmt_student = $conn->prepare("INSERT INTO students (user_id, name, email) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE name = VALUES(name)");
-            $stmt_student->bind_param("iss", $user_id, $name, $email);
-            $stmt_student->execute();
-            $stmt_student->close();
+            $stmt = $conn->prepare("INSERT INTO students (student_id, name, email, citizen_id, gender, birth_date, phone_number, hashed_password, password_changed) VALUES (?, ?, ?, '0000000000000', 'other', '2000-01-01', '0000000000', NULL, 0)");
+            $stmt->bind_param("sss", $user_id, $name, $email);
         } elseif ($user_role === 'teacher') {
             $email = $name . '@example.com';
-            $stmt_teacher = $conn->prepare("INSERT INTO teachers (user_id, name, email) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE name = VALUES(name)");
-            $stmt_teacher->bind_param("iss", $user_id, $name, $email);
-            $stmt_teacher->execute();
-            $stmt_teacher->close();
+            $stmt = $conn->prepare("INSERT INTO teachers (teacher_id, name, email, citizen_id, gender, birth_date, phone_number, hashed_password, password_changed) VALUES (?, ?, ?, '0000000000000', 'other', '2000-01-01', '0000000000', NULL, 0)");
+            $stmt->bind_param("sss", $user_id, $name, $email);
         } elseif ($user_role === 'admin') {
             $email = $name . '@example.com';
-            $stmt_admin = $conn->prepare("INSERT INTO admins (id, admin_name, email) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE admin_name = VALUES(admin_name)");
-            $stmt_admin->bind_param("iss", $user_id, $name, $email);
-            $stmt_admin->execute();
-            $stmt_admin->close();
+            $stmt = $conn->prepare("INSERT INTO admins (admin_id, admin_name, email, citizen_id, gender, birth_date, phone_number, hashed_password, password_changed) VALUES (?, ?, ?, '0000000000000', 'other', '2000-01-01', '0000000000', NULL, 0)");
+            $stmt->bind_param("sss", $user_id, $name, $email);
+        } else {
+            throw new Exception("Invalid new user role: $user_role");
         }
 
-    } else {
-        echo "Error updating user: " . $stmt->error . "<br>";
+        if ($stmt->execute()) {
+            echo "User updated successfully.<br>";
+        } else {
+            throw new Exception("Error updating user: " . $stmt->error);
+        }
+        $stmt->close();
+
+        $conn->commit();
+        $conn->autocommit(TRUE);
+    } catch (Exception $e) {
+        $conn->rollback();
+        $conn->autocommit(TRUE);
+        error_log("Update user error: " . $e->getMessage());
+        echo "Error updating user: " . $e->getMessage() . "<br>";
     }
-    $stmt->close();
 }
 
 ?>
@@ -142,11 +205,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_user'])) {
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="widthg=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Manage Users</title>
     <link rel="stylesheet" href="admin-styles.css">
     <style>
-        /* Reset CSS */
         body, html {
             margin: 0;
             padding: 0;
@@ -154,9 +216,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_user'])) {
             height: 100%;
             display: flex;
             flex-direction: column;
+            background-image: url('assets/bb.jpg');
+            background-size: cover;
+            background-position: center;
         }
 
-        /* Top Bar */
         .top-bar {
             width: 100%;
             background-color: #2980b9;
@@ -174,16 +238,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_user'])) {
             font-size: 24px;
         }
 
-        /* Admin Page Layout */
         .admin-container {
             display: flex;
             flex: 1;
             width: 100%;
-            height: 100%;
-            background: white;
+            height: calc(100vh - 70px);
+            background: rgba(255, 255, 255, 0.9);
         }
 
-        /* Sidebar Styling */
         .sidebar {
             width: 250px;
             background-color: #2c3e50;
@@ -192,7 +254,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_user'])) {
             display: flex;
             flex-direction: column;
             align-items: center;
-            height: 100vh;
+            height: 100%;
         }
 
         .sidebar ul {
@@ -219,7 +281,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_user'])) {
             border-radius: 5px;
         }
 
-        /* Main Content Area */
         .main-content {
             flex: 1;
             padding: 20px;
@@ -227,11 +288,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_user'])) {
             flex-direction: column;
             align-items: center;
             background-color: #ecf0f1;
-            height: 100vh;
+            height: 100%;
             overflow-y: auto;
         }
 
-        /* User List Styles */
         .user-list {
             background-color: white;
             padding: 20px;
@@ -241,7 +301,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_user'])) {
             width: 100%;
         }
 
-        /* Search Bar */
         .search-bar {
             margin-bottom: 20px;
             display: flex;
@@ -269,7 +328,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_user'])) {
             background-color: #3498db;
         }
 
-        /* Sortable Table Headers */
         th a {
             color: #2980b9;
             text-decoration: none;
@@ -286,11 +344,42 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_user'])) {
             color: white;
             width: 100%;
         }
+
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgb(0,0,0);
+            background-color: rgba(0,0,0,0.4);
+        }
+
+        .modal-content {
+            background-color: #fefefe;
+            margin: 15% auto;
+            padding: 20px;
+            border: 1px solid #888;
+            width: 80%;
+        }
+
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+        }
     </style>
 </head>
 <body>
     <div class="top-bar">
         <h1>Manage Users</h1>
+        <div class="user-info">
+            <span>Welcome, <?php echo htmlspecialchars($_SESSION['user_name']); ?> (<?php echo htmlspecialchars($_SESSION['user_email']); ?>)</span>
+        </div>
     </div>
 
     <div class="admin-container">
@@ -298,7 +387,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_user'])) {
             <ul>
                 <li><a href="admin_dashboard.php">Dashboard</a></li>
                 <li><a href="manage_users.php">Manage Users</a></li>
-                <li><a href="add_users.php">Add User</a></li>
+                <li><a href="add_user.php">Add User</a></li>
                 <li><a href="add_course.php">Add Course</a></li>
                 <li><a href="enroll_student.php">Enroll Student</a></li>
                 <li><a href="logout.php">Logout</a></li>
@@ -350,6 +439,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_user'])) {
                                     <button type="button" onclick="openModal('<?php echo htmlspecialchars($user['id']); ?>', '<?php echo htmlspecialchars($user['name']); ?>', '<?php echo htmlspecialchars($user['user_role']); ?>')" style="background-color: #f39c12; color: white; border: none; padding: 5px 10px; cursor: pointer;">Edit</button>
                                     <form action="manage_users.php" method="POST" style="display: inline;">
                                         <input type="hidden" name="user_id" value="<?php echo htmlspecialchars($user['id']); ?>">
+                                        <input type="hidden" name="user_role" value="<?php echo htmlspecialchars($user['user_role']); ?>">
                                         <button type="submit" name="delete_user" style="background-color: #e74c3c; color: white; border: none; padding: 5px 10px; cursor: pointer;" onclick="return confirm('Are you sure you want to delete this user?');">Delete</button>
                                     </form>
                                 </td>
@@ -407,36 +497,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_user'])) {
                     }
                 }
             </script>
-
-            <style>
-                .modal {
-                    display: none;
-                    position: fixed;
-                    z-index: 1;
-                    left: 0;
-                    top: 0;
-                    width: 100%;
-                    height: 100%;
-                    overflow: auto;
-                    background-color: rgb(0,0,0);
-                    background-color: rgba(0,0,0,0.4);
-                }
-
-                .modal-content {
-                    background-color: #fefefe;
-                    margin: 15% auto;
-                    padding: 20px;
-                    border: 1px solid #888;
-                    width: 80%;
-                }
-
-                .close {
-                    color: #aaa;
-                    float: right;
-                    font-size: 28px;
-                    font-weight: bold;
-                }
-            </style>
         </div>
     </div>
 

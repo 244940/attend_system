@@ -2,22 +2,66 @@
 session_start();
 require 'database_connection.php';  // Ensure this file exists and contains your database connection logic
 
-// Simulating admin check. In a real application, this would involve proper authentication.
+// Enable error reporting for debugging
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
+
+// Function to check if user is admin
 function isAdmin() {
     return isset($_SESSION['user_role']) && $_SESSION['user_role'] === 'admin';
 }
 
 // Redirect non-admin users
 if (!isAdmin()) {
+    error_log("Unauthorized access: user_id=" . ($_SESSION['user_id'] ?? 'unset') . ", user_role=" . ($_SESSION['user_role'] ?? 'unset'));
     header("Location: login.php");
     exit();
 }
 
-// Fetch dashboard data
-$totalStudents = $conn->query("SELECT COUNT(*) FROM students")->fetch_row()[0];
-$presentToday = $conn->query("SELECT COUNT(*) FROM attendance WHERE DATE(scan_time) = CURDATE() AND status = 'present'")->fetch_row()[0];
-$newUsers = $conn->query("SELECT COUNT(*) FROM users WHERE DATE(created_at) = CURDATE()")->fetch_row()[0];
+// Debug: Log session data
+error_log("Admin dashboard accessed: user_id={$_SESSION['user_id']}, user_email={$_SESSION['user_email']}, user_role={$_SESSION['user_role']}");
+
+// Fetch dashboard data with error handling
+try {
+    // Total students
+    $totalStudentsResult = $conn->query("SELECT COUNT(*) FROM students");
+    if ($totalStudentsResult === false) {
+        throw new Exception("Error querying students: " . $conn->error);
+    }
+    $totalStudents = $totalStudentsResult->fetch_row()[0];
+
+    // Present today
+    $presentTodayResult = $conn->query("SELECT COUNT(*) FROM attendance WHERE DATE(scan_time) = CURDATE() AND status = 'present'");
+    if ($presentTodayResult === false) {
+        throw new Exception("Error querying attendance: " . $conn->error);
+    }
+    $presentToday = $presentTodayResult->fetch_row()[0];
+
+    // New users today (combined from admins, teachers, students)
+    $newUsersQuery = "
+        SELECT COUNT(*) FROM (
+            SELECT created_at FROM admins WHERE DATE(created_at) = CURDATE()
+            UNION ALL
+            SELECT created_at FROM teachers WHERE DATE(created_at) = CURDATE()
+            UNION ALL
+            SELECT created_at FROM students WHERE DATE(created_at) = CURDATE()
+        ) AS new_users
+    ";
+    $newUsersResult = $conn->query($newUsersQuery);
+    if ($newUsersResult === false) {
+        throw new Exception("Error querying new users: " . $conn->error);
+    }
+    $newUsers = $newUsersResult->fetch_row()[0];
+
+} catch (Exception $e) {
+    error_log("Dashboard query error: " . $e->getMessage());
+    $totalStudents = $presentToday = $newUsers = 0; // Default to 0 on error
+}
+
+// Close the connection
+$conn->close();
 ?>
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -30,7 +74,9 @@ $newUsers = $conn->query("SELECT COUNT(*) FROM users WHERE DATE(created_at) = CU
 <body>
     <div class="top-bar">
         <h1>Admin Dashboard</h1>
-        
+        <div class="user-info">
+            <span>Welcome, <?php echo htmlspecialchars($_SESSION['user_name']); ?> (<?php echo htmlspecialchars($_SESSION['user_email']); ?>)</span>
+        </div>
     </div>
 
     <div class="admin-container">
@@ -40,7 +86,6 @@ $newUsers = $conn->query("SELECT COUNT(*) FROM users WHERE DATE(created_at) = CU
                 <li><a href="manage_users.php">Manage Users</a></li>
                 <li><a href="add_course.php">Add Course</a></li>
                 <li><a href="enroll_student.php">Enroll Student</a></li>
-                
                 <li><a href="logout.php">Logout</a></li>
             </ul>
         </aside>
@@ -51,7 +96,7 @@ $newUsers = $conn->query("SELECT COUNT(*) FROM users WHERE DATE(created_at) = CU
                 <div class="stats-container">
                     <div class="stat-box">Total Students: <span id="totalStudents"><?php echo $totalStudents; ?></span></div>
                     <div class="stat-box">Present Today: <span id="presentToday"><?php echo $presentToday; ?></span></div>
-                    <div class="stat-box">New Users: <span id="newUsers"><?php echo $newUsers; ?></span></div>
+                    <div class="stat-box">New Users Today: <span id="newUsers"><?php echo $newUsers; ?></span></div>
                 </div>
                 
                 <div class="chart-container">
@@ -62,7 +107,7 @@ $newUsers = $conn->query("SELECT COUNT(*) FROM users WHERE DATE(created_at) = CU
     </div>
 
     <footer>
-        <p>&copy; <?php echo date("Y"); ?> University Admin Dashboard. All rights reserved.</p>
+        <p>© <?php echo date("Y"); ?> University Admin Dashboard. All rights reserved.</p>
     </footer>
 
     <script>
@@ -75,9 +120,9 @@ $newUsers = $conn->query("SELECT COUNT(*) FROM users WHERE DATE(created_at) = CU
             const studentChart = new Chart(ctx, {
                 type: 'bar',
                 data: {
-                    labels: ['Total Students', 'Students Present', 'New Users'],
+                    labels: ['Total Students', 'Students Present', 'New Users Today'],
                     datasets: [{
-                        label: 'Student Statistics',
+                        label: 'Statistics',
                         data: [<?php echo "$totalStudents, $presentToday, $newUsers"; ?>],
                         backgroundColor: [
                             'rgba(52, 152, 219, 0.7)',
@@ -110,9 +155,12 @@ $newUsers = $conn->query("SELECT COUNT(*) FROM users WHERE DATE(created_at) = CU
             margin: 0;
             padding: 0;
             font-family: Arial, sans-serif;
-            height: 100%; /* Make content take up the full height */
+            height: 100%;
             display: flex;
             flex-direction: column;
+            background-image: url('assets/bb.jpg');
+            background-size: cover;
+            background-position: center;
         }
 
         /* Top Bar */
@@ -133,13 +181,17 @@ $newUsers = $conn->query("SELECT COUNT(*) FROM users WHERE DATE(created_at) = CU
             font-size: 24px;
         }
 
+        .user-info {
+            font-size: 16px;
+        }
+
         /* Admin Page Layout */
         .admin-container {
             display: flex;
             flex: 1;
             width: 100%;
-            height: 100%;
-            background: white;
+            height: calc(100vh - 70px); /* Adjust for top bar and footer */
+            background: rgba(255, 255, 255, 0.9);
         }
 
         /* Sidebar Styling */
@@ -151,7 +203,7 @@ $newUsers = $conn->query("SELECT COUNT(*) FROM users WHERE DATE(created_at) = CU
             display: flex;
             flex-direction: column;
             align-items: center;
-            height: 100vh; /* Make Sidebar full height */
+            height: 100%;
         }
 
         .sidebar ul {
@@ -186,7 +238,7 @@ $newUsers = $conn->query("SELECT COUNT(*) FROM users WHERE DATE(created_at) = CU
             flex-direction: column;
             align-items: center;
             background-color: #ecf0f1;
-            height: 100vh;
+            height: 100%;
             overflow-y: auto;
         }
 
@@ -223,16 +275,6 @@ $newUsers = $conn->query("SELECT COUNT(*) FROM users WHERE DATE(created_at) = CU
             background-color: #34495e;
             color: white;
             width: 100%;
-        }
-
-        /* Profile Image Styling */
-        .profile-image {
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            object-fit: cover;
-            margin-right: 70px;
-            border: 2px solid white;
         }
     </style>
 </body>

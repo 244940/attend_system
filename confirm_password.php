@@ -7,128 +7,51 @@ session_start();
 $host = "localhost";
 $username = "root";
 $password = "paganini019";
-$dbname = "face_recognition_db";
+$dbname = "attend_data";
 
 // Create connection
-$conn = new mysqli($host.":3308", $username, $password, $dbname);
+$conn = new mysqli($host . ":3308", $username, $password, $dbname);
 
 // Check connection
 if ($conn->connect_error) {
-    die("Connection failed: " . $conn->connect_error);
+    error_log("Connection failed: " . $conn->connect_error);
+    die("Connection failed. Please try again later.");
 }
 
-// Function to sanitize user input
-function sanitize_input($data) {
-    return htmlspecialchars(strip_tags(trim($data)));
+// Check if user is logged in and is an admin
+if (!isset($_SESSION['user_id']) || !isset($_SESSION['user_role']) || $_SESSION['user_role'] !== 'admin') {
+    error_log("Unauthorized access: user_id=" . ($_SESSION['user_id'] ?? 'unset') . ", user_role=" . ($_SESSION['user_role'] ?? 'unset'));
+    header("Location: ../login.php");
+    exit();
 }
 
-$error = "";
-$success = "";
+// Debug: Log session data
+error_log("Admin dashboard accessed: user_id={$_SESSION['user_id']}, user_email={$_SESSION['user_email']}, user_role={$_SESSION['user_role']}");
 
-// Handle both direct form submission and token-based password reset
-if ($_SERVER["REQUEST_METHOD"] == "POST" || isset($_GET['token'])) {
-    // Initialize variables
-    $user_id = $_SESSION['user_id'] ?? 0;
-    $user_role = $_SESSION['user_role'] ?? '';
-    $hashed_password = '';
-    
-    // Handle direct form submission
-    if ($_SERVER["REQUEST_METHOD"] == "POST") {
-        if (!isset($_SESSION['user_id']) || !isset($_SESSION['user_role'])) {
-            header("Location: login.php");
-            exit();
-        }
-        
-        $new_password = $_POST['new_password'];
-        $confirm_password = $_POST['confirm_password'];
-        
-        if ($new_password !== $confirm_password) {
-            $error = "Passwords do not match!";
-            goto end_script;
-        }
-        
-        $hashed_password = password_hash($new_password, PASSWORD_DEFAULT);
-    }
-    // Handle token-based reset
-    else if (isset($_GET['token'])) {
-        $token = sanitize_input($_GET['token']);
-        
-        if (!$token || !isset($_SESSION['password_reset_token']) || 
-            $token !== $_SESSION['password_reset_token']) {
-            $error = "Invalid or expired token. Please request a new password reset.";
-            goto end_script;
-        }
-        
-        $hashed_password = $_SESSION['new_hashed_password'] ?? '';
-        
-        if (!$hashed_password) {
-            $error = "Invalid session data. Please try resetting your password again.";
-            goto end_script;
-        }
-    }
+// Get user counts
+try {
+    // Count admins
+    $admin_result = $conn->query("SELECT COUNT(*) as count FROM admins");
+    $admin_count = $admin_result->fetch_assoc()['count'];
 
-    // Begin transaction
-    $conn->begin_transaction();
-    
-    try {
-        // Determine which table to update based on user role
-        $password_update_query = "";
-        switch ($user_role) {
-            case 'student':
-                $password_update_query = "UPDATE students SET hashed_password = ?, password_changed = 1 WHERE user_id = ?";
-                break;
-            case 'teacher':
-                $password_update_query = "UPDATE teachers SET hashed_password = ?, password_changed = 1 WHERE user_id = ?";
-                break;
-            case 'admin':
-                $password_update_query = "UPDATE admins SET hashed_password = ?, password_changed = 1 WHERE id = ?";
-                break;
-            default:
-                throw new Exception("Invalid user role");
-        }
+    // Count teachers
+    $teacher_result = $conn->query("SELECT COUNT(*) as count FROM teachers");
+    $teacher_count = $teacher_result->fetch_assoc()['count'];
 
-        // Execute password update
-        $stmt = $conn->prepare($password_update_query);
-        $stmt->bind_param("si", $hashed_password, $user_id);
-        
-        if (!$stmt->execute()) {
-            throw new Exception("Failed to update password");
-        }
+    // Count students
+    $student_result = $conn->query("SELECT COUNT(*) as count FROM students");
+    $student_count = $student_result->fetch_assoc()['count'];
 
-        // Check if any rows were affected
-        if ($stmt->affected_rows == 0) {
-            throw new Exception("No records were updated");
-        }
+    // Total users
+    $total_users = $admin_count + $teacher_count + $student_count;
 
-        // Commit transaction
-        $conn->commit();
-        $success = "Password successfully changed!";
-
-        // Clear token-related session data if it exists
-        if (isset($_SESSION['password_reset_token'])) {
-            unset($_SESSION['password_reset_token']);
-            unset($_SESSION['new_hashed_password']);
-        }
-
-        // Optionally, you might want to log the user out here to force a new login
-        // session_destroy();
-    } catch (Exception $e) {
-        // Rollback transaction on error
-        $conn->rollback();
-        $error = "Error: " . $e->getMessage();
-    }
-    
-    if (isset($stmt)) {
-        $stmt->close();
-    }
+} catch (Exception $e) {
+    error_log("Error fetching user counts: " . $e->getMessage());
+    $admin_count = $teacher_count = $student_count = $total_users = 0;
 }
-end_script:
+
 // Close the connection
 $conn->close();
-
-// Initialize message and message_class
-$message = $error ?: $success;
-$message_class = $error ? "error" : "success";
 ?>
 
 <!DOCTYPE html>
@@ -136,26 +59,84 @@ $message_class = $error ? "error" : "success";
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Confirm Password Change</title>
+    <title>Admin Dashboard</title>
     <style>
-        body { font-family: Arial, sans-serif; line-height: 1.6; padding: 20px; }
-        .container { max-width: 600px; margin: 0 auto; }
-        .message { background: #f4f4f4; border: 1px solid #ddd; padding: 20px; margin-bottom: 20px; }
-        .success { color: green; }
-        .error { color: red; }
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f4f4f4;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+        }
+        .welcome {
+            margin-bottom: 20px;
+        }
+        .stats {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+        .stat-box {
+            background: #03a9f4;
+            color: white;
+            padding: 20px;
+            border-radius: 5px;
+            flex: 1;
+            min-width: 200px;
+            text-align: center;
+        }
+        .stat-box h3 {
+            margin: 0 0 10px;
+        }
+        .logout {
+            margin-top: 20px;
+        }
+        .logout a {
+            color: #03a9f4;
+            text-decoration: none;
+        }
+        .logout a:hover {
+            text-decoration: underline;
+        }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>Confirm Password Change</h1>
-        <div class="message <?php echo $message_class; ?>">
-            <?php echo $message; ?>
+        <h1>Admin Dashboard</h1>
+        <div class="welcome">
+            <p>Welcome, <?php echo htmlspecialchars($_SESSION['user_name']); ?> (<?php echo htmlspecialchars($_SESSION['user_email']); ?>)</p>
         </div>
-        <?php if ($message_class === 'success'): ?>
-            <p>You can now <a href="login.php">log in with your new password</a>.</p>
-        <?php else: ?>
-            <p>Please <a href="change_password.php">try changing your password again</a>.</p>
-        <?php endif; ?>
+        <div class="stats">
+            <div class="stat-box">
+                <h3>Admins</h3>
+                <p><?php echo $admin_count; ?></p>
+            </div>
+            <div class="stat-box">
+                <h3>Teachers</h3>
+                <p><?php echo $teacher_count; ?></p>
+            </div>
+            <div class="stat-box">
+                <h3>Students</h3>
+                <p><?php echo $student_count; ?></p>
+            </div>
+            <div class="stat-box">
+                <h3>Total Users</h3>
+                <p><?php echo $total_users; ?></p>
+            </div>
+        </div>
+        <div class="logout">
+            <a href="../logout.php">Logout</a>
+        </div>
     </div>
 </body>
 </html>

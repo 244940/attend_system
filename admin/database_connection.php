@@ -4,7 +4,7 @@ $host = "localhost";    // Host (or 127.0.0.1)
 $port = "3308";         // Optional: Port number if you're using a non-standard port
 $username = "root";     // Database username
 $password = "paganini019";   // Database password
-$dbname = "face_recognition_db";  // Database name
+$dbname = "attend_data";  // Database name -face_recognition_db
 
 // Create a new MySQLi connection object
 $conn = new mysqli($host . ":" . $port, $username, $password, $dbname);
