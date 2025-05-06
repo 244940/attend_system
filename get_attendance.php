@@ -14,8 +14,12 @@ try {
         throw new Exception('Missing course_id parameter');
     }
 
-    $course_id = intval($_GET['course_id']);
-    $selected_date = isset($_GET['date']) ? $_GET['date'] : date('Y-m-d');
+    if (!isset($_GET['date'])) {
+        throw new Exception('Missing date parameter');
+    }
+
+    $course_id = intval($_GET['course_id']); // course_id is an int
+    $selected_date = $_GET['date'];
 
     // Validate date format
     if (!DateTime::createFromFormat('Y-m-d', $selected_date)) {
@@ -25,23 +29,37 @@ try {
     }
 
     // Check user authorization
-    if (!isset($_SESSION['user_id']) || $_SESSION['user_role'] !== 'teacher') {
+    if (!isset($_SESSION['teacher_id']) || $_SESSION['user_role'] !== 'teacher') {
         http_response_code(403);
         throw new Exception('Unauthorized');
     }
 
-    // Determine the day of the week for the selected date
-    $day_of_week = date('N', strtotime($selected_date));
+    // Verify that the course belongs to the teacher
+    $course_check = $conn->prepare("
+        SELECT course_id, course_code, start_time 
+        FROM courses 
+        WHERE course_id = ? AND teacher_id = ?
+    ");
+    $course_check->bind_param("ii", $course_id, $_SESSION['teacher_id']); // course_id and teacher_id are int
+    $course_check->execute();
+    $course_result = $course_check->get_result();
+    if ($course_result->num_rows === 0) {
+        http_response_code(403);
+        throw new Exception('Course not found or not authorized');
+    }
+    $course_data = $course_result->fetch_assoc();
+    $course_check->close();
 
-    // Check if this course has a schedule on this day
+    // Determine the day of the week for the selected date
+    $day_of_week = date('l', strtotime($selected_date));
+
+    // Check if this course is scheduled on this day
     $schedule_query = "
-        SELECT s.schedule_id, c.course_name 
-        FROM schedules s
-        JOIN courses c ON s.course_id = c.course_id
-        WHERE s.course_id = ? AND c.day_of_week = ?";
-    
+        SELECT course_id 
+        FROM courses 
+        WHERE course_id = ? AND day_of_week = ?";
     $schedule_stmt = $conn->prepare($schedule_query);
-    $schedule_stmt->bind_param("ii", $course_id, $day_of_week);
+    $schedule_stmt->bind_param("is", $course_id, $day_of_week); // course_id is int
     $schedule_stmt->execute();
     $schedule_result = $schedule_stmt->get_result();
 
@@ -52,15 +70,12 @@ try {
         ]);
         exit();
     }
+    $schedule_stmt->close();
 
-    $schedule_row = $schedule_result->fetch_assoc();
-    $schedule_id = $schedule_row['schedule_id'];
-
-    // Main query to get attendance data
+    // Fetch students enrolled in the course and their attendance
     $attendance_query = "
         SELECT 
             s.student_id,
-            s.user_id,
             s.name,
             c.course_code,
             c.start_time,
@@ -68,20 +83,20 @@ try {
             CASE
                 WHEN a.scan_time IS NOT NULL THEN
                     CASE
-                        WHEN TIME(a.scan_time) <= c.start_time THEN 'มาเรียน'   -- Present
-                        WHEN TIME(a.scan_time) <= ADDTIME(c.start_time, '00:15:00') THEN 'สาย'  -- Late
-                        ELSE 'ขาดเรียน'  -- Absent
+                        WHEN TIME(a.scan_time) <= c.start_time THEN 'Present'
+                        WHEN TIME(a.scan_time) <= ADDTIME(c.start_time, '00:15:00') THEN 'Late'
+                        ELSE 'Absent'
                     END
-                ELSE 'ขาดเรียน'  -- Absent
+                ELSE 'Absent'
             END as status,
             CASE
-                WHEN a.scan_time IS NULL THEN 'ไม่มีการสแกน'  -- No scan
+                WHEN a.scan_time IS NULL THEN 'ไม่มีการสแกน'
                 ELSE TIME_FORMAT(a.scan_time, '%H:%i:%s')
             END as scan_time_display
         FROM enrollments e
         JOIN students s ON e.student_id = s.student_id
         JOIN courses c ON e.course_id = c.course_id
-        LEFT JOIN attendance a ON s.user_id = a.user_id 
+        LEFT JOIN attendance a ON s.student_id = a.user_id 
             AND DATE(a.scan_time) = ?
             AND a.schedule_id IN (
                 SELECT schedule_id 
@@ -96,7 +111,7 @@ try {
         throw new Exception('Failed to prepare attendance query: ' . $conn->error);
     }
 
-    $stmt->bind_param("sii", $selected_date, $course_id, $course_id);
+    $stmt->bind_param("sii", $selected_date, $course_id, $course_id); // course_id is int
     if (!$stmt->execute()) {
         throw new Exception('Failed to execute attendance query: ' . $stmt->error);
     }
@@ -114,10 +129,8 @@ try {
 
     $has_logs = false;
     while ($row = $result->fetch_assoc()) {
-        // Collect student data and update statistics
         $student = [
             'student_id' => $row['student_id'],
-            'user_id' => $row['user_id'],
             'name' => $row['name'],
             'course_code' => $row['course_code'] ?? null,
             'scan_time' => $row['scan_time_display'] ?? null,
@@ -125,15 +138,15 @@ try {
         ];
 
         switch ($row['status']) {
-            case 'มาเรียน':
+            case 'Present':
                 $statistics['present']++;
                 $has_logs = true;
                 break;
-            case 'สาย':
+            case 'Late':
                 $statistics['late']++;
                 $has_logs = true;
                 break;
-            case 'ขาดเรียน':
+            case 'Absent':
                 $statistics['absent']++;
                 break;
         }
@@ -142,12 +155,11 @@ try {
         $statistics['total']++;
     }
 
-     // Check if we have any attendance logs
-     if (!$has_logs) {
-        echo json_encode(['message' => 'No attendance logs for this date', 'statistics' => null]);
+    if (!$has_logs && $statistics['total'] === 0) {
+        echo json_encode(['message' => 'No students enrolled or no attendance logs for this date', 'statistics' => $statistics]);
         exit();
     }
-    // Send JSON response
+
     echo json_encode([
         'date' => $selected_date,
         'students' => $students,
@@ -155,22 +167,25 @@ try {
     ]);
 
 } catch (Exception $e) {
-   error_log("Error in get_attendance.php: " . htmlspecialchars($e->getMessage()));
-   http_response_code(500);
-   echo json_encode([
-       'error' => "Server error: " . htmlspecialchars($e->getMessage()),
-       'file' => __FILE__,
-       'line' => $e->getLine()
-   ]);
+    error_log("Error in get_attendance.php: " . htmlspecialchars($e->getMessage()));
+    http_response_code(500);
+    echo json_encode([
+        'error' => "Server error: " . htmlspecialchars($e->getMessage()),
+        'file' => __FILE__,
+        'line' => $e->getLine()
+    ]);
 } finally {
-   if (isset($schedule_stmt)) { 
-       $schedule_stmt->close(); 
-   }
-   if (isset($stmt)) { 
-       $stmt->close(); 
-   }
-   if (isset($conn)) { 
-       $conn->close(); 
-   }
+    if (isset($stmt)) {
+        $stmt->close();
+    }
+    if (isset($schedule_stmt)) {
+        $schedule_stmt->close();
+    }
+    if (isset($course_check)) {
+        $course_check->close();
+    }
+    if (isset($conn)) {
+        $conn->close();
+    }
 }
 ?>

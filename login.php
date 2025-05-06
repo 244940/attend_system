@@ -24,6 +24,13 @@ if ($conn->connect_error) {
 $error = "";
 $is_first_login = false; // Flag to determine if it's the first login
 
+// Handle "Login with other email" by clearing temp_user session
+if (isset($_GET['change_email'])) {
+    unset($_SESSION['temp_user']);
+    header("Location: login.php");
+    exit();
+}
+
 // Check if email is provided to determine login type
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['check_email'])) {
     $email = filter_var($_POST['email'], FILTER_SANITIZE_EMAIL);
@@ -55,6 +62,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['check_email'])) {
                 $row = $result->fetch_assoc();
                 $_SESSION['temp_user'] = $row; // Store user data temporarily
                 $is_first_login = ($row['password_changed'] == 0 && $row['hashed_password'] === null);
+                error_log("User found: " . print_r($row, true));
             } else {
                 $error = "Invalid email.";
                 error_log("No user found for email: $email");
@@ -73,11 +81,18 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['submit_password']) && 
     if ($row['password_changed'] == 0 && $row['hashed_password'] === null) {
         if ($password === $row['citizen_id']) {
             // Set session variables and redirect to change password page
-            $_SESSION['user_id'] = $row['id'];
             $_SESSION['user_name'] = $row['name'];
             $_SESSION['user_role'] = $row['user_role'];
             $_SESSION['user_email'] = $row['email'];
             $_SESSION['password_changed'] = $row['password_changed'];
+
+            if ($row['user_role'] === 'admin') {
+                $_SESSION['admin_id'] = $row['id'];
+            } elseif ($row['user_role'] === 'teacher') {
+                $_SESSION['teacher_id'] = $row['id']; // Use teacher_id for consistency
+            } elseif ($row['user_role'] === 'student') {
+                $_SESSION['student_id'] = $row['id'];
+            }
 
             error_log("First login successful: email={$row['email']}, citizen_id=$password");
             header("Location: login_first_time.php");
@@ -90,13 +105,20 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['submit_password']) && 
         // Not first login: verify password
         if ($row['hashed_password'] !== null && password_verify($password, $row['hashed_password'])) {
             // Password correct, set session variables
-            $_SESSION['user_id'] = $row['id'];
             $_SESSION['user_name'] = $row['name'];
             $_SESSION['user_role'] = $row['user_role'];
             $_SESSION['user_email'] = $row['email'];
             $_SESSION['password_changed'] = $row['password_changed'];
 
-            error_log("Normal login successful: email={$row['email']}");
+            if ($row['user_role'] === 'admin') {
+                $_SESSION['admin_id'] = $row['id'];
+            } elseif ($row['user_role'] === 'teacher') {
+                $_SESSION['teacher_id'] = $row['id']; // Use teacher_id for consistency
+            } elseif ($row['user_role'] === 'student') {
+                $_SESSION['student_id'] = $row['id'];
+            }
+
+            error_log("Normal login successful: email={$row['email']}, role={$row['user_role']}");
             switch ($row['user_role']) {
                 case 'admin':
                     header("Location: admin/admin_dashboard.php");
@@ -262,7 +284,7 @@ $conn->close();
                         <input type="hidden" name="submit_password" value="1">
                         <button type="submit">Log in</button>
                         <div class="register">
-                            <p>Don't have an account? <a href="#">Register</a></p>
+                            <p><a href="login.php?change_email=1">Login with other email</a></p>
                         </div>
                     </form>
                 <?php endif; ?>

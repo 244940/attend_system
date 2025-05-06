@@ -3,9 +3,8 @@ session_start();
 require 'database_connection.php';
 
 // Check if user is logged in and is a teacher
-if (!isset($_SESSION['user_id']) || $_SESSION['user_role'] !== 'teacher') {
-    header("Location: login.php");
-    exit();
+if (!isset($_SESSION['teacher_id']) || !isset($_SESSION['user_role']) || $_SESSION['user_role'] !== 'teacher') {
+    die("Error: Please log in as a teacher.");
 }
 
 // Check if a course ID was provided
@@ -21,6 +20,21 @@ if (!DateTime::createFromFormat('Y-m-d', $selected_date)) {
     die("Error: Invalid date format.");
 }
 
+// Validate that the course belongs to the teacher
+$teacher_id = $_SESSION['teacher_id'];
+$course_check_query = "
+    SELECT course_id 
+    FROM courses 
+    WHERE course_id = ? AND teacher_id = ?";
+$course_check_stmt = $conn->prepare($course_check_query);
+$course_check_stmt->bind_param("ii", $course_id, $teacher_id); // course_id and teacher_id are int
+$course_check_stmt->execute();
+$course_check_result = $course_check_stmt->get_result();
+if ($course_check_result->num_rows === 0) {
+    die("Error: Course not found or you are not authorized to access it.");
+}
+$course_check_stmt->close();
+
 // Prepare SQL query to get course details (course code, name, and group number)
 $course_query = "
     SELECT c.course_code, c.course_name, s.group_number 
@@ -28,7 +42,7 @@ $course_query = "
     JOIN schedules s ON c.course_id = s.course_id
     WHERE c.course_id = ?";
 $course_stmt = $conn->prepare($course_query);
-$course_stmt->bind_param("i", $course_id);
+$course_stmt->bind_param("i", $course_id); // course_id is int
 $course_stmt->execute();
 $course_result = $course_stmt->get_result();
 
@@ -45,7 +59,7 @@ $group_number = $course_row['group_number'];
 $attendance_query = "
     SELECT 
         s.student_id,
-        s.user_id,
+        s.student_id as user_id,  -- Map student_id to user_id as per schema
         s.name,
         c.course_code,
         c.start_time,
@@ -66,7 +80,7 @@ $attendance_query = "
     FROM enrollments e
     JOIN students s ON e.student_id = s.student_id
     JOIN courses c ON e.course_id = c.course_id
-    LEFT JOIN attendance a ON s.user_id = a.user_id 
+    LEFT JOIN attendance a ON s.student_id = a.user_id 
         AND DATE(a.scan_time) = ?
         AND a.schedule_id IN (
             SELECT schedule_id 
@@ -77,7 +91,7 @@ $attendance_query = "
     ORDER BY s.name";
 
 $stmt = $conn->prepare($attendance_query);
-$stmt->bind_param("sii", $selected_date, $course_id, $course_id);
+$stmt->bind_param("sii", $selected_date, $course_id, $course_id); // course_id is int
 $stmt->execute();
 $result = $stmt->get_result();
 

@@ -15,11 +15,11 @@ if (!isset($_SESSION['user_id']) || ($_SESSION['user_role'] !== 'admin' && $_SES
 }
 
 // Initialize variables
-$teacher_id = null;
+$teacher_name = null;
 
-// If the user is a teacher, get their teacher_id
+// If the user is a teacher, get their teacher_name
 if ($_SESSION['user_role'] === 'teacher') {
-    $stmt = $conn->prepare("SELECT teacher_id FROM teachers WHERE user_id = ?");
+    $stmt = $conn->prepare("SELECT teacher_name FROM teachers WHERE user_id = ?");
     $stmt->bind_param("i", $_SESSION['user_id']);
     $stmt->execute();
     $result = $stmt->get_result();
@@ -28,7 +28,7 @@ if ($_SESSION['user_role'] === 'teacher') {
         header("Location: teacher_dashboard.php");
         exit();
     }
-    $teacher_id = $result->fetch_assoc()['teacher_id'];
+    $teacher_name = $result->fetch_assoc()['teacher_name'];
     $stmt->close();
 }
 
@@ -51,21 +51,27 @@ function validate_year($year) {
     return is_numeric($year) && strlen($year) === 4 && $year >= 1901 && $year <= 2155;
 }
 
-function insert_course($conn, $course_data, $default_teacher_id) {
+function validate_year_code($year_code) {
+    return is_numeric($year_code) && strlen($year_code) === 2 && $year_code >= 00 && $year_code <= 99;
+}
+
+function insert_course($conn, $course_data, $default_teacher_name) {
     $course_name = isset($course_data['course_name']) ? trim($course_data['course_name']) : '';
+    $course_name_en = isset($course_data['course_name_en']) ? trim($course_data['course_name_en']) : '';
     $course_code = isset($course_data['course_code']) ? trim($course_data['course_code']) : '';
-    $teacher_id = isset($course_data['teacher_id']) && !empty($course_data['teacher_id']) ? 
-        trim($course_data['teacher_id']) : $default_teacher_id;
+    $teacher_name = isset($course_data['teacher_name']) && !empty($course_data['teacher_name']) ? 
+        trim($course_data['teacher_name']) : $default_teacher_name;
     $day_of_week = isset($course_data['day_of_week']) ? trim($course_data['day_of_week']) : '';
     $start_time = isset($course_data['start_time']) ? format_time(trim($course_data['start_time'])) : false;
     $end_time = isset($course_data['end_time']) ? format_time(trim($course_data['end_time'])) : false;
     $group_number = isset($course_data['group_number']) ? trim($course_data['group_number']) : '';
     $semester = isset($course_data['semester']) ? strtolower(trim($course_data['semester'])) : '';
     $c_year = isset($course_data['c_year']) ? trim($course_data['c_year']) : '';
+    $year_code = isset($course_data['year_code']) ? trim($course_data['year_code']) : '';
 
-    if (empty($course_name) || empty($course_code) || empty($day_of_week) || 
+    if (empty($course_name) || empty($course_name_en) || empty($course_code) || empty($day_of_week) || 
         !$start_time || !$end_time || empty($group_number) || 
-        empty($semester) || empty($c_year)) {
+        empty($semester) || empty($c_year) || empty($year_code)) {
         return "Incomplete data or invalid time format for course: " . ($course_code ?: 'Unknown code');
     }
 
@@ -77,6 +83,10 @@ function insert_course($conn, $course_data, $default_teacher_id) {
         return "Invalid year for course: $course_code. Must be between 1901 and 2155.";
     }
 
+    if (!validate_year_code($year_code)) {
+        return "Invalid year code for course: $course_code. Must be a 2-digit number (00-99).";
+    }
+
     $valid_days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
     if (!in_array($day_of_week, $valid_days)) {
         return "Invalid day of the week for course: $course_code. Allowed values: " . implode(', ', $valid_days);
@@ -84,12 +94,12 @@ function insert_course($conn, $course_data, $default_teacher_id) {
 
     $check_stmt = $conn->prepare(
         "SELECT course_id FROM courses 
-         WHERE course_code = ? AND semester = ? AND c_year = ? AND group_number = ? 
-         AND teacher_id = ? AND day_of_week = ? AND start_time = ? AND end_time = ?"
+         WHERE course_code = ? AND semester = ? AND c_year = ? AND year_code = ? AND group_number = ? 
+         AND teacher_name = ? AND day_of_week = ? AND start_time = ? AND end_time = ?"
     );
-    $check_stmt->bind_param("ssssssss", 
-        $course_code, $semester, $c_year, $group_number,
-        $teacher_id, $day_of_week, $start_time, $end_time
+    $check_stmt->bind_param("sssssssss", 
+        $course_code, $semester, $c_year, $year_code, $group_number,
+        $teacher_name, $day_of_week, $start_time, $end_time
     );
     $check_stmt->execute();
     $check_result = $check_stmt->get_result();
@@ -103,18 +113,19 @@ function insert_course($conn, $course_data, $default_teacher_id) {
     $conflict_stmt = $conn->prepare(
         "SELECT c.course_code, c.group_number 
          FROM courses c 
-         WHERE c.teacher_id = ? 
+         WHERE c.teacher_name = ? 
          AND c.day_of_week = ? 
          AND c.semester = ? 
          AND c.c_year = ? 
+         AND c.year_code = ?
          AND (
              (? BETWEEN c.start_time AND c.end_time) 
              OR (? BETWEEN c.start_time AND c.end_time)
              OR (c.start_time BETWEEN ? AND ?)
          )"
     );
-    $conflict_stmt->bind_param("ssssssss", 
-        $teacher_id, $day_of_week, $semester, $c_year, 
+    $conflict_stmt->bind_param("sssssssss", 
+        $teacher_name, $day_of_week, $semester, $c_year, $year_code,
         $start_time, $end_time, $start_time, $end_time
     );
     $conflict_stmt->execute();
@@ -123,18 +134,18 @@ function insert_course($conn, $course_data, $default_teacher_id) {
     if ($conflict_result->num_rows > 0) {
         $conflict = $conflict_result->fetch_assoc();
         $conflict_stmt->close();
-        return "Time conflict detected for teacher ID $teacher_id with course {$conflict['course_code']} group {$conflict['group_number']}.";
+        return "Time conflict detected for teacher $teacher_name with course {$conflict['course_code']} group {$conflict['group_number']}.";
     }
     $conflict_stmt->close();
 
     $stmt = $conn->prepare(
         "INSERT INTO courses 
-         (course_name, course_code, teacher_id, day_of_week, start_time, end_time, group_number, semester, c_year) 
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
+         (course_name, course_name_en, course_code, teacher_name, day_of_week, start_time, end_time, group_number, semester, c_year, year_code) 
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
     );
-    $stmt->bind_param("ssissssss", 
-        $course_name, $course_code, $teacher_id, $day_of_week, 
-        $start_time, $end_time, $group_number, $semester, $c_year
+    $stmt->bind_param("sssssssssss", 
+        $course_name, $course_name_en, $course_code, $teacher_name, $day_of_week, 
+        $start_time, $end_time, $group_number, $semester, $c_year, $year_code
     );
 
     if ($stmt->execute()) {
@@ -151,17 +162,19 @@ function insert_course($conn, $course_data, $default_teacher_id) {
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_single_course'])) {
     $course_data = [
         'course_name' => $_POST['course_name'],
+        'course_name_en' => $_POST['course_name_en'],
         'course_code' => $_POST['course_code'],
-        'teacher_id' => $_POST['teacher_id'],
+        'teacher_name' => $_POST['teacher_name'],
         'day_of_week' => $_POST['day_of_week'],
         'start_time' => $_POST['start_time'],
         'end_time' => $_POST['end_time'],
         'group_number' => $_POST['group_number'],
         'semester' => $_POST['semester'],
-        'c_year' => $_POST['c_year']
+        'c_year' => $_POST['c_year'],
+        'year_code' => $_POST['year_code']
     ];
 
-    $result = insert_course($conn, $course_data, $teacher_id);
+    $result = insert_course($conn, $course_data, $teacher_name);
     if ($result === null) {
         $_SESSION['success_message'] = "Course {$_POST['course_code']} added successfully.";
     } else if (strpos($result, 'SKIP:') === 0) {
@@ -222,8 +235,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['upload_file']) && iss
                     return $h === 'year' ? 'c_year' : $h;
                 }, $header);
             
-                $required_columns = ['course_name', 'course_code', 'teacher_id', 'day_of_week', 
-                                   'start_time', 'end_time', 'group_number', 'semester', 'c_year'];
+                $required_columns = ['course_name', 'course_name_en', 'course_code', 'teacher_name', 'day_of_week', 
+                                   'start_time', 'end_time', 'group_number', 'semester', 'c_year', 'year_code'];
                 
                 $missing_columns = array_diff($required_columns, $header);
                 if (!empty($missing_columns)) {
@@ -256,7 +269,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['upload_file']) && iss
                         }
                         unset($value);
             
-                        $result = insert_course($conn, $course_data, $teacher_id);
+                        $result = insert_course($conn, $course_data, $teacher_name);
                         if ($result === null) {
                             $success_count++;
                         } else if (strpos($result, 'SKIP:') === 0) {
@@ -524,8 +537,13 @@ $conn->close();
 
                     <form action="add_course.php" method="POST">
                         <div class="form-group">
-                            <label for="course_name">Course Name</label>
+                            <label for="course_name">Course Name (Thai)</label>
                             <input type="text" id="course_name" name="course_name" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="course_name_en">Course Name (English)</label>
+                            <input type="text" id="course_name_en" name="course_name_en" required>
                         </div>
 
                         <div class="form-group">
@@ -543,9 +561,14 @@ $conn->close();
                         </div>
 
                         <div class="form-group">
-                            <label for="c_year">Year</label>
+                            <label for="c_year">Year (Full, e.g., 2560)</label>
                             <input type="number" id="c_year" name="c_year" min="1901" max="2155" 
                                    value="<?php echo date('Y'); ?>" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="year_code">Year Code (Last 2 digits, e.g., 60 for 2560)</label>
+                            <input type="text" id="year_code" name="year_code" pattern="\d{2}" maxlength="2" required>
                         </div>
 
                         <div class="form-group">
@@ -577,9 +600,9 @@ $conn->close();
                         </div>
 
                         <div class="form-group">
-                            <label for="teacher_id">Teacher ID</label>
-                            <input type="text" id="teacher_id" name="teacher_id" 
-                                   <?php echo ($_SESSION['user_role'] === 'teacher') ? 'readonly value="' . htmlspecialchars($teacher_id) . '"' : 'required'; ?>>
+                            <label for="teacher_name">Teacher Name</label>
+                            <input type="text" id="teacher_name" name="teacher_name" 
+                                   <?php echo ($_SESSION['user_role'] === 'teacher') ? 'readonly value="' . htmlspecialchars($teacher_name) . '"' : 'required'; ?>>
                         </div>
 
                         <button type="submit" name="add_single_course">Add Course</button>
@@ -596,7 +619,7 @@ $conn->close();
 
                     <div class="file-info">
                         <strong>Required columns:</strong>
-                        <p>course_name, course_code, teacher_id, day_of_week, start_time, end_time, group_number, semester, c_year</p>
+                        <p>course_name, course_name_en, course_code, teacher_name, day_of_week, start_time, end_time, group_number, semester, c_year, year_code</p>
                     </div>
 
                     <a href="<?php echo ($_SESSION['user_role'] === 'admin') ? 'admin_dashboard.php' : 'teacher_dashboard.php'; ?>">

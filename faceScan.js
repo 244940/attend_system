@@ -1,8 +1,7 @@
-// js/faceScanner.js
-
 let video, canvas, ctx, stream;
 let scanning = false;
 let currentCourseId = null;
+let currentScheduleId = null;
 
 function initializeVideo() {
     video = document.getElementById('videoFeed');
@@ -26,20 +25,22 @@ function initializeVideo() {
         });
 }
 
-function startFaceScan(teacherId) {
+function startFaceScan(teacherId, scheduleId) {
     if (!currentCourseId) {
         alert("กรุณาเลือกวิชาก่อนเริ่มสแกน");
         return;
     }
 
-    console.log("Starting scan with course_id:", currentCourseId, "teacher_id:", teacherId);
+    currentScheduleId = scheduleId; // Store scheduleId
+    console.log("Starting scan with course_id:", currentCourseId, "teacher_id:", teacherId, "schedule_id:", scheduleId);
 
     fetch('http://localhost:5000/start_scan', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
             course_id: currentCourseId,
-            teacher_id: teacherId
+            teacher_id: teacherId,
+            schedule_id: scheduleId
         })
     })
     .then(response => {
@@ -104,7 +105,8 @@ function processFrames() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
             frame: frameData,
-            course_id: currentCourseId
+            course_id: currentCourseId,
+            schedule_id: currentScheduleId
         })
     })
     .then(response => {
@@ -154,3 +156,4 @@ window.startFaceScan = startFaceScan;
 window.stopFaceScan = stopFaceScan;
 window.initializeVideo = initializeVideo;
 window.currentCourseId = currentCourseId;
+window.currentScheduleId = currentScheduleId;

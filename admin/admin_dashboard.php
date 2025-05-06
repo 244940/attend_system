@@ -2,27 +2,45 @@
 session_start();
 require 'database_connection.php';  // Ensure this file exists and contains your database connection logic
 
+
 // Enable error reporting for debugging
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
+// Debug: Log session data at the start
+error_log("Session data at start of admin_dashboard.php: " . print_r($_SESSION, true));
+
 // Function to check if user is admin
 function isAdmin() {
-    return isset($_SESSION['user_role']) && $_SESSION['user_role'] === 'admin';
+    return isset($_SESSION['user_role']) && $_SESSION['user_role'] === 'admin' && isset($_SESSION['admin_id']);
 }
 
 // Redirect non-admin users
 if (!isAdmin()) {
-    error_log("Unauthorized access: user_id=" . ($_SESSION['user_id'] ?? 'unset') . ", user_role=" . ($_SESSION['user_role'] ?? 'unset'));
-    header("Location: login.php");
+    error_log("Unauthorized access: admin_id=" . ($_SESSION['admin_id'] ?? 'unset') . ", user_role=" . ($_SESSION['user_role'] ?? 'unset'));
+    header("Location: ../login.php");
     exit();
 }
 
-// Debug: Log session data
-error_log("Admin dashboard accessed: user_id={$_SESSION['user_id']}, user_email={$_SESSION['user_email']}, user_role={$_SESSION['user_role']}");
+// Debug: Log successful access
+error_log("Admin dashboard accessed: admin_id={$_SESSION['admin_id']}, user_email={$_SESSION['user_email']}, user_role={$_SESSION['user_role']}");
 
 // Fetch dashboard data with error handling
 try {
+    // Total admins
+    $totalAdminsResult = $conn->query("SELECT COUNT(*) FROM admins");
+    if ($totalAdminsResult === false) {
+        throw new Exception("Error querying admins: " . $conn->error);
+    }
+    $totalAdmins = $totalAdminsResult->fetch_row()[0];
+
+    // Total teachers
+    $totalTeachersResult = $conn->query("SELECT COUNT(*) FROM teachers");
+    if ($totalTeachersResult === false) {
+        throw new Exception("Error querying teachers: " . $conn->error);
+    }
+    $totalTeachers = $totalTeachersResult->fetch_row()[0];
+
     // Total students
     $totalStudentsResult = $conn->query("SELECT COUNT(*) FROM students");
     if ($totalStudentsResult === false) {
@@ -30,32 +48,9 @@ try {
     }
     $totalStudents = $totalStudentsResult->fetch_row()[0];
 
-    // Present today
-    $presentTodayResult = $conn->query("SELECT COUNT(*) FROM attendance WHERE DATE(scan_time) = CURDATE() AND status = 'present'");
-    if ($presentTodayResult === false) {
-        throw new Exception("Error querying attendance: " . $conn->error);
-    }
-    $presentToday = $presentTodayResult->fetch_row()[0];
-
-    // New users today (combined from admins, teachers, students)
-    $newUsersQuery = "
-        SELECT COUNT(*) FROM (
-            SELECT created_at FROM admins WHERE DATE(created_at) = CURDATE()
-            UNION ALL
-            SELECT created_at FROM teachers WHERE DATE(created_at) = CURDATE()
-            UNION ALL
-            SELECT created_at FROM students WHERE DATE(created_at) = CURDATE()
-        ) AS new_users
-    ";
-    $newUsersResult = $conn->query($newUsersQuery);
-    if ($newUsersResult === false) {
-        throw new Exception("Error querying new users: " . $conn->error);
-    }
-    $newUsers = $newUsersResult->fetch_row()[0];
-
 } catch (Exception $e) {
     error_log("Dashboard query error: " . $e->getMessage());
-    $totalStudents = $presentToday = $newUsers = 0; // Default to 0 on error
+    $totalAdmins = $totalTeachers = $totalStudents = 0; // Default to 0 on error
 }
 
 // Close the connection
@@ -75,7 +70,7 @@ $conn->close();
     <div class="top-bar">
         <h1>Admin Dashboard</h1>
         <div class="user-info">
-        <span>Welcome, <?php echo htmlspecialchars($_SESSION['user_name']); ?></span>
+            <span>Welcome, <?php echo htmlspecialchars($_SESSION['user_name']); ?></span>
         </div>
     </div>
 
@@ -84,9 +79,10 @@ $conn->close();
             <ul>
                 <li><a href="admin_dashboard.php">Dashboard</a></li>
                 <li><a href="manage_users.php">Manage Users</a></li>
+                <li><a href="add_users.php">Add Users</a></li>
                 <li><a href="add_course.php">Add Course</a></li>
                 <li><a href="enroll_student.php">Enroll Student</a></li>
-                <li><a href="logout.php">Logout</a></li>
+                <li><a href="../logout.php">Logout</a></li>
             </ul>
         </aside>
 
@@ -94,13 +90,13 @@ $conn->close();
             <section class="dashboard-section" id="dashboard">
                 <h2>Admin Dashboard Overview</h2>
                 <div class="stats-container">
+                    <div class="stat-box">Total Admins: <span id="totalAdmins"><?php echo $totalAdmins; ?></span></div>
+                    <div class="stat-box">Total Teachers: <span id="totalTeachers"><?php echo $totalTeachers; ?></span></div>
                     <div class="stat-box">Total Students: <span id="totalStudents"><?php echo $totalStudents; ?></span></div>
-                    <div class="stat-box">Present Today: <span id="presentToday"><?php echo $presentToday; ?></span></div>
-                    <div class="stat-box">New Users Today: <span id="newUsers"><?php echo $newUsers; ?></span></div>
                 </div>
                 
                 <div class="chart-container">
-                    <canvas id="studentChart"></canvas>
+                    <canvas id="userChart"></canvas>
                 </div>
             </section>
         </div>
@@ -111,41 +107,87 @@ $conn->close();
     </footer>
 
     <script>
-        window.onload = function() {
+        document.addEventListener('DOMContentLoaded', function() {
             initializeChart();
-        }
+        });
 
         function initializeChart() {
-            const ctx = document.getElementById('studentChart').getContext('2d');
-            const studentChart = new Chart(ctx, {
-                type: 'bar',
-                data: {
-                    labels: ['Total Students', 'Students Present', 'New Users Today'],
-                    datasets: [{
-                        label: 'Statistics',
-                        data: [<?php echo "$totalStudents, $presentToday, $newUsers"; ?>],
-                        backgroundColor: [
-                            'rgba(52, 152, 219, 0.7)',
-                            'rgba(46, 204, 113, 0.7)',
-                            'rgba(231, 76, 60, 0.7)'
-                        ],
-                        borderColor: [
-                            'rgba(52, 152, 219, 1)',
-                            'rgba(46, 204, 113, 1)',
-                            'rgba(231, 76, 60, 1)'
-                        ],
-                        borderWidth: 1
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    scales: {
-                        y: {
-                            beginAtZero: true
+            console.log('Initializing chart...');
+
+            // Validate data
+            const totalAdmins = <?php echo json_encode($totalAdmins); ?>;
+            const totalTeachers = <?php echo json_encode($totalTeachers); ?>;
+            const totalStudents = <?php echo json_encode($totalStudents); ?>;
+
+            console.log('Chart data:', { totalAdmins, totalTeachers, totalStudents });
+
+            // Ensure data is numeric, default to 0 if invalid
+            const data = [
+                isNaN(totalAdmins) ? 0 : Number(totalAdmins),
+                isNaN(totalTeachers) ? 0 : Number(totalTeachers),
+                isNaN(totalStudents) ? 0 : Number(totalStudents)
+            ];
+
+            const ctx = document.getElementById('userChart').getContext('2d');
+            if (!ctx) {
+                console.error('Canvas context not found for userChart');
+                return;
+            }
+
+            try {
+                const userChart = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: ['Admins', 'Teachers', 'Students'],
+                        datasets: [{
+                            label: 'User Statistics',
+                            data: data,
+                            backgroundColor: [
+                                'rgba(52, 152, 219, 0.7)',
+                                'rgba(46, 204, 113, 0.7)',
+                                'rgba(231, 76, 60, 0.7)'
+                            ],
+                            borderColor: [
+                                'rgba(52, 152, 219, 1)',
+                                'rgba(46, 204, 113, 1)',
+                                'rgba(231, 76, 60, 1)'
+                            ],
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                title: {
+                                    display: true,
+                                    text: 'Count'
+                                }
+                            },
+                            x: {
+                                title: {
+                                    display: true,
+                                    text: 'User Roles'
+                                }
+                            }
+                        },
+                        plugins: {
+                            legend: {
+                                display: true,
+                                position: 'top'
+                            },
+                            title: {
+                                display: true,
+                                text: 'User Distribution'
+                            }
                         }
                     }
-                }
-            });
+                });
+                console.log('Chart initialized successfully');
+            } catch (error) {
+                console.error('Error initializing chart:', error);
+            }
         }
     </script>
 
@@ -158,7 +200,7 @@ $conn->close();
             height: 100%;
             display: flex;
             flex-direction: column;
-            background-image: url('assets/bb.jpg');
+            background-image: url('../assets/bb.jpg');
             background-size: cover;
             background-position: center;
         }
@@ -247,6 +289,7 @@ $conn->close();
             gap: 20px;
             margin-top: 20px;
             justify-content: center;
+            flex-wrap: wrap;
         }
 
         .stat-box {
@@ -255,6 +298,7 @@ $conn->close();
             padding: 20px;
             border-radius: 8px;
             text-align: center;
+            min-width: 150px;
         }
 
         /* Chart Container Styling */
@@ -266,6 +310,11 @@ $conn->close();
             padding: 20px;
             border-radius: 8px;
             box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+
+        #userChart {
+            width: 100% !important;
+            height: 300px !important;
         }
 
         /* Footer Styling */
