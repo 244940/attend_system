@@ -1,6 +1,4 @@
 <?php
-error_reporting(E_ALL);
-ini_set('display_errors', 1);
 session_start();
 
 // Database connection details
@@ -18,39 +16,87 @@ if ($conn->connect_error) {
     die("Connection failed. Please try again later.");
 }
 
-// Check if user is logged in and is an admin
-if (!isset($_SESSION['user_id']) || !isset($_SESSION['user_role']) || $_SESSION['user_role'] !== 'admin') {
-    error_log("Unauthorized access: user_id=" . ($_SESSION['user_id'] ?? 'unset') . ", user_role=" . ($_SESSION['user_role'] ?? 'unset'));
-    header("Location: ../login.php");
-    exit();
+$message = '';
+$messageClass = '';
+
+// Check if token is provided
+if (!isset($_GET['token']) || empty($_GET['token'])) {
+    $message = "Invalid or missing token. Please try again.";
+    $messageClass = 'error';
+    error_log("Invalid or missing token in confirm_password.php");
+} else {
+    $token = $_GET['token'];
+
+    // Check if user is logged in and token matches
+    if (!isset($_SESSION['user_id']) || !isset($_SESSION['user_role']) || !isset($_SESSION['password_reset_token']) || !isset($_SESSION['new_hashed_password'])) {
+        $message = "Session expired or invalid. Please log in and try again.";
+        $messageClass = 'error';
+        error_log("Session expired or invalid: user_id=" . ($_SESSION['user_id'] ?? 'unset') . ", token mismatch");
+    } elseif ($_SESSION['password_reset_token'] !== $token) {
+        $message = "Invalid token. Please try again.";
+        $messageClass = 'error';
+        error_log("Token mismatch: session_token={$_SESSION['password_reset_token']}, provided_token=$token");
+    } elseif (time() > $_SESSION['password_reset_expiry']) {
+        $message = "This confirmation link has expired. Please try changing your password again.";
+        $messageClass = 'error';
+        error_log("Token expired: user_id={$_SESSION['user_id']}, expiry={$_SESSION['password_reset_expiry']}, current_time=" . time());
+    } else {
+        // Token is valid, proceed to update the password
+        $user_id = $_SESSION['user_id'];
+        $user_role = $_SESSION['user_role'];
+        $hashed_password = $_SESSION['new_hashed_password'];
+
+        // Determine the correct table and ID column based on user role
+        $table = '';
+        $id_column = '';
+        
+        switch ($user_role) {
+            case 'teacher':
+                $table = 'teachers';
+                $id_column = 'teacher_id';
+                break;
+            case 'admin':
+                $table = 'admins';
+                $id_column = 'admin_id';
+                break;
+            case 'student':
+            default:
+                $table = 'students';
+                $id_column = 'student_id';
+                break;
+        }
+
+        try {
+            // Update the password and set password_changed to 1
+            $stmt = $conn->prepare("UPDATE $table SET hashed_password = ?, password_changed = 1 WHERE $id_column = ?");
+            $stmt->bind_param("ss", $hashed_password, $user_id);
+            if ($stmt->execute()) {
+                $message = "Password updated successfully. You can now log in with your new password.";
+                $messageClass = 'success';
+                error_log("Password updated successfully: user_id=$user_id, user_role=$user_role");
+
+                // Clean up session data
+                unset($_SESSION['new_hashed_password']);
+                unset($_SESSION['password_reset_token']);
+                unset($_SESSION['password_reset_expiry']);
+
+                // Optionally log the user out
+                session_unset();
+                session_destroy();
+            } else {
+                $message = "Failed to update password. Please try again.";
+                $messageClass = 'error';
+                error_log("Failed to update password: " . $stmt->error);
+            }
+            $stmt->close();
+        } catch (Exception $e) {
+            $message = "Database error: Unable to update password.";
+            $messageClass = 'error';
+            error_log("Database error: " . $e->getMessage());
+        }
+    }
 }
 
-// Debug: Log session data
-error_log("Admin dashboard accessed: user_id={$_SESSION['user_id']}, user_email={$_SESSION['user_email']}, user_role={$_SESSION['user_role']}");
-
-// Get user counts
-try {
-    // Count admins
-    $admin_result = $conn->query("SELECT COUNT(*) as count FROM admins");
-    $admin_count = $admin_result->fetch_assoc()['count'];
-
-    // Count teachers
-    $teacher_result = $conn->query("SELECT COUNT(*) as count FROM teachers");
-    $teacher_count = $teacher_result->fetch_assoc()['count'];
-
-    // Count students
-    $student_result = $conn->query("SELECT COUNT(*) as count FROM students");
-    $student_count = $student_result->fetch_assoc()['count'];
-
-    // Total users
-    $total_users = $admin_count + $teacher_count + $student_count;
-
-} catch (Exception $e) {
-    error_log("Error fetching user counts: " . $e->getMessage());
-    $admin_count = $teacher_count = $student_count = $total_users = 0;
-}
-
-// Close the connection
 $conn->close();
 ?>
 
@@ -59,84 +105,72 @@ $conn->close();
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Dashboard</title>
+    <title>Confirm Password Change</title>
     <style>
-        body {
-            font-family: Arial, sans-serif;
+        body, html {
             margin: 0;
-            padding: 20px;
-            background-color: #f4f4f4;
+            padding: 0;
+            font-family: Arial, sans-serif;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: url('assets/bb.jpg') no-repeat center center fixed;
+            background-size: cover;
         }
+
         .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            background: white;
-            padding: 20px;
-            border-radius: 5px;
-            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            background: rgba(255, 255, 255, 0.8);
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.3);
+            text-align: center;
+            width: 100%;
+            max-width: 400px;
         }
-        h1 {
+
+        h2 {
+            margin-bottom: 20px;
+            font-size: 24px;
             color: #333;
         }
-        .welcome {
-            margin-bottom: 20px;
-        }
-        .stats {
-            display: flex;
-            gap: 20px;
-            flex-wrap: wrap;
-        }
-        .stat-box {
-            background: #03a9f4;
-            color: white;
-            padding: 20px;
-            border-radius: 5px;
-            flex: 1;
-            min-width: 200px;
+
+        .message {
+            padding: 10px;
+            margin-bottom: 15px;
             text-align: center;
+            border-radius: 4px;
         }
-        .stat-box h3 {
-            margin: 0 0 10px;
+
+        .message.success {
+            color: green;
+            background-color: #e6ffe6;
         }
-        .logout {
-            margin-top: 20px;
+
+        .message.error {
+            color: red;
+            background-color: #ffe6e6;
         }
-        .logout a {
-            color: #03a9f4;
+
+        a {
+            color: #007bff;
             text-decoration: none;
         }
-        .logout a:hover {
+
+        a:hover {
             text-decoration: underline;
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>Admin Dashboard</h1>
-        <div class="welcome">
-            <p>Welcome, <?php echo htmlspecialchars($_SESSION['user_name']); ?> (<?php echo htmlspecialchars($_SESSION['user_email']); ?>)</p>
-        </div>
-        <div class="stats">
-            <div class="stat-box">
-                <h3>Admins</h3>
-                <p><?php echo $admin_count; ?></p>
+        <h2>Confirm Password Change</h2>
+        <?php if (!empty($message)): ?>
+            <div class="message <?php echo $messageClass; ?>">
+                <?php echo htmlspecialchars($message); ?>
             </div>
-            <div class="stat-box">
-                <h3>Teachers</h3>
-                <p><?php echo $teacher_count; ?></p>
-            </div>
-            <div class="stat-box">
-                <h3>Students</h3>
-                <p><?php echo $student_count; ?></p>
-            </div>
-            <div class="stat-box">
-                <h3>Total Users</h3>
-                <p><?php echo $total_users; ?></p>
-            </div>
-        </div>
-        <div class="logout">
-            <a href="../logout.php">Logout</a>
-        </div>
+        <?php endif; ?>
+        <p><a href="login.php">Return to Login</a></p>
     </div>
 </body>
 </html>

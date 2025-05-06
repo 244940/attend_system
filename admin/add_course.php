@@ -487,7 +487,7 @@ $conn->close();
     <div class="top-bar">
         <h1>Add New Course</h1>
         <div class="user-info">
-            <span>Welcome, <?php echo htmlspecialchars($_SESSION['user_name']); ?> (<?php echo htmlspecialchars($_SESSION['user_email']); ?>)</span>
+            <span>Welcome, <?php echo htmlspecialchars($_SESSION['user_name']); ?></span>
         </div>
     </div>
 

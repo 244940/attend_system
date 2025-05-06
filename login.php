@@ -4,7 +4,7 @@ session_start();
 
 // Enable error reporting for debugging
 error_reporting(E_ALL);
-ini_set('display_errors', 0); // Set to 0 in production
+ini_set('display_errors', 1); // Set to 0 in production
 
 // Database connection details
 $host = "localhost";

@@ -1,6 +1,20 @@
 <?php
 session_start();
-require 'database_connection.php'; // Ensure this file contains proper DB connection
+
+// Database connection details
+$host = "localhost";
+$username = "root";
+$password = "paganini019";
+$dbname = "attend_data";
+
+// Create connection
+$conn = new mysqli($host . ":3308", $username, $password, $dbname);
+
+// Check connection
+if ($conn->connect_error) {
+    error_log("Connection failed: " . $conn->connect_error);
+    die("Connection failed. Please try again later.");
+}
 
 // Check if user is coming from login.php with valid session
 if (!isset($_SESSION['user_id']) || !isset($_SESSION['user_email']) || !isset($_SESSION['user_role'])) {
@@ -9,7 +23,7 @@ if (!isset($_SESSION['user_id']) || !isset($_SESSION['user_email']) || !isset($_
 }
 
 // Check if user has already changed password
-if (isset($_SESSION['password_changed']) && $_SESSION['password_changed'] == TRUE) {
+if (isset($_SESSION['password_changed']) && $_SESSION['password_changed'] == 1) {
     // Redirect to appropriate dashboard
     switch ($_SESSION['user_role']) {
         case 'admin':
@@ -32,7 +46,7 @@ $message = ''; // Message for login feedback
 
 // Handle form submission
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
-    $citizen_id = $_POST['citizen_id'];
+    $citizen_id = trim($_POST['citizen_id']);
     $email = filter_var($_POST['email'], FILTER_SANITIZE_EMAIL);
 
     // Basic validation
@@ -72,7 +86,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             $stmt = $conn->prepare("
                 SELECT $id_column, $name_column, email, citizen_id, password_changed, hashed_password
                 FROM $table
-                WHERE email = ? AND citizen_id = ? AND password_changed = FALSE AND hashed_password IS NULL
+                WHERE email = ? AND citizen_id = ? AND password_changed = 0 AND hashed_password IS NULL
             ");
             $stmt->bind_param("ss", $email, $citizen_id);
             $stmt->execute();
@@ -119,7 +133,6 @@ $conn->close();
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login First Time</title>
-    <link rel="stylesheet" href="styles1.css">
     <style>
         body {
             font-family: Arial, sans-serif;

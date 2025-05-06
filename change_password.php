@@ -4,17 +4,31 @@ use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
 
 require 'vendor/autoload.php';
-require 'database_connection.php';
+
+// Database connection details
+$host = "localhost";
+$username = "root";
+$password = "paganini019";
+$dbname = "attend_data";
+
+// Create connection
+$conn = new mysqli($host . ":3308", $username, $password, $dbname);
+
+// Check connection
+if ($conn->connect_error) {
+    error_log("Connection failed: " . $conn->connect_error);
+    die("Connection failed. Please try again later.");
+}
 
 // Check if user is logged in
-if (!isset($_SESSION['user_id'])) {
-    error_log("Unauthorized access: user_id not set");
+if (!isset($_SESSION['user_id']) || !isset($_SESSION['user_role'])) {
+    error_log("Unauthorized access: user_id or user_role not set");
     header("Location: login.php");
     exit();
 }
 
 // Debug: Log session data
-error_log("Password edit page accessed: user_id={$_SESSION['user_id']}, user_role=" . ($_SESSION['user_role'] ?? 'unset'));
+error_log("Password edit page accessed: user_id={$_SESSION['user_id']}, user_role={$_SESSION['user_role']}");
 
 // Function to get a valid "From" email address
 function getValidFromAddress() {
@@ -32,7 +46,7 @@ $messageClass = '';
 // If user_email is not in session, fetch it from the database
 if (!isset($_SESSION['user_email']) || empty($_SESSION['user_email'])) {
     $user_id = $_SESSION['user_id'];
-    $user_role = $_SESSION['user_role'] ?? 'student';
+    $user_role = $_SESSION['user_role'];
 
     // Determine the correct table and ID column based on user role
     $table = '';
@@ -45,7 +59,7 @@ if (!isset($_SESSION['user_email']) || empty($_SESSION['user_email'])) {
             break;
         case 'admin':
             $table = 'admins';
-            $id_column = 'admin_id'; // Corrected from 'id' to 'admin_id'
+            $id_column = 'admin_id';
             break;
         case 'student':
         default:
@@ -56,7 +70,7 @@ if (!isset($_SESSION['user_email']) || empty($_SESSION['user_email'])) {
 
     try {
         $stmt = $conn->prepare("SELECT email, password_changed FROM $table WHERE $id_column = ?");
-        $stmt->bind_param("s", $user_id); // Changed "i" to "s" to handle string (e.g., 'A001')
+        $stmt->bind_param("s", $user_id);
         $stmt->execute();
         $result = $stmt->get_result();
 
@@ -80,11 +94,14 @@ if (!isset($_SESSION['user_email']) || empty($_SESSION['user_email'])) {
 
 // Handle form submission
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
-    $new_password = $_POST['new_password'];
-    $confirm_password = $_POST['confirm_password'];
+    $new_password = trim($_POST['new_password']);
+    $confirm_password = trim($_POST['confirm_password']);
 
     // Validate password strength
-    if (strlen($new_password) < 8) {
+    if (empty($new_password) || empty($confirm_password)) {
+        $message = "Please fill in both password fields.";
+        $messageClass = 'error';
+    } elseif (strlen($new_password) < 8) {
         $message = "Password must be at least 8 characters long.";
         $messageClass = 'error';
     } elseif (!preg_match("/[A-Z]/", $new_password)) {
@@ -102,13 +119,16 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     } else {
         $email = $_SESSION['user_email'];
         $user_id = $_SESSION['user_id'];
-        $user_role = $_SESSION['user_role'] ?? 'student';
+        $user_role = $_SESSION['user_role'];
 
+        // Hash the new password and store it in session temporarily
         $hashed_password = password_hash($new_password, PASSWORD_BCRYPT);
         $_SESSION['new_hashed_password'] = $hashed_password;
 
+        // Generate a secure token for confirmation
         $token = bin2hex(random_bytes(32));
         $_SESSION['password_reset_token'] = $token;
+        $_SESSION['password_reset_expiry'] = time() + (15 * 60); // Token expires in 15 minutes
 
         $mail = new PHPMailer(true);
 
@@ -140,8 +160,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             $mail->isHTML(true);
             $mail->Subject = "Confirm Password Change";
             $confirmation_link = getLocalhostDomain() . "/confirm_password.php?token=" . $token;
-            $mail->Body = "Please click the following link to confirm your password change: <a href='$confirmation_link'>$confirmation_link</a>";
-            $mail->AltBody = "Please click the following link to confirm your password change: $confirmation_link";
+            $mail->Body = "Please click the following link to confirm your password change: <a href='$confirmation_link'>$confirmation_link</a><br>This link will expire in 15 minutes.";
+            $mail->AltBody = "Please click the following link to confirm your password change: $confirmation_link\nThis link will expire in 15 minutes.";
 
             $mail->send();
             $message = "A confirmation email has been sent to your address ($email). Please check your inbox and spam folder.";
@@ -151,6 +171,11 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             $message = "Message could not be sent. Please try again later or contact support.";
             $messageClass = 'error';
             error_log("Failed to send email to $email. Error: " . $mail->ErrorInfo);
+
+            // Clean up session data on failure
+            unset($_SESSION['new_hashed_password']);
+            unset($_SESSION['password_reset_token']);
+            unset($_SESSION['password_reset_expiry']);
         }
     }
 }
