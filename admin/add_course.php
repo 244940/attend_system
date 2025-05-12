@@ -8,28 +8,11 @@ require 'vendor/autoload.php';
 
 use PhpOffice\PhpSpreadsheet\IOFactory;
 
-// Authentication check
-if (!isset($_SESSION['user_id']) || ($_SESSION['user_role'] !== 'admin' && $_SESSION['user_role'] !== 'teacher')) {
-    header("Location: login.php");
+// Authentication check (admin only)
+if (!isset($_SESSION['admin_id']) || $_SESSION['user_role'] !== 'admin') {
+    error_log("Redirecting to login: Session data: " . print_r($_SESSION, true));
+    header("Location: /attend_system/login.php");
     exit();
-}
-
-// Initialize variables
-$teacher_name = null;
-
-// If the user is a teacher, get their teacher_name
-if ($_SESSION['user_role'] === 'teacher') {
-    $stmt = $conn->prepare("SELECT teacher_name FROM teachers WHERE user_id = ?");
-    $stmt->bind_param("i", $_SESSION['user_id']);
-    $stmt->execute();
-    $result = $stmt->get_result();
-    if ($result->num_rows === 0) {
-        $_SESSION['error_message'] = "Teacher not found.";
-        header("Location: teacher_dashboard.php");
-        exit();
-    }
-    $teacher_name = $result->fetch_assoc()['teacher_name'];
-    $stmt->close();
 }
 
 function format_time($time) {
@@ -55,12 +38,11 @@ function validate_year_code($year_code) {
     return is_numeric($year_code) && strlen($year_code) === 2 && $year_code >= 00 && $year_code <= 99;
 }
 
-function insert_course($conn, $course_data, $default_teacher_name) {
+function insert_course($conn, $course_data) {
     $course_name = isset($course_data['course_name']) ? trim($course_data['course_name']) : '';
-    $course_name_en = isset($course_data['course_name_en']) ? trim($course_data['course_name_en']) : '';
+    $name_en = isset($course_data['course_name_en']) ? trim($course_data['course_name_en']) : '';
     $course_code = isset($course_data['course_code']) ? trim($course_data['course_code']) : '';
-    $teacher_name = isset($course_data['teacher_name']) && !empty($course_data['teacher_name']) ? 
-        trim($course_data['teacher_name']) : $default_teacher_name;
+    $teacher_name = isset($course_data['teacher_name']) ? trim($course_data['teacher_name']) : '';
     $day_of_week = isset($course_data['day_of_week']) ? trim($course_data['day_of_week']) : '';
     $start_time = isset($course_data['start_time']) ? format_time(trim($course_data['start_time'])) : false;
     $end_time = isset($course_data['end_time']) ? format_time(trim($course_data['end_time'])) : false;
@@ -69,8 +51,8 @@ function insert_course($conn, $course_data, $default_teacher_name) {
     $c_year = isset($course_data['c_year']) ? trim($course_data['c_year']) : '';
     $year_code = isset($course_data['year_code']) ? trim($course_data['year_code']) : '';
 
-    if (empty($course_name) || empty($course_name_en) || empty($course_code) || empty($day_of_week) || 
-        !$start_time || !$end_time || empty($group_number) || 
+    if (empty($course_name) || empty($name_en) || empty($course_code) || empty($teacher_name) ||
+        empty($day_of_week) || !$start_time || !$end_time || empty($group_number) ||
         empty($semester) || empty($c_year) || empty($year_code)) {
         return "Incomplete data or invalid time format for course: " . ($course_code ?: 'Unknown code');
     }
@@ -92,12 +74,34 @@ function insert_course($conn, $course_data, $default_teacher_name) {
         return "Invalid day of the week for course: $course_code. Allowed values: " . implode(', ', $valid_days);
     }
 
+    // Look up teacher_id based on teacher_name
+    $teacher_id = null;
+    $teacher_stmt = $conn->prepare("SELECT teacher_id FROM teachers WHERE name = ?");
+    $teacher_stmt->bind_param("s", $teacher_name);
+    $teacher_stmt->execute();
+    $teacher_result = $teacher_stmt->get_result();
+    if ($teacher_result->num_rows > 0) {
+        $teacher_id = $teacher_result->fetch_assoc()['teacher_id'];
+        if (!is_numeric($teacher_id) || $teacher_id <= 0) {
+            $teacher_stmt->close();
+            error_log("Invalid teacher_id for teacher: $teacher_name, teacher_id: $teacher_id");
+            return "Invalid teacher_id for teacher: $teacher_name";
+        }
+        error_log("Teacher ID for $teacher_name: $teacher_id");
+    } else {
+        $teacher_stmt->close();
+        error_log("Teacher not found: $teacher_name");
+        return "Teacher not found: $teacher_name";
+    }
+    $teacher_stmt->close();
+
+    // Check for duplicate course
     $check_stmt = $conn->prepare(
         "SELECT course_id FROM courses 
          WHERE course_code = ? AND semester = ? AND c_year = ? AND year_code = ? AND group_number = ? 
          AND teacher_name = ? AND day_of_week = ? AND start_time = ? AND end_time = ?"
     );
-    $check_stmt->bind_param("sssssssss", 
+    $check_stmt->bind_param("sssssssss",
         $course_code, $semester, $c_year, $year_code, $group_number,
         $teacher_name, $day_of_week, $start_time, $end_time
     );
@@ -110,6 +114,7 @@ function insert_course($conn, $course_data, $default_teacher_name) {
     }
     $check_stmt->close();
 
+    // Check for time conflicts
     $conflict_stmt = $conn->prepare(
         "SELECT c.course_code, c.group_number 
          FROM courses c 
@@ -124,7 +129,7 @@ function insert_course($conn, $course_data, $default_teacher_name) {
              OR (c.start_time BETWEEN ? AND ?)
          )"
     );
-    $conflict_stmt->bind_param("sssssssss", 
+    $conflict_stmt->bind_param("sssssssss",
         $teacher_name, $day_of_week, $semester, $c_year, $year_code,
         $start_time, $end_time, $start_time, $end_time
     );
@@ -138,16 +143,18 @@ function insert_course($conn, $course_data, $default_teacher_name) {
     }
     $conflict_stmt->close();
 
+    // Insert course
     $stmt = $conn->prepare(
         "INSERT INTO courses 
-         (course_name, course_name_en, course_code, teacher_name, day_of_week, start_time, end_time, group_number, semester, c_year, year_code) 
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+         (course_name, name_en, course_code, teacher_id, teacher_name, day_of_week, start_time, end_time, group_number, semester, c_year, year_code) 
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
     );
-    $stmt->bind_param("sssssssssss", 
-        $course_name, $course_name_en, $course_code, $teacher_name, $day_of_week, 
+    $stmt->bind_param("sssissssssss",
+        $course_name, $name_en, $course_code, $teacher_id, $teacher_name, $day_of_week,
         $start_time, $end_time, $group_number, $semester, $c_year, $year_code
     );
 
+    error_log("Inserting course: course_code=$course_code, teacher_id=$teacher_id, teacher_name=$teacher_name");
     if ($stmt->execute()) {
         $stmt->close();
         return null;
@@ -174,7 +181,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_single_course']))
         'year_code' => $_POST['year_code']
     ];
 
-    $result = insert_course($conn, $course_data, $teacher_name);
+    $result = insert_course($conn, $course_data);
     if ($result === null) {
         $_SESSION['success_message'] = "Course {$_POST['course_code']} added successfully.";
     } else if (strpos($result, 'SKIP:') === 0) {
@@ -182,18 +189,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_single_course']))
     } else {
         $_SESSION['error_message'] = $result;
     }
-    header("Location: add_course.php");
+    header("Location: /attend_system/admin/add_course.php");
     exit();
 }
 
-// Function to manually parse CSV
 function parse_csv($file_path) {
     $rows = array_map(function($line) {
         return str_getcsv($line, ',', '"', '\\');
     }, file($file_path));
     
     if (!empty($rows[0])) {
-        $rows[0][0] = preg_replace('/[\x00-\x1F\x80-\xFF]/', '', $rows[0][0]);
+        $rows[0][0] = preg_replace('/[\x00-\x1F\x80-\xFF]/', '', $rows[0][0]); // Clean first cell of header
     }
     
     return $rows;
@@ -219,7 +225,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['upload_file']) && iss
                     $rows = $worksheet->toArray();
                 } else {
                     $_SESSION['error_message'] = "XLSX processing requires the ZIP extension. Please use CSV format instead.";
-                    header("Location: add_course.php");
+                    header("Location: /attend_system/admin/add_course.php");
                     exit();
                 }
             }
@@ -232,10 +238,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['upload_file']) && iss
                 }, $header);
                 
                 $header = array_map(function($h) {
-                    return $h === 'year' ? 'c_year' : $h;
+                    return $h === 'year' ? 'c_year' : ($h === 'course_name_en' ? 'name_en' : $h);
                 }, $header);
             
-                $required_columns = ['course_name', 'course_name_en', 'course_code', 'teacher_name', 'day_of_week', 
+                $required_columns = ['course_name', 'name_en', 'course_code', 'teacher_name', 'day_of_week', 
                                    'start_time', 'end_time', 'group_number', 'semester', 'c_year', 'year_code'];
                 
                 $missing_columns = array_diff($required_columns, $header);
@@ -258,6 +264,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['upload_file']) && iss
             
                         $course_data = array_combine($header, $row);
                         
+                        // Validate teacher_name
+                        $teacher_name = trim($course_data['teacher_name']);
+                        $teacher_check = $conn->prepare("SELECT COUNT(*) as count FROM teachers WHERE name = ?");
+                        $teacher_check->bind_param("s", $teacher_name);
+                        $teacher_check->execute();
+                        $teacher_count = $teacher_check->get_result()->fetch_assoc()['count'];
+                        $teacher_check->close();
+                        
+                        if ($teacher_count == 0) {
+                            $errors[] = "Row " . ($row_index + 2) . ": Teacher not found: $teacher_name";
+                            continue;
+                        }
+                        
                         foreach ($course_data as $key => &$value) {
                             $value = trim($value);
                             if ($key === 'start_time' || $key === 'end_time') {
@@ -269,7 +288,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['upload_file']) && iss
                         }
                         unset($value);
             
-                        $result = insert_course($conn, $course_data, $teacher_name);
+                        $result = insert_course($conn, $course_data);
                         if ($result === null) {
                             $success_count++;
                         } else if (strpos($result, 'SKIP:') === 0) {
@@ -289,11 +308,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['upload_file']) && iss
             $_SESSION['error_message'] = "Error processing file: " . $e->getMessage();
         }
     }
-    header("Location: add_course.php");
+    header("Location: /attend_system/admin/add_course.php");
     exit();
 }
-
-$conn->close();
 ?>
 
 <!DOCTYPE html>
@@ -302,7 +319,7 @@ $conn->close();
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Add New Course</title>
-    <link rel="stylesheet" href="admin-styles.css">
+    <link rel="stylesheet" href="/attend_system/admin/admin-styles.css">
     <style>
         body, html {
             margin: 0;
@@ -311,7 +328,7 @@ $conn->close();
             height: 100%;
             display: flex;
             flex-direction: column;
-            background-image: url('assets/bb.jpg');
+            background-image: url('/attend_system/admin/assets/bb.jpg');
             background-size: cover;
             background-position: center;
         }
@@ -485,6 +502,9 @@ $conn->close();
         .error {
             background-color: #f8d7da;
             color: #721c24;
+            padding: 10px 15px;
+            border: 1px solid #721c24;
+            border-radius: 4px;
         }
 
         footer {
@@ -507,14 +527,12 @@ $conn->close();
     <div class="admin-container">
         <aside class="sidebar">
             <ul>
-                <li><a href="<?php echo ($_SESSION['user_role'] === 'admin') ? 'admin_dashboard.php' : 'teacher_dashboard.php'; ?>">Dashboard</a></li>
-                <?php if ($_SESSION['user_role'] === 'admin'): ?>
-                    <li><a href="manage_users.php">Manage Users</a></li>
-                    <li><a href="add_users.php">Add User</a></li>
-                <?php endif; ?>
-                <li><a href="add_course.php">Add Course</a></li>
-                <li><a href="enroll_student.php">Enroll Student</a></li>
-                <li><a href="logout.php">Logout</a></li>
+                <li><a href="/attend_system/admin/admin_dashboard.php">Dashboard</a></li>
+                <li><a href="/attend_system/admin/manage_users.php">Manage Users</a></li>
+                <li><a href="/attend_system/admin/add_users.php">Add User</a></li>
+                <li><a href="/attend_system/admin/add_course.php">Add Course</a></li>
+                <li><a href="/attend_system/admin/enroll_student.php">Enroll Student</a></li>
+                <li><a href="/attend_system/admin/logout.php">Logout</a></li>
             </ul>
         </aside>
 
@@ -535,7 +553,7 @@ $conn->close();
                     }
                     ?>
 
-                    <form action="add_course.php" method="POST">
+                    <form action="/attend_system/admin/add_course.php" method="POST">
                         <div class="form-group">
                             <label for="course_name">Course Name (Thai)</label>
                             <input type="text" id="course_name" name="course_name" required>
@@ -601,15 +619,21 @@ $conn->close();
 
                         <div class="form-group">
                             <label for="teacher_name">Teacher Name</label>
-                            <input type="text" id="teacher_name" name="teacher_name" 
-                                   <?php echo ($_SESSION['user_role'] === 'teacher') ? 'readonly value="' . htmlspecialchars($teacher_name) . '"' : 'required'; ?>>
+                            <select id="teacher_name" name="teacher_name" required>
+                                <?php
+                                $teacher_query = $conn->query("SELECT name FROM teachers ORDER BY name");
+                                while ($teacher = $teacher_query->fetch_assoc()) {
+                                    echo '<option value="' . htmlspecialchars($teacher['name']) . '">' . htmlspecialchars($teacher['name']) . '</option>';
+                                }
+                                ?>
+                            </select>
                         </div>
 
                         <button type="submit" name="add_single_course">Add Course</button>
                     </form>
 
                     <h2>Upload Courses via CSV or XLSX</h2>
-                    <form action="add_course.php" method="POST" enctype="multipart/form-data">
+                    <form action="/attend_system/admin/add_course.php" method="POST" enctype="multipart/form-data">
                         <div class="file-upload">
                             <label for="course_file">Select CSV or XLSX file</label>
                             <input type="file" name="course_file" id="course_file" accept=".csv, .xlsx" required>
@@ -622,7 +646,7 @@ $conn->close();
                         <p>course_name, course_name_en, course_code, teacher_name, day_of_week, start_time, end_time, group_number, semester, c_year, year_code</p>
                     </div>
 
-                    <a href="<?php echo ($_SESSION['user_role'] === 'admin') ? 'admin_dashboard.php' : 'teacher_dashboard.php'; ?>">
+                    <a href="/attend_system/admin/admin_dashboard.php">
                         <button class="back-button">Back to Dashboard</button>
                     </a>
                 </div>
@@ -635,3 +659,7 @@ $conn->close();
     </footer>
 </body>
 </html>
+
+<?php
+$conn->close();
+?>

@@ -20,7 +20,7 @@ if (!isset($_SESSION['teacher_id']) || !isset($_SESSION['user_role']) || $_SESSI
 
 // Get the teacher's information
 $teacher_id = $_SESSION['teacher_id'];
-$teacher_name = $_SESSION['user_name']; // Use user_name set by login.php
+$teacher_name = $_SESSION['user_name'] ?? 'Unknown'; // Fallback if user_name not set
 $stmt = $conn->prepare("SELECT teacher_id, name FROM teachers WHERE teacher_id = ?");
 $stmt->bind_param("i", $teacher_id); // teacher_id is an int
 $stmt->execute();
@@ -33,7 +33,7 @@ if ($result->num_rows === 0) {
 }
 $teacher_data = $result->fetch_assoc();
 $teacher_id = $teacher_data['teacher_id'];
-$teacher_name = $teacher_data['name']; // Override with DB name if needed
+$teacher_name = $teacher_data['name']; // Override with DB name
 $stmt->close();
 
 // Get distinct days where teacher has courses
@@ -43,6 +43,12 @@ $days_query = "
     WHERE teacher_id = ?
     ORDER BY FIELD(day_of_week, 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday')";
 $days_stmt = $conn->prepare($days_query);
+if (!$days_stmt) {
+    error_log("Prepare failed for days_query: " . $conn->error);
+    $_SESSION['error_message'] = "เกิดข้อผิดพลาดในการดึงข้อมูลวันสอน";
+    header("Location: teacher_dashboard.php");
+    exit();
+}
 $days_stmt->bind_param("i", $teacher_id); // teacher_id is an int
 $days_stmt->execute();
 $days_result = $days_stmt->get_result();
@@ -75,12 +81,12 @@ function getFirstAndLastDateOfSemester($semester, $year) {
     }
     $startDate = date('Y-m-d', strtotime("$year-$startMonth-1"));
     $endDate = date('Y-m-t', strtotime("$year-$endMonth-1"));
-    return array($startDate, $endDate);
+    return [$startDate, $endDate];
 }
 
 // Function to get all teaching dates for a course
 function getAllTeachingDates($courseSchedule, $startDate, $endDate) {
-    $dates = array();
+    $dates = [];
     $current = strtotime($startDate);
     $end = strtotime($endDate);
     while ($current <= $end) {
@@ -110,6 +116,12 @@ $get_courses_stmt = $conn->prepare("
     LEFT JOIN schedules s ON c.course_id = s.course_id
     WHERE c.teacher_id = ?
     ORDER BY c.day_of_week, c.start_time");
+if (!$get_courses_stmt) {
+    error_log("Prepare failed for courses query: " . $conn->error);
+    $_SESSION['error_message'] = "เกิดข้อผิดพลาดในการดึงข้อมูลวิชา";
+    header("Location: teacher_dashboard.php");
+    exit();
+}
 $get_courses_stmt->bind_param("i", $teacher_id); // teacher_id is an int
 $get_courses_stmt->execute();
 $courses_result = $get_courses_stmt->get_result();
@@ -120,7 +132,6 @@ $get_courses_stmt->close();
 $current_semester = 'first'; // Default
 $current_year = date('Y');
 if (!empty($courses)) {
-    // Sort courses by c_year and semester to get the most recent
     usort($courses, function($a, $b) {
         if ($a['c_year'] === $b['c_year']) {
             $semesterOrder = ['first' => 1, 'second' => 2, 'summer' => 3];
@@ -137,7 +148,7 @@ if (!empty($courses)) {
 list($semester_start, $semester_end) = getFirstAndLastDateOfSemester($current_semester, $current_year);
 
 // Get all teaching dates for each course
-$teaching_schedule = array();
+$teaching_schedule = [];
 foreach ($courses as $course) {
     $dates = getAllTeachingDates($course, $semester_start, $semester_end);
     $teaching_schedule[$course['course_id']] = $dates;
@@ -153,23 +164,33 @@ $attendance_stats = [
 foreach ($courses as $course) {
     $course_id = $course['course_id'];
     $stmt = $conn->prepare("
-        SELECT status, COUNT(*) as count 
-        FROM attendance 
-        WHERE course_id = ?
-        GROUP BY status");
+        SELECT a.status, COUNT(*) as count 
+        FROM attendance a
+        JOIN schedules s ON a.schedule_id = s.schedule_id
+        WHERE s.course_id = ?
+        GROUP BY a.status");
+    if (!$stmt) {
+        error_log("Prepare failed for attendance stats query: " . $conn->error);
+        continue; // Skip this course and log the error
+    }
     $stmt->bind_param("i", $course_id); // course_id is an int
-    $stmt->execute();
+    if (!$stmt->execute()) {
+        error_log("Execute failed for course_id=$course_id: " . $stmt->error);
+        $stmt->close();
+        continue;
+    }
     $result = $stmt->get_result();
     while ($row = $result->fetch_assoc()) {
-        if (strtolower($row['status']) === 'present') {
+        $status = strtolower($row['status']);
+        if ($status === 'present') {
             $attendance_stats['present'] += $row['count'];
-        } elseif (strtolower($row['status']) === 'late') {
+        } elseif ($status === 'late') {
             $attendance_stats['late'] += $row['count'];
-        } elseif (strtolower($row['status']) === 'absent') {
+        } elseif ($status === 'absent') {
             $attendance_stats['absent'] += $row['count'];
         }
     }
-    $attendance_stats['total'] += ($attendance_stats['present'] + $attendance_stats['late'] + $attendance_stats['absent']);
+    $attendance_stats['total'] = $attendance_stats['present'] + $attendance_stats['late'] + $attendance_stats['absent'];
     $stmt->close();
 }
 
@@ -240,6 +261,10 @@ $conn->close();
         .course-button:hover {
             background-color: #45a049;
             transform: translateY(-2px);
+        }
+
+        .course-button.selected {
+            background-color: #2E7D32;
         }
 
         .day-button {
@@ -485,10 +510,17 @@ $conn->close();
                 document.getElementById('scanningCourseInfo').innerHTML = `
                     วิชา: ${course.course_code} ${course.course_name} |
                     กลุ่ม ${course.group_number} |
-                    ${course.day_of_week} ${course.start_time} - ${course.end_time}
+                    ${getDayNameThai(course.day_of_week)} ${course.start_time} - ${course.end_time}
                 `;
                 updateCourseInfo(course);
                 window.currentScheduleId = course.schedule_id; // Pass schedule_id to faceScanner.js
+                document.getElementById('startScanBtn').disabled = !course.schedule_id;
+            } else {
+                console.error("Course not found:", courseId);
+                document.getElementById('scanResult').innerText = "ไม่พบข้อมูลวิชา";
+                document.getElementById('scanResult').style.color = 'red';
+                document.getElementById('startScanBtn').disabled = true;
+                return;
             }
 
             // Show attendance section and load data
@@ -498,7 +530,12 @@ $conn->close();
                 '<tr><td colspan="5" class="text-center">กำลังโหลดข้อมูล...</td></tr>';
 
             fetch(`get_attendance.php?course_id=${courseId}&date=${selectedDate}`)
-                .then(response => response.json())
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! Status: ${response.status}`);
+                    }
+                    return response.json();
+                })
                 .then(data => {
                     console.log('Attendance data:', data);
                     if (data.error) {
@@ -528,10 +565,21 @@ $conn->close();
                 .catch(error => {
                     console.error("Error fetching attendance:", error);
                     document.getElementById('attendanceTableBody').innerHTML = 
-                        `<tr><td colspan="5" class="text-center text-red-500">
-                            เกิดข้อผิดพลาด: ${error.message}
-                        </td></tr>`;
+                        `<tr><td colspan="5" class="text-center text-red-500">เกิดข้อผิดพลาด: ${error.message}</td></tr>`;
                 });
+        }
+
+        function getDayNameThai(day) {
+            const dayMapping = {
+                'Monday': 'วันจันทร์',
+                'Tuesday': 'วันอังคาร',
+                'Wednesday': 'วันพุธ',
+                'Thursday': 'วันพฤหัสบดี',
+                'Friday': 'วันศุกร์',
+                'Saturday': 'วันเสาร์',
+                'Sunday': 'วันอาทิตย์'
+            };
+            return dayMapping[day] || day;
         }
 
         const SEMESTER_RANGES = {
@@ -553,7 +601,7 @@ $conn->close();
                 startDate = new Date(year, range.startMonth - 1, range.startDay);
                 endDate = new Date(year + 1, range.endMonth - 1, range.endDay);
             } else {
-                startDate = new Date(year, range.startMonth - 1, range.startDay);
+                startDate = new Date(year, range.endMonth - 1, range.endDay);
                 endDate = new Date(year, range.endMonth - 1, range.endDay);
             }
             
@@ -598,7 +646,7 @@ $conn->close();
                 datePicker.disabled = true;
             }
 
-            datePicker.onchange = function(e) {
+            datePicker.onchange = function() {
                 const selectedDate = this.value;
                 if (!validDates.includes(selectedDate)) {
                     alert('กรุณาเลือกวันที่มีการเรียนการสอนเท่านั้น');
@@ -621,7 +669,7 @@ $conn->close();
                 </h3>
                 <p class="text-sm text-gray-600">
                     กลุ่ม ${course.group_number} | 
-                    ${course.day_of_week} ${course.start_time} - ${course.end_time} | 
+                    ${getDayNameThai(course.day_of_week)} ${course.start_time} - ${course.end_time} | 
                     ภาคการศึกษาที่ <?php echo getSemesterThai($current_semester); ?>/${course.c_year}
                 </p>
             `;
@@ -637,7 +685,7 @@ $conn->close();
             }
 
             students.forEach((student, index) => {
-                const row = tbody.insertRow();
+                const row = document.createElement('tr');
                 row.className = `status-${student.status.toLowerCase()}`;
                 row.innerHTML = `
                     <td>${index + 1}</td>
@@ -646,6 +694,7 @@ $conn->close();
                     <td>${student.scan_time || 'ไม่มีการสแกน'}</td>
                     <td class="font-medium">${translateStatus(student.status)}</td>
                 `;
+                tbody.appendChild(row);
             });
         }
 
@@ -749,6 +798,12 @@ $conn->close();
 
         // Bind the startFaceScan function to the start scan button
         document.getElementById('startScanBtn').onclick = function() {
+            if (!window.currentScheduleId) {
+                alert('ไม่พบตารางเรียนสำหรับวิชานี้');
+                document.getElementById('scanResult').innerText = "ไม่พบตารางเรียนสำหรับวิชานี้";
+                document.getElementById('scanResult').style.color = 'red';
+                return;
+            }
             if (typeof window.startFaceScan === 'function') {
                 window.startFaceScan(teacherId, window.currentScheduleId);
             } else {

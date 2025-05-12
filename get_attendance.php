@@ -96,13 +96,10 @@ try {
         FROM enrollments e
         JOIN students s ON e.student_id = s.student_id
         JOIN courses c ON e.course_id = c.course_id
-        LEFT JOIN attendance a ON s.student_id = a.user_id 
+        LEFT JOIN schedules sch ON c.course_id = sch.course_id
+        LEFT JOIN attendance a ON s.student_id = a.student_id 
+            AND a.schedule_id = sch.schedule_id 
             AND DATE(a.scan_time) = ?
-            AND a.schedule_id IN (
-                SELECT schedule_id 
-                FROM schedules 
-                WHERE course_id = ?
-            )
         WHERE e.course_id = ?
         ORDER BY s.name";
 
@@ -111,7 +108,7 @@ try {
         throw new Exception('Failed to prepare attendance query: ' . $conn->error);
     }
 
-    $stmt->bind_param("sii", $selected_date, $course_id, $course_id); // course_id is int
+    $stmt->bind_param("si", $selected_date, $course_id); // date is string, course_id is int
     if (!$stmt->execute()) {
         throw new Exception('Failed to execute attendance query: ' . $stmt->error);
     }
@@ -154,6 +151,8 @@ try {
         $students[] = $student;
         $statistics['total']++;
     }
+
+    $stmt->close();
 
     if (!$has_logs && $statistics['total'] === 0) {
         echo json_encode(['message' => 'No students enrolled or no attendance logs for this date', 'statistics' => $statistics]);

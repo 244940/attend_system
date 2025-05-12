@@ -22,25 +22,18 @@ if ($conn->connect_error) {
 }
 
 $error = "";
-$is_first_login = false; // Flag to determine if it's the first login
 
-// Handle "Login with other email" by clearing temp_user session
-if (isset($_GET['change_email'])) {
-    unset($_SESSION['temp_user']);
-    header("Location: login.php");
-    exit();
-}
-
-// Check if email is provided to determine login type
-if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['check_email'])) {
-    $email = filter_var($_POST['email'], FILTER_SANITIZE_EMAIL);
+// Handle login form submission
+if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['submit_login'])) {
+    $email = filter_var(trim($_POST['email']), FILTER_SANITIZE_EMAIL);
+    $password = trim($_POST['password']); // Remove leading/trailing spaces
 
     // Validate email
     if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
         $error = "Invalid email format";
         error_log("Invalid email format: $email");
     } else {
-        // Check if it's the first login by querying the database
+        // Query to find user in admins, teachers, or students
         $stmt = $conn->prepare("
             SELECT 'admin' AS user_role, admin_id AS id, admin_name AS name, email, hashed_password, password_changed, citizen_id
             FROM admins WHERE email = ?
@@ -60,87 +53,78 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['check_email'])) {
 
             if ($result->num_rows == 1) {
                 $row = $result->fetch_assoc();
-                $_SESSION['temp_user'] = $row; // Store user data temporarily
                 $is_first_login = ($row['password_changed'] == 0 && $row['hashed_password'] === null);
-                error_log("User found: " . print_r($row, true));
+
+                // First-time login: verify citizen_id
+                if ($is_first_login) {
+                    if ($password === $row['citizen_id']) {
+                        // Set session variables and redirect to change password page
+                        $_SESSION['user_name'] = $row['name'];
+                        $_SESSION['user_role'] = $row['user_role'];
+                        $_SESSION['user_email'] = $row['email'];
+                        $_SESSION['password_changed'] = $row['password_changed'];
+
+                        if ($row['user_role'] === 'admin') {
+                            $_SESSION['admin_id'] = $row['id'];
+                        } elseif ($row['user_role'] === 'teacher') {
+                            $_SESSION['teacher_id'] = $row['id'];
+                        } elseif ($row['user_role'] === 'student') {
+                            $_SESSION['student_id'] = $row['id'];
+                        }
+
+                        error_log("First login successful: email={$row['email']}, citizen_id=$password");
+                        header("Location: login_first_time.php");
+                        exit();
+                    } else {
+                        $error = "Invalid Citizen ID for first-time login.";
+                        error_log("Invalid citizen ID: input=$password, expected={$row['citizen_id']}");
+                    }
+                } else {
+                    // Regular login: verify password
+                    if ($row['hashed_password'] !== null && password_verify($password, $row['hashed_password'])) {
+                        // Password correct, set session variables
+                        $_SESSION['user_name'] = $row['name'];
+                        $_SESSION['user_role'] = $row['user_role'];
+                        $_SESSION['user_email'] = $row['email'];
+                        $_SESSION['password_changed'] = $row['password_changed'];
+
+                        if ($row['user_role'] === 'admin') {
+                            $_SESSION['admin_id'] = $row['id'];
+                        } elseif ($row['user_role'] === 'teacher') {
+                            $_SESSION['teacher_id'] = $row['id'];
+                        } elseif ($row['user_role'] === 'student') {
+                            $_SESSION['student_id'] = $row['id'];
+                        }
+
+                        error_log("Normal login successful: email={$row['email']}, role={$row['user_role']}");
+                        switch ($row['user_role']) {
+                            case 'admin':
+                                header("Location: admin/admin_dashboard.php");
+                                break;
+                            case 'teacher':
+                                header("Location: teacher_dashboard.php");
+                                break;
+                            case 'student':
+                                header("Location: student_dashboard.php");
+                                break;
+                            default:
+                                $error = "Invalid user role.";
+                                error_log("Invalid user role: {$row['user_role']}");
+                                break;
+                        }
+                        exit();
+                    } else {
+                        $error = "Invalid password.";
+                        error_log("Password verification failed: email={$row['email']}, hashed_password=" . ($row['hashed_password'] ?: 'NULL'));
+                    }
+                }
             } else {
-                $error = "Invalid email.";
+                $error = "Invalid email or password.";
                 error_log("No user found for email: $email");
             }
         }
         $stmt->close();
     }
-}
-
-// Handle password submission
-if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['submit_password']) && isset($_SESSION['temp_user'])) {
-    $row = $_SESSION['temp_user'];
-    $password = trim($_POST['password']); // Remove leading/trailing spaces
-
-    // First login: verify citizen_id
-    if ($row['password_changed'] == 0 && $row['hashed_password'] === null) {
-        if ($password === $row['citizen_id']) {
-            // Set session variables and redirect to change password page
-            $_SESSION['user_name'] = $row['name'];
-            $_SESSION['user_role'] = $row['user_role'];
-            $_SESSION['user_email'] = $row['email'];
-            $_SESSION['password_changed'] = $row['password_changed'];
-
-            if ($row['user_role'] === 'admin') {
-                $_SESSION['admin_id'] = $row['id'];
-            } elseif ($row['user_role'] === 'teacher') {
-                $_SESSION['teacher_id'] = $row['id']; // Use teacher_id for consistency
-            } elseif ($row['user_role'] === 'student') {
-                $_SESSION['student_id'] = $row['id'];
-            }
-
-            error_log("First login successful: email={$row['email']}, citizen_id=$password");
-            header("Location: login_first_time.php");
-            exit();
-        } else {
-            $error = "Invalid Citizen ID for first-time login.";
-            error_log("Invalid citizen ID: input=$password, expected={$row['citizen_id']}");
-        }
-    } else {
-        // Not first login: verify password
-        if ($row['hashed_password'] !== null && password_verify($password, $row['hashed_password'])) {
-            // Password correct, set session variables
-            $_SESSION['user_name'] = $row['name'];
-            $_SESSION['user_role'] = $row['user_role'];
-            $_SESSION['user_email'] = $row['email'];
-            $_SESSION['password_changed'] = $row['password_changed'];
-
-            if ($row['user_role'] === 'admin') {
-                $_SESSION['admin_id'] = $row['id'];
-            } elseif ($row['user_role'] === 'teacher') {
-                $_SESSION['teacher_id'] = $row['id']; // Use teacher_id for consistency
-            } elseif ($row['user_role'] === 'student') {
-                $_SESSION['student_id'] = $row['id'];
-            }
-
-            error_log("Normal login successful: email={$row['email']}, role={$row['user_role']}");
-            switch ($row['user_role']) {
-                case 'admin':
-                    header("Location: admin/admin_dashboard.php");
-                    break;
-                case 'teacher':
-                    header("Location: teacher_dashboard.php");
-                    break;
-                case 'student':
-                    header("Location: student_dashboard.php");
-                    break;
-                default:
-                    $error = "Invalid user role.";
-                    error_log("Invalid user role: {$row['user_role']}");
-                    break;
-            }
-            exit();
-        } else {
-            $error = "Invalid password.";
-            error_log("Password verification failed: email={$row['email']}, hashed_password=" . ($row['hashed_password'] ?: 'NULL'));
-        }
-    }
-    unset($_SESSION['temp_user']);
 }
 
 $conn->close();
@@ -243,6 +227,12 @@ $conn->close();
             text-align: center;
             margin-bottom: 10px;
         }
+        .note {
+            color: #666;
+            font-size: 12px;
+            text-align: center;
+            margin-bottom: 10px;
+        }
     </style>
 </head>
 <body>
@@ -250,44 +240,23 @@ $conn->close();
     <section>
         <div class="form-box">
             <div class="form-value">
-                <?php if (!$is_first_login && !isset($_SESSION['temp_user'])): ?>
-                    <!-- Step 1: Enter Email -->
-                    <form action="<?php echo htmlspecialchars($_SERVER["PHP_SELF"]); ?>" method="post">
-                        <h2>Login</h2>
-                        <?php if (!empty($error)): ?>
-                            <p class="error"><?php echo htmlspecialchars($error); ?></p>
-                        <?php endif; ?>
-                        <div class="inputbox">
-                            <input type="email" name="email" required>
-                            <label for="email">Email</label>
-                        </div>
-                        <input type="hidden" name="check_email" value="1">
-                        <button type="submit">Next</button>
-                    </form>
-                <?php else: ?>
-                    <!-- Step 2: Enter Password -->
-                    <form action="<?php echo htmlspecialchars($_SERVER["PHP_SELF"]); ?>" method="post">
-                        <h2>Login</h2>
-                        <?php if (!empty($error)): ?>
-                            <p class="error"><?php echo htmlspecialchars($error); ?></p>
-                        <?php endif; ?>
-                        <p>Email: <?php echo htmlspecialchars($_SESSION['temp_user']['email']); ?></p>
-                        <div class="inputbox">
-                            <?php if ($is_first_login): ?>
-                                <input type="text" name="password" pattern="\d{13}" title="For first-time login, use 13-digit Citizen ID" required>
-                                <label for="password">Citizen ID (First Time Login)</label>
-                            <?php else: ?>
-                                <input type="password" name="password" required>
-                                <label for="password">Password</label>
-                            <?php endif; ?>
-                        </div>
-                        <input type="hidden" name="submit_password" value="1">
-                        <button type="submit">Log in</button>
-                        <div class="register">
-                            <p><a href="login.php?change_email=1">Login with other email</a></p>
-                        </div>
-                    </form>
-                <?php endif; ?>
+                <form action="<?php echo htmlspecialchars($_SERVER["PHP_SELF"]); ?>" method="post">
+                    <h2>Login</h2>
+                    <?php if (!empty($error)): ?>
+                        <p class="error"><?php echo htmlspecialchars($error); ?></p>
+                    <?php endif; ?>
+                    <p class="note">For first-time login, use your 13-digit Citizen ID as the password.</p>
+                    <div class="inputbox">
+                        <input type="email" name="email" required>
+                        <label for="email">Email</label>
+                    </div>
+                    <div class="inputbox">
+                        <input type="password" name="password" required>
+                        <label for="password">Password / Citizen ID</label>
+                    </div>
+                    <input type="hidden" name="submit_login" value="1">
+                    <button type="submit">Log in</button>
+                </form>
             </div>
         </div>
     </section>
