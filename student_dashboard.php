@@ -1,24 +1,26 @@
-<?php 
-session_start(); 
-error_reporting(E_ALL); 
-ini_set('display_errors', 1); 
-require 'database_connection.php'; 
+<?php
+session_start();
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
+require 'database_connection.php';
 
 // Check if user is logged in and is a student
-if (!isset($_SESSION['user_id']) || $_SESSION['user_role'] !== 'student') { 
-    header("Location: login.php"); 
-    exit(); 
-} 
+if (!isset($_SESSION['student_id']) || $_SESSION['user_role'] !== 'student') {
+    error_log("Access denied: student_id or user_role not set. Session: " . print_r($_SESSION, true));
+    header("Location: login.php");
+    exit();
+}
 
 // Get the student's information
-$stmt = $conn->prepare("SELECT student_id, name FROM students WHERE user_id = ?");
-$stmt->bind_param("i", $_SESSION['user_id']);
+$stmt = $conn->prepare("SELECT student_id, name FROM students WHERE student_id = ?");
+$stmt->bind_param("i", $_SESSION['student_id']);
 $stmt->execute();
 $result = $stmt->get_result();
 
-if ($result->num_rows === 0) { 
-    die("Error: Student not found."); 
-} 
+if ($result->num_rows === 0) {
+    error_log("Student not found for student_id: {$_SESSION['student_id']}");
+    die("Error: Student not found.");
+}
 
 $student_data = $result->fetch_assoc();
 $student_id = $student_data['student_id'];
@@ -27,10 +29,10 @@ $stmt->close();
 
 // Get courses for the student
 $get_courses_stmt = $conn->prepare("
-    SELECT c.course_id, c.course_name, c.course_code, c.day_of_week, c.semester, c.c_year 
-    FROM courses AS c 
-    JOIN enrollments AS e ON c.course_id = e.course_id 
-    WHERE e.student_id = ? 
+    SELECT c.course_id, c.course_name, c.course_code, c.day_of_week, c.semester, c.c_year
+    FROM courses AS c
+    JOIN enrollments AS e ON c.course_id = e.course_id
+    WHERE e.student_id = ?
     ORDER BY c.semester
 ");
 $get_courses_stmt->bind_param("i", $student_id);
@@ -41,16 +43,12 @@ $conn->close();
 
 function getSemesterDateRange($semester, $year) {
     if ($semester == 1) {
-        // First semester: June to October
         return ['start' => "2024-06-01", 'end' => "2024-10-31"];
     } elseif ($semester == 2) {
-        // Second semester: November to March
         return ['start' => "2024-11-25", 'end' => "2025-03-31"];
     } elseif ($semester == 3) {
-        // Summer semester: April to June
-        return ['start' => "2024-04-21", 'end' => "2024-06-04"];
+        return ['start' => "2025-04-01", 'end' => "2025-06-30"];
     } else {
-        // Invalid semester
         return ['start' => null, 'end' => null];
     }
 }
@@ -59,7 +57,7 @@ function getClassDates($dayOfWeek, $startDate, $endDate) {
     $dates = [];
     $current = strtotime($startDate);
     $end = strtotime($endDate);
-    
+
     // Map day names to numerical values
     $dayMapping = [
         'Monday' => 1,
@@ -70,16 +68,16 @@ function getClassDates($dayOfWeek, $startDate, $endDate) {
         'Saturday' => 6,
         'Sunday' => 0
     ];
-    
+
     $targetDay = $dayMapping[$dayOfWeek];
-    
+
     while ($current <= $end) {
         if (date('N', $current) == $targetDay) {
             $dates[] = date('Y-m-d', $current);
         }
         $current = strtotime('+1 day', $current);
     }
-    
+
     return $dates;
 }
 ?>
@@ -147,7 +145,7 @@ function getClassDates($dayOfWeek, $startDate, $endDate) {
                 .then(data => {
                     attendanceTableBody.innerHTML = '';
                     validClassDates.forEach(date => {
-                        const status = data[date] !== undefined ? data[date] : 'None'; // Display "None" if no attendance record exists
+                        const status = data[date] !== undefined ? data[date] : 'None';
                         const row = attendanceTableBody.insertRow();
                         row.innerHTML = `<td class="border px-4 py-2">${date}</td><td class="border px-4 py-2">${status}</td>`;
                     });
@@ -165,10 +163,13 @@ function getClassDates($dayOfWeek, $startDate, $endDate) {
 
         function getSemesterDateRange(semester, year) {
             if (semester == 1) {
-                return { start: "2024-06-01", end: "2024-10-31" }; // Adjust as needed for actual dates
-            } else {
-                return { start: "2024-11-25", end: "2025-03-31" }; // Adjust as needed for actual dates
+                return { start: "2024-06-01", end: "2024-10-31" };
+            } else if (semester == 2) {
+                return { start: "2024-11-25", end: "2025-03-31" };
+            } else if (semester == 3) {
+                return { start: "2025-04-01", end: "2025-06-30" };
             }
+            return { start: null, end: null };
         }
 
         function getClassDates(dayOfWeek, startDate, endDate) {
@@ -197,21 +198,19 @@ function getClassDates($dayOfWeek, $startDate, $endDate) {
 
             return dates;
         }
-        
     </script>
 
-<style>
-@import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700&display=swap');
-* { font-family: 'Sarabun', sans-serif; }
-.header { background-color: #71b773; padding: 1rem; color: white; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-.attendance-table { width: 100%; border-collapse: collapse; margin-top: 1rem; background-color: white; box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
-.attendance-table th { background-color: #f9e69e; font-weight: bold; }
-.attendance-table th, .attendance-table td { padding: 0.75rem; text-align: left; border: 1px solid #e2e8f0; }
-.attendance-table tbody tr:nth-child(even) { background-color: #f8f9fa; }
-.attendance-table tbody tr:hover { background-color: #f5f5f5; }
-.course-button { background-color: #4CAF50; color: white; padding: 0.75rem; border-radius: 0.5rem; transition: all 0.3s; border: none; cursor: pointer; margin-bottom: 10px; width: calc(100% - 10px); }
-.course-button:hover { background-color: #45a049; transform: translateY(-2px); }
-</style>
-
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700&display=swap');
+        * { font-family: 'Sarabun', sans-serif; }
+        .header { background-color: #71b773; padding: 1rem; color: white; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .attendance-table { width: 100%; border-collapse: collapse; margin-top: 1rem; background-color: white; box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
+        .attendance-table th { background-color: #f9e69e; font-weight: bold; }
+        .attendance-table th, .attendance-table td { padding: 0.75rem; text-align: left; border: 1px solid #e2e8f0; }
+        .attendance-table tbody tr:nth-child(even) { background-color: #f8f9fa; }
+        .attendance-table tbody tr:hover { background-color: #f5f5f5; }
+        .course-button { background-color: #4CAF50; color: white; padding: 0.75rem; border-radius: 0.5rem; transition: all 0.3s; border: none; cursor: pointer; margin-bottom: 10px; width: calc(100% - 10px); }
+        .course-button:hover { background-color: #45a049; transform: translateY(-2px); }
+    </style>
 </body>
 </html>

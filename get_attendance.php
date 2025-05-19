@@ -1,10 +1,10 @@
 <?php
 session_start();
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
+ini_set('display_errors', 0);
+ini_set('display_startup_errors', 0);
 error_reporting(E_ALL);
 
-header('Content-Type: application/json');
+header('Content-Type: application/json; charset=UTF-8');
 
 require 'database_connection.php';
 
@@ -23,7 +23,7 @@ try {
     // Validate date format
     if (!DateTime::createFromFormat('Y-m-d', $selected_date)) {
         http_response_code(400);
-        echo json_encode(['error' => 'Invalid date format']);
+        echo json_encode(['error' => 'Invalid date format'], JSON_UNESCAPED_UNICODE);
         exit();
     }
 
@@ -33,12 +33,21 @@ try {
         throw new Exception('Unauthorized');
     }
 
-    // Verify course ownership
+    // Verify course ownership and get scheduled days
     $course_check = $conn->prepare("
-        SELECT course_id, course_code, start_time, day_of_week
-        FROM courses 
-        WHERE course_id = ? AND teacher_id = ?
+        SELECT 
+            c.course_id, 
+            c.course_code,
+            GROUP_CONCAT(sch.day_of_week) as days_of_week,
+            GROUP_CONCAT(sch.schedule_id) as schedule_ids
+        FROM courses c
+        LEFT JOIN schedules sch ON c.course_id = sch.course_id
+        WHERE c.course_id = ? AND c.teacher_id = ?
+        GROUP BY c.course_id, c.course_code
     ");
+    if (!$course_check) {
+        throw new Exception('Failed to prepare course check query: ' . $conn->error);
+    }
     $course_check->bind_param("ii", $course_id, $_SESSION['teacher_id']);
     $course_check->execute();
     $course_result = $course_check->get_result();
@@ -49,9 +58,11 @@ try {
     $course_data = $course_result->fetch_assoc();
     $course_check->close();
 
-    // Check if selected date matches course's day_of_week
+    // Check if selected date matches any of the course's scheduled days
     $day_of_week = date('l', strtotime($selected_date));
-    $is_scheduled_day = ($day_of_week === $course_data['day_of_week']);
+    $scheduled_days = !empty($course_data['days_of_week']) ? explode(',', $course_data['days_of_week']) : [];
+    $schedule_ids = !empty($course_data['schedule_ids']) ? explode(',', $course_data['schedule_ids']) : [];
+    $is_scheduled_day = in_array($day_of_week, $scheduled_days);
 
     // Fetch students and attendance
     $attendance_query = "
@@ -59,7 +70,6 @@ try {
             s.student_id,
             s.name,
             c.course_code,
-            c.start_time,
             a.scan_time,
             COALESCE(a.status, 'Absent') as status,
             CASE
@@ -69,9 +79,8 @@ try {
         FROM enrollments e
         JOIN students s ON e.student_id = s.student_id
         JOIN courses c ON e.course_id = c.course_id
-        LEFT JOIN schedules sch ON c.course_id = sch.course_id
         LEFT JOIN attendance a ON s.student_id = a.student_id 
-            AND a.schedule_id = sch.schedule_id 
+            AND a.schedule_id " . (!empty($schedule_ids) ? "IN (" . implode(',', array_fill(0, count($schedule_ids), '?')) . ")" : "= 0") . "
             AND DATE(a.scan_time) = ?
         WHERE e.course_id = ?
         ORDER BY s.name";
@@ -81,7 +90,19 @@ try {
         throw new Exception('Failed to prepare attendance query: ' . $conn->error);
     }
 
-    $stmt->bind_param("si", $selected_date, $course_id);
+    // Prepare parameters for binding
+    $bind_params = [];
+    $bind_types = '';
+    if (!empty($schedule_ids)) {
+        $bind_types .= str_repeat('i', count($schedule_ids));
+        $bind_params = array_merge($bind_params, $schedule_ids);
+    }
+    $bind_types .= 'si';
+    $bind_params[] = $selected_date;
+    $bind_params[] = $course_id;
+
+    // Bind parameters dynamically
+    $stmt->bind_param($bind_types, ...$bind_params);
     if (!$stmt->execute()) {
         throw new Exception('Failed to execute attendance query: ' . $stmt->error);
     }
@@ -140,7 +161,7 @@ try {
         $response['warning'] = 'This course is not scheduled on ' . $day_of_week . '. Displaying available data.';
     }
 
-    echo json_encode($response);
+    echo json_encode($response, JSON_UNESCAPED_UNICODE);
 
 } catch (Exception $e) {
     error_log("Error in get_attendance.php: " . htmlspecialchars($e->getMessage()));
@@ -149,7 +170,7 @@ try {
         'error' => "Server error: " . htmlspecialchars($e->getMessage()),
         'file' => __FILE__,
         'line' => $e->getLine()
-    ]);
+    ], JSON_UNESCAPED_UNICODE);
 } finally {
     if (isset($stmt)) $stmt->close();
     if (isset($course_check)) $course_check->close();

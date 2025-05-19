@@ -94,17 +94,15 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
             if ($result->num_rows == 1) {
                 $user = $result->fetch_assoc();
+                error_log("Database user data: " . print_r($user, true));
                 
-                // Verify session data
-                if ($user[$id_column] == $_SESSION['user_id'] && $user['email'] == $_SESSION['user_email']) {
+                // Verify session data (cast IDs to string for admin compatibility)
+                if ((string)$user[$id_column] == (string)$_SESSION['user_id'] && $user['email'] == $_SESSION['user_email']) {
                     // Update session with additional data
                     $_SESSION['user_name'] = $user[$name_column];
                     $_SESSION['password_changed'] = $user['password_changed'];
                     
-                    // Debug: Log successful validation
                     error_log("First-time login validated: email={$user['email']}, role=$user_role, citizen_id=$citizen_id");
-                    
-                    // Redirect to change password page
                     header("Location: change_password.php");
                     exit();
                 } else {
@@ -114,9 +112,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                     header("Location: login.php");
                     exit();
                 }
-            } else {
-                $message = "Invalid Citizen ID or Email, or account is not eligible for first-time login.";
-                error_log("No user found or not eligible: email=$email, citizen_id=$citizen_id, role=$user_role");
             }
 
             $stmt->close();

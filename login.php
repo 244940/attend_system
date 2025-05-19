@@ -63,7 +63,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['submit_login'])) {
                         $_SESSION['user_role'] = $row['user_role'];
                         $_SESSION['user_email'] = $row['email'];
                         $_SESSION['password_changed'] = $row['password_changed'];
-
+                        $_SESSION['user_id'] = $row['id']; // Add this to set user_id
+                
                         if ($row['user_role'] === 'admin') {
                             $_SESSION['admin_id'] = $row['id'];
                         } elseif ($row['user_role'] === 'teacher') {
@@ -71,14 +72,15 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['submit_login'])) {
                         } elseif ($row['user_role'] === 'student') {
                             $_SESSION['student_id'] = $row['id'];
                         }
-
-                        error_log("First login successful: email={$row['email']}, citizen_id=$password");
+                
+                        error_log("First login successful: email={$row['email']}, citizen_id=$password, user_id={$row['id']}");
                         header("Location: login_first_time.php");
                         exit();
                     } else {
                         $error = "Invalid Citizen ID for first-time login.";
                         error_log("Invalid citizen ID: input=$password, expected={$row['citizen_id']}");
                     }
+                
                 } else {
                     // Regular login: verify password
                     if ($row['hashed_password'] !== null && password_verify($password, $row['hashed_password'])) {
