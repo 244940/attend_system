@@ -9,16 +9,15 @@ header('Content-Type: application/json');
 require 'database_connection.php';
 
 try {
-    // Check if required parameters are set
+    // Check required parameters
     if (!isset($_GET['course_id'])) {
         throw new Exception('Missing course_id parameter');
     }
-
     if (!isset($_GET['date'])) {
         throw new Exception('Missing date parameter');
     }
 
-    $course_id = intval($_GET['course_id']); // course_id is an int
+    $course_id = intval($_GET['course_id']);
     $selected_date = $_GET['date'];
 
     // Validate date format
@@ -34,13 +33,13 @@ try {
         throw new Exception('Unauthorized');
     }
 
-    // Verify that the course belongs to the teacher
+    // Verify course ownership
     $course_check = $conn->prepare("
-        SELECT course_id, course_code, start_time 
+        SELECT course_id, course_code, start_time, day_of_week
         FROM courses 
         WHERE course_id = ? AND teacher_id = ?
     ");
-    $course_check->bind_param("ii", $course_id, $_SESSION['teacher_id']); // course_id and teacher_id are int
+    $course_check->bind_param("ii", $course_id, $_SESSION['teacher_id']);
     $course_check->execute();
     $course_result = $course_check->get_result();
     if ($course_result->num_rows === 0) {
@@ -50,29 +49,11 @@ try {
     $course_data = $course_result->fetch_assoc();
     $course_check->close();
 
-    // Determine the day of the week for the selected date
+    // Check if selected date matches course's day_of_week
     $day_of_week = date('l', strtotime($selected_date));
+    $is_scheduled_day = ($day_of_week === $course_data['day_of_week']);
 
-    // Check if this course is scheduled on this day
-    $schedule_query = "
-        SELECT course_id 
-        FROM courses 
-        WHERE course_id = ? AND day_of_week = ?";
-    $schedule_stmt = $conn->prepare($schedule_query);
-    $schedule_stmt->bind_param("is", $course_id, $day_of_week); // course_id is int
-    $schedule_stmt->execute();
-    $schedule_result = $schedule_stmt->get_result();
-
-    if ($schedule_result->num_rows === 0) {
-        echo json_encode([
-            'error' => 'No schedule found for this course on the selected date',
-            'message' => 'This course does not have a schedule on this day'
-        ]);
-        exit();
-    }
-    $schedule_stmt->close();
-
-    // Fetch students enrolled in the course and their attendance
+    // Fetch students and attendance
     $attendance_query = "
         SELECT 
             s.student_id,
@@ -80,15 +61,7 @@ try {
             c.course_code,
             c.start_time,
             a.scan_time,
-            CASE
-                WHEN a.scan_time IS NOT NULL THEN
-                    CASE
-                        WHEN TIME(a.scan_time) <= c.start_time THEN 'Present'
-                        WHEN TIME(a.scan_time) <= ADDTIME(c.start_time, '00:15:00') THEN 'Late'
-                        ELSE 'Absent'
-                    END
-                ELSE 'Absent'
-            END as status,
+            COALESCE(a.status, 'Absent') as status,
             CASE
                 WHEN a.scan_time IS NULL THEN 'ไม่มีการสแกน'
                 ELSE TIME_FORMAT(a.scan_time, '%H:%i:%s')
@@ -108,7 +81,7 @@ try {
         throw new Exception('Failed to prepare attendance query: ' . $conn->error);
     }
 
-    $stmt->bind_param("si", $selected_date, $course_id); // date is string, course_id is int
+    $stmt->bind_param("si", $selected_date, $course_id);
     if (!$stmt->execute()) {
         throw new Exception('Failed to execute attendance query: ' . $stmt->error);
     }
@@ -129,21 +102,21 @@ try {
         $student = [
             'student_id' => $row['student_id'],
             'name' => $row['name'],
-            'course_code' => $row['course_code'] ?? null,
-            'scan_time' => $row['scan_time_display'] ?? null,
+            'course_code' => $row['course_code'],
+            'scan_time' => $row['scan_time_display'],
             'status' => $row['status']
         ];
 
-        switch ($row['status']) {
-            case 'Present':
+        switch (strtolower($row['status'])) {
+            case 'present':
                 $statistics['present']++;
                 $has_logs = true;
                 break;
-            case 'Late':
+            case 'late':
                 $statistics['late']++;
                 $has_logs = true;
                 break;
-            case 'Absent':
+            case 'absent':
                 $statistics['absent']++;
                 break;
         }
@@ -154,16 +127,20 @@ try {
 
     $stmt->close();
 
-    if (!$has_logs && $statistics['total'] === 0) {
-        echo json_encode(['message' => 'No students enrolled or no attendance logs for this date', 'statistics' => $statistics]);
-        exit();
-    }
-
-    echo json_encode([
+    $response = [
         'date' => $selected_date,
         'students' => $students,
-        'statistics' => $statistics
-    ]);
+        'statistics' => $statistics,
+        'is_scheduled_day' => $is_scheduled_day
+    ];
+
+    if (!$has_logs && $statistics['total'] === 0) {
+        $response['message'] = 'No students enrolled or no attendance logs for this date';
+    } elseif (!$is_scheduled_day) {
+        $response['warning'] = 'This course is not scheduled on ' . $day_of_week . '. Displaying available data.';
+    }
+
+    echo json_encode($response);
 
 } catch (Exception $e) {
     error_log("Error in get_attendance.php: " . htmlspecialchars($e->getMessage()));
@@ -174,17 +151,8 @@ try {
         'line' => $e->getLine()
     ]);
 } finally {
-    if (isset($stmt)) {
-        $stmt->close();
-    }
-    if (isset($schedule_stmt)) {
-        $schedule_stmt->close();
-    }
-    if (isset($course_check)) {
-        $course_check->close();
-    }
-    if (isset($conn)) {
-        $conn->close();
-    }
+    if (isset($stmt)) $stmt->close();
+    if (isset($course_check)) $course_check->close();
+    if (isset($conn)) $conn->close();
 }
 ?>

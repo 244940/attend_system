@@ -38,23 +38,20 @@ function validate_year_code($year_code) {
     return is_numeric($year_code) && strlen($year_code) === 2 && $year_code >= 00 && $year_code <= 99;
 }
 
-function insert_course($conn, $course_data) {
+function insert_course($conn, $course_data, $schedules) {
     $course_name = isset($course_data['course_name']) ? trim($course_data['course_name']) : '';
     $name_en = isset($course_data['course_name_en']) ? trim($course_data['course_name_en']) : '';
     $course_code = isset($course_data['course_code']) ? trim($course_data['course_code']) : '';
     $teacher_name = isset($course_data['teacher_name']) ? trim($course_data['teacher_name']) : '';
-    $day_of_week = isset($course_data['day_of_week']) ? trim($course_data['day_of_week']) : '';
-    $start_time = isset($course_data['start_time']) ? format_time(trim($course_data['start_time'])) : false;
-    $end_time = isset($course_data['end_time']) ? format_time(trim($course_data['end_time'])) : false;
     $group_number = isset($course_data['group_number']) ? trim($course_data['group_number']) : '';
     $semester = isset($course_data['semester']) ? strtolower(trim($course_data['semester'])) : '';
     $c_year = isset($course_data['c_year']) ? trim($course_data['c_year']) : '';
     $year_code = isset($course_data['year_code']) ? trim($course_data['year_code']) : '';
 
+    // Validate course data
     if (empty($course_name) || empty($name_en) || empty($course_code) || empty($teacher_name) ||
-        empty($day_of_week) || !$start_time || !$end_time || empty($group_number) ||
-        empty($semester) || empty($c_year) || empty($year_code)) {
-        return "Incomplete data or invalid time format for course: " . ($course_code ?: 'Unknown code');
+        empty($group_number) || empty($semester) || empty($c_year) || empty($year_code)) {
+        return "Incomplete course data for course: " . ($course_code ?: 'Unknown code');
     }
 
     if (!validate_semester($semester)) {
@@ -69,12 +66,23 @@ function insert_course($conn, $course_data) {
         return "Invalid year code for course: $course_code. Must be a 2-digit number (00-99).";
     }
 
+    // Validate schedules
     $valid_days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-    if (!in_array($day_of_week, $valid_days)) {
-        return "Invalid day of the week for course: $course_code. Allowed values: " . implode(', ', $valid_days);
+    foreach ($schedules as $index => $schedule) {
+        $day_of_week = isset($schedule['day_of_week']) ? trim($schedule['day_of_week']) : '';
+        $start_time = isset($schedule['start_time']) ? format_time(trim($schedule['start_time'])) : false;
+        $end_time = isset($schedule['end_time']) ? format_time(trim($schedule['end_time'])) : false;
+
+        if (empty($day_of_week) || !$start_time || !$end_time) {
+            return "Incomplete schedule data at index $index for course: $course_code";
+        }
+
+        if (!in_array($day_of_week, $valid_days)) {
+            return "Invalid day of the week at index $index for course: $course_code. Allowed values: " . implode(', ', $valid_days);
+        }
     }
 
-    // Look up teacher_id based on teacher_name
+    // Look up teacher_id
     $teacher_id = null;
     $teacher_stmt = $conn->prepare("SELECT teacher_id FROM teachers WHERE name = ?");
     $teacher_stmt->bind_param("s", $teacher_name);
@@ -84,13 +92,10 @@ function insert_course($conn, $course_data) {
         $teacher_id = $teacher_result->fetch_assoc()['teacher_id'];
         if (!is_numeric($teacher_id) || $teacher_id <= 0) {
             $teacher_stmt->close();
-            error_log("Invalid teacher_id for teacher: $teacher_name, teacher_id: $teacher_id");
             return "Invalid teacher_id for teacher: $teacher_name";
         }
-        error_log("Teacher ID for $teacher_name: $teacher_id");
     } else {
         $teacher_stmt->close();
-        error_log("Teacher not found: $teacher_name");
         return "Teacher not found: $teacher_name";
     }
     $teacher_stmt->close();
@@ -98,13 +103,9 @@ function insert_course($conn, $course_data) {
     // Check for duplicate course
     $check_stmt = $conn->prepare(
         "SELECT course_id FROM courses 
-         WHERE course_code = ? AND semester = ? AND c_year = ? AND year_code = ? AND group_number = ? 
-         AND teacher_name = ? AND day_of_week = ? AND start_time = ? AND end_time = ?"
+         WHERE course_code = ? AND semester = ? AND c_year = ? AND year_code = ? AND group_number = ? AND teacher_name = ?"
     );
-    $check_stmt->bind_param("sssssssss",
-        $course_code, $semester, $c_year, $year_code, $group_number,
-        $teacher_name, $day_of_week, $start_time, $end_time
-    );
+    $check_stmt->bind_param("ssssss", $course_code, $semester, $c_year, $year_code, $group_number, $teacher_name);
     $check_stmt->execute();
     $check_result = $check_stmt->get_result();
 
@@ -115,75 +116,114 @@ function insert_course($conn, $course_data) {
     $check_stmt->close();
 
     // Check for time conflicts
-    $conflict_stmt = $conn->prepare(
-        "SELECT c.course_code, c.group_number 
-         FROM courses c 
-         WHERE c.teacher_name = ? 
-         AND c.day_of_week = ? 
-         AND c.semester = ? 
-         AND c.c_year = ? 
-         AND c.year_code = ?
-         AND (
-             (? BETWEEN c.start_time AND c.end_time) 
-             OR (? BETWEEN c.start_time AND c.end_time)
-             OR (c.start_time BETWEEN ? AND ?)
-         )"
-    );
-    $conflict_stmt->bind_param("sssssssss",
-        $teacher_name, $day_of_week, $semester, $c_year, $year_code,
-        $start_time, $end_time, $start_time, $end_time
-    );
-    $conflict_stmt->execute();
-    $conflict_result = $conflict_stmt->get_result();
+    foreach ($schedules as $index => $schedule) {
+        $day_of_week = $schedule['day_of_week'];
+        $start_time = $schedule['start_time'];
+        $end_time = $schedule['end_time'];
 
-    if ($conflict_result->num_rows > 0) {
-        $conflict = $conflict_result->fetch_assoc();
+        $conflict_stmt = $conn->prepare(
+            "SELECT c.course_code, c.group_number 
+             FROM schedules s 
+             JOIN courses c ON s.course_id = c.course_id 
+             WHERE s.teacher_id = ? 
+             AND s.day_of_week = ? 
+             AND c.semester = ? 
+             AND c.c_year = ? 
+             AND c.year_code = ?
+             AND (
+                 (? BETWEEN s.start_time AND s.end_time) 
+                 OR (? BETWEEN s.start_time AND s.end_time)
+                 OR (s.start_time BETWEEN ? AND ?)
+             )"
+        );
+        $conflict_stmt->bind_param("issssssss", $teacher_id, $day_of_week, $semester, $c_year, $year_code, 
+            $start_time, $end_time, $start_time, $end_time);
+        $conflict_stmt->execute();
+        $conflict_result = $conflict_stmt->get_result();
+
+        if ($conflict_result->num_rows > 0) {
+            $conflict = $conflict_result->fetch_assoc();
+            $conflict_stmt->close();
+            return "Time conflict detected for teacher $teacher_name with course {$conflict['course_code']} group {$conflict['group_number']} on $day_of_week.";
+        }
         $conflict_stmt->close();
-        return "Time conflict detected for teacher $teacher_name with course {$conflict['course_code']} group {$conflict['group_number']}.";
     }
-    $conflict_stmt->close();
 
     // Insert course
-    $stmt = $conn->prepare(
+    $course_stmt = $conn->prepare(
         "INSERT INTO courses 
-         (course_name, name_en, course_code, teacher_id, teacher_name, day_of_week, start_time, end_time, group_number, semester, c_year, year_code) 
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+         (course_name, name_en, course_code, teacher_id, teacher_name, group_number, semester, c_year, year_code) 
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
     );
-    $stmt->bind_param("sssissssssss",
-        $course_name, $name_en, $course_code, $teacher_id, $teacher_name, $day_of_week,
-        $start_time, $end_time, $group_number, $semester, $c_year, $year_code
-    );
+    $course_stmt->bind_param("sssisssss", 
+        $course_name, $name_en, $course_code, $teacher_id, $teacher_name, $group_number, $semester, $c_year, $year_code);
 
-    error_log("Inserting course: course_code=$course_code, teacher_id=$teacher_id, teacher_name=$teacher_name");
-    if ($stmt->execute()) {
-        $stmt->close();
-        return null;
-    } else {
-        $error = "Error adding course $course_code: " . $stmt->error;
-        $stmt->close();
+    if (!$course_stmt->execute()) {
+        $error = "Error adding course $course_code: " . $course_stmt->error;
+        $course_stmt->close();
         return $error;
     }
+
+    $course_id = $conn->insert_id;
+    $course_stmt->close();
+
+    // Insert schedules
+    $schedule_stmt = $conn->prepare(
+        "INSERT INTO schedules (course_id, teacher_id, day_of_week, start_time, end_time) 
+         VALUES (?, ?, ?, ?, ?)"
+    );
+    foreach ($schedules as $schedule) {
+        $day_of_week = $schedule['day_of_week'];
+        $start_time = format_time($schedule['start_time']);
+        $end_time = format_time($schedule['end_time']);
+        $schedule_stmt->bind_param("iisss", $course_id, $teacher_id, $day_of_week, $start_time, $end_time);
+
+        if (!$schedule_stmt->execute()) {
+            $error = "Error adding schedule for course $course_code: " . $schedule_stmt->error;
+            $schedule_stmt->close();
+            return $error;
+        }
+    }
+    $schedule_stmt->close();
+
+    return null;
 }
 
 // Handle single course addition
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_single_course'])) {
+    $schedules = [];
+    if (isset($_POST['schedules']) && is_array($_POST['schedules'])) {
+        foreach ($_POST['schedules'] as $schedule) {
+            if (!empty($schedule['day_of_week']) && !empty($schedule['start_time']) && !empty($schedule['end_time'])) {
+                $schedules[] = [
+                    'day_of_week' => $schedule['day_of_week'],
+                    'start_time' => $schedule['start_time'],
+                    'end_time' => $schedule['end_time']
+                ];
+            }
+        }
+    }
+
+    if (empty($schedules)) {
+        $_SESSION['error_message'] = "At least one schedule is required.";
+        header("Location: /attend_system/admin/add_course.php");
+        exit();
+    }
+
     $course_data = [
         'course_name' => $_POST['course_name'],
         'course_name_en' => $_POST['course_name_en'],
         'course_code' => $_POST['course_code'],
         'teacher_name' => $_POST['teacher_name'],
-        'day_of_week' => $_POST['day_of_week'],
-        'start_time' => $_POST['start_time'],
-        'end_time' => $_POST['end_time'],
         'group_number' => $_POST['group_number'],
         'semester' => $_POST['semester'],
         'c_year' => $_POST['c_year'],
         'year_code' => $_POST['year_code']
     ];
 
-    $result = insert_course($conn, $course_data);
+    $result = insert_course($conn, $course_data, $schedules);
     if ($result === null) {
-        $_SESSION['success_message'] = "Course {$_POST['course_code']} added successfully.";
+        $_SESSION['success_message'] = "Course {$_POST['course_code']} added successfully with " . count($schedules) . " schedule(s).";
     } else if (strpos($result, 'SKIP:') === 0) {
         $_SESSION['success_message'] = $result;
     } else {
@@ -191,18 +231,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_single_course']))
     }
     header("Location: /attend_system/admin/add_course.php");
     exit();
-}
-
-function parse_csv($file_path) {
-    $rows = array_map(function($line) {
-        return str_getcsv($line, ',', '"', '\\');
-    }, file($file_path));
-    
-    if (!empty($rows[0])) {
-        $rows[0][0] = preg_replace('/[\x00-\x1F\x80-\xFF]/', '', $rows[0][0]); // Clean first cell of header
-    }
-    
-    return $rows;
 }
 
 // Handle file upload
@@ -216,7 +244,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['upload_file']) && iss
         try {
             $rows = [];
             if ($file_type == "csv") {
-                $rows = parse_csv($file['tmp_name']);
+                $rows = array_map(function($line) {
+                    return str_getcsv($line, ',', '"', '\\');
+                }, file($file['tmp_name']));
+                if (!empty($rows[0])) {
+                    $rows[0][0] = preg_replace('/[\x00-\x1F\x80-\xFF]/', '', $rows[0][0]);
+                }
             } else {
                 if (class_exists('ZipArchive')) {
                     $reader = IOFactory::createReader('Xlsx');
@@ -232,18 +265,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['upload_file']) && iss
 
             if (!empty($rows)) {
                 $header = array_shift($rows);
-                
                 $header = array_map(function($h) {
                     return trim(strtolower(str_replace(' ', '_', $h)));
                 }, $header);
-                
                 $header = array_map(function($h) {
                     return $h === 'year' ? 'c_year' : ($h === 'course_name_en' ? 'name_en' : $h);
                 }, $header);
-            
-                $required_columns = ['course_name', 'name_en', 'course_code', 'teacher_name', 'day_of_week', 
-                                   'start_time', 'end_time', 'group_number', 'semester', 'c_year', 'year_code'];
-                
+
+                $required_columns = ['course_name', 'name_en', 'course_code', 'teacher_name', 'group_number', 
+                                    'semester', 'c_year', 'year_code', 'day_of_week', 'start_time', 'end_time'];
                 $missing_columns = array_diff($required_columns, $header);
                 if (!empty($missing_columns)) {
                     $_SESSION['error_message'] = "Missing required columns: " . implode(', ', $missing_columns);
@@ -251,19 +281,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['upload_file']) && iss
                     $success_count = 0;
                     $skip_count = 0;
                     $errors = [];
-            
+                    $current_course = null;
+                    $schedules = [];
+                    $last_course_data = null;
+
                     foreach ($rows as $row_index => $row) {
                         if (empty(array_filter($row))) {
                             continue;
                         }
-            
+
                         if (count($row) !== count($header)) {
                             $errors[] = "Row " . ($row_index + 2) . " has incorrect number of columns";
                             continue;
                         }
-            
+
                         $course_data = array_combine($header, $row);
-                        
+
                         // Validate teacher_name
                         $teacher_name = trim($course_data['teacher_name']);
                         $teacher_check = $conn->prepare("SELECT COUNT(*) as count FROM teachers WHERE name = ?");
@@ -271,24 +304,40 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['upload_file']) && iss
                         $teacher_check->execute();
                         $teacher_count = $teacher_check->get_result()->fetch_assoc()['count'];
                         $teacher_check->close();
-                        
+
                         if ($teacher_count == 0) {
                             $errors[] = "Row " . ($row_index + 2) . ": Teacher not found: $teacher_name";
                             continue;
                         }
-                        
-                        foreach ($course_data as $key => &$value) {
-                            $value = trim($value);
-                            if ($key === 'start_time' || $key === 'end_time') {
-                                if (!preg_match('/^\d{1,2}:\d{2}(:\d{2})?$/', $value)) {
-                                    $errors[] = "Invalid time format in row " . ($row_index + 2) . " for " . $key;
-                                    continue 2;
+
+                        // Check if this row belongs to the same course
+                        $course_key = "{$course_data['course_code']}-{$course_data['semester']}-{$course_data['c_year']}-{$course_data['year_code']}-{$course_data['group_number']}-{$course_data['teacher_name']}";
+                        if ($current_course !== $course_key) {
+                            if (!empty($schedules) && $last_course_data) {
+                                $result = insert_course($conn, $last_course_data, $schedules);
+                                if ($result === null) {
+                                    $success_count++;
+                                } else if (strpos($result, 'SKIP:') === 0) {
+                                    $skip_count++;
+                                } else {
+                                    $errors[] = "Row " . ($row_index + 1) . ": " . $result;
                                 }
+                                $schedules = [];
                             }
+                            $current_course = $course_key;
+                            $last_course_data = $course_data;
                         }
-                        unset($value);
-            
-                        $result = insert_course($conn, $course_data);
+
+                        $schedules[] = [
+                            'day_of_week' => $course_data['day_of_week'],
+                            'start_time' => $course_data['start_time'],
+                            'end_time' => $course_data['end_time']
+                        ];
+                    }
+
+                    // Insert the last course
+                    if (!empty($schedules) && $last_course_data) {
+                        $result = insert_course($conn, $last_course_data, $schedules);
                         if ($result === null) {
                             $success_count++;
                         } else if (strpos($result, 'SKIP:') === 0) {
@@ -297,7 +346,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['upload_file']) && iss
                             $errors[] = "Row " . ($row_index + 2) . ": " . $result;
                         }
                     }
-            
+
                     $_SESSION['success_message'] = "Successfully added $success_count courses. Skipped $skip_count duplicate courses.";
                     if (!empty($errors)) {
                         $_SESSION['error_message'] = "Errors occurred:\n" . implode("\n", $errors);
@@ -507,6 +556,41 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['upload_file']) && iss
             border-radius: 4px;
         }
 
+        .schedule-group {
+            border: 1px solid #d1d5db;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-radius: 5px;
+            position: relative;
+            background-color: #f9fafb;
+        }
+
+        .remove-schedule {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background-color: #ef4444;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 0.9em;
+        }
+
+        .remove-schedule:hover {
+            background-color: #dc2626;
+        }
+
+        .add-schedule {
+            background-color: #10b981;
+            margin-bottom: 20px;
+        }
+
+        .add-schedule:hover {
+            background-color: #059669;
+        }
+
         footer {
             text-align: center;
             padding: 10px;
@@ -541,7 +625,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['upload_file']) && iss
                 <div class="form-container">
                     <h2>Add Single Course</h2>
 
-                    <!-- Display Flash Messages -->
                     <?php
                     if (isset($_SESSION['success_message'])) {
                         echo '<div class="message success">' . htmlspecialchars($_SESSION['success_message']) . '</div>';
@@ -579,7 +662,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['upload_file']) && iss
                         </div>
 
                         <div class="form-group">
-                            <label for="c_year">Year (Full, e.g., 2560)</label>
+                            <label for="c_year">Year (Full, e.g., 2560, ค.ศ.)</label>
                             <input type="number" id="c_year" name="c_year" min="1901" max="2155" 
                                    value="<?php echo date('Y'); ?>" required>
                         </div>
@@ -587,29 +670,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['upload_file']) && iss
                         <div class="form-group">
                             <label for="year_code">Year Code (Last 2 digits, e.g., 60 for 2560)</label>
                             <input type="text" id="year_code" name="year_code" pattern="\d{2}" maxlength="2" required>
-                        </div>
-
-                        <div class="form-group">
-                            <label for="day_of_week">Day of the Week</label>
-                            <select id="day_of_week" name="day_of_week" required>
-                                <option value="Monday">Monday</option>
-                                <option value="Tuesday">Tuesday</option>
-                                <option value="Wednesday">Wednesday</option>
-                                <option value="Thursday">Thursday</option>
-                                <option value="Friday">Friday</option>
-                                <option value="Saturday">Saturday</option>
-                                <option value="Sunday">Sunday</option>
-                            </select>
-                        </div>
-
-                        <div class="form-group">
-                            <label for="start_time">Start Time</label>
-                            <input type="time" id="start_time" name="start_time" required>
-                        </div>
-
-                        <div class="form-group">
-                            <label for="end_time">End Time</label>
-                            <input type="time" id="end_time" name="end_time" required>
                         </div>
 
                         <div class="form-group">
@@ -629,6 +689,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['upload_file']) && iss
                             </select>
                         </div>
 
+                        <h2>Schedules</h2>
+                        <div id="schedules-container">
+                            <div class="schedule-group">
+                                <button type="button" class="remove-schedule" onclick="removeSchedule(this)">Remove</button>
+                                <div class="form-group">
+                                    <label>Day of the Week</label>
+                                    <select name="schedules[0][day_of_week]" required>
+                                        <option value="Monday">Monday</option>
+                                        <option value="Tuesday">Tuesday</option>
+                                        <option value="Wednesday">Wednesday</option>
+                                        <option value="Thursday">Thursday</option>
+                                        <option value="Friday">Friday</option>
+                                        <option value="Saturday">Saturday</option>
+                                        <option value="Sunday">Sunday</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label>Start Time</label>
+                                    <input type="time" name="schedules[0][start_time]" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>End Time</label>
+                                    <input type="time" name="schedules[0][end_time]" required>
+                                </div>
+                            </div>
+                        </div>
+                        <button type="button" class="add-schedule" onclick="addSchedule()">Add Another Schedule</button>
+
                         <button type="submit" name="add_single_course">Add Course</button>
                     </form>
 
@@ -643,7 +731,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['upload_file']) && iss
 
                     <div class="file-info">
                         <strong>Required columns:</strong>
-                        <p>course_name, course_name_en, course_code, teacher_name, day_of_week, start_time, end_time, group_number, semester, c_year, year_code</p>
+                        <p>course_name, course_name_en, course_code, teacher_name, group_number, semester, c_year, year_code, day_of_week, start_time, end_time</p>
+                        <p><strong>Note:</strong> For courses with multiple schedules, repeat the course details with different day_of_week, start_time, and end_time values in separate rows.</p>
                     </div>
 
                     <a href="/attend_system/admin/admin_dashboard.php">
@@ -657,6 +746,49 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['upload_file']) && iss
     <footer>
         <p>© <?php echo date("Y"); ?> University Admin Dashboard. All rights reserved.</p>
     </footer>
+
+    <script>
+        let scheduleIndex = 1;
+
+        function addSchedule() {
+            const container = document.getElementById('schedules-container');
+            const scheduleGroup = document.createElement('div');
+            scheduleGroup.className = 'schedule-group';
+            scheduleGroup.innerHTML = `
+                <button type="button" class="remove-schedule" onclick="removeSchedule(this)">Remove</button>
+                <div class="form-group">
+                    <label>Day of the Week</label>
+                    <select name="schedules[${scheduleIndex}][day_of_week]" required>
+                        <option value="Monday">Monday</option>
+                        <option value="Tuesday">Tuesday</option>
+                        <option value="Wednesday">Wednesday</option>
+                        <option value="Thursday">Thursday</option>
+                        <option value="Friday">Friday</option>
+                        <option value="Saturday">Saturday</option>
+                        <option value="Sunday">Sunday</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Start Time</label>
+                    <input type="time" name="schedules[${scheduleIndex}][start_time]" required>
+                </div>
+                <div class="form-group">
+                    <label>End Time</label>
+                    <input type="time" name="schedules[${scheduleIndex}][end_time]" required>
+                </div>
+            `;
+            container.appendChild(scheduleGroup);
+            scheduleIndex++;
+        }
+
+        function removeSchedule(button) {
+            if (document.querySelectorAll('.schedule-group').length > 1) {
+                button.parentElement.remove();
+            } else {
+                alert('At least one schedule is required.');
+            }
+        }
+    </script>
 </body>
 </html>
 

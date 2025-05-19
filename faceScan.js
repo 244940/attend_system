@@ -60,6 +60,18 @@ function startFaceScan(teacherId, scheduleId) {
         return;
     }
 
+    const course = window.courses.find(c => c.course_id == currentCourseId);
+    const selectedDate = document.getElementById('selectedDate').value;
+    const selectedDay = new Date(selectedDate).toLocaleString('en-US', { weekday: 'long' });
+
+    if (selectedDay !== course.day_of_week) {
+        if (!confirm(`วันนี้ (${getDayNameThai(selectedDay)}) ไม่ใช่วันเรียน (${getDayNameThai(course.day_of_week)}). ต้องการดำเนินการสแกนต่อหรือไม่?`)) {
+            document.getElementById('scanResult').innerText = "การสแกนถูกยกเลิก";
+            document.getElementById('scanResult').style.color = 'red';
+            return;
+        }
+    }
+
     currentScheduleId = scheduleId;
     console.log("Starting scan with:", { course_id: currentCourseId, teacher_id: teacherId, schedule_id: scheduleId });
     document.getElementById('scanResult').innerText = "กำลังเริ่มการสแกน...";
@@ -88,9 +100,9 @@ function startFaceScan(teacherId, scheduleId) {
         console.error("Fetch error in startFaceScan:", error);
         let message = "ไม่สามารถเริ่มการสแกนได้: " + error.message;
         if (error.message.includes('Failed to fetch')) {
-            message += " กรุณาตรวจสอบว่าเซิร์ฟเวอร์ทำงานอยู่ที่ http://localhost:5000";
+            message += " กรุณาตรวจสอบว่าเซิร์ฟเวอร์ทำงานอยู่ที่ http://localhost:5000 หรือคลิก 'ลองใหม่'";
         }
-        document.getElementById('scanResult').innerText = message;
+        document.getElementById('scanResult').innerHTML = `${message} <button onclick="startFaceScan(${teacherId}, ${scheduleId})" class="bg-blue-500 hover:bg-blue-600 text-white px-2 py-1 rounded">ลองใหม่</button>`;
         document.getElementById('scanResult').style.color = 'red';
     });
 }
@@ -108,6 +120,10 @@ function stopFaceScan() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         document.getElementById('scanResult').innerText = "การสแกนหยุดแล้ว";
         document.getElementById('scanResult').style.color = 'blue';
+        if (stream) {
+            stream.getTracks().forEach(track => track.stop());
+            stream = null;
+        }
     })
     .catch(error => {
         console.error("Fetch error in stopFaceScan:", error);
@@ -164,12 +180,25 @@ function processFrames() {
     })
     .catch(error => {
         console.error("Fetch error in processFrames:", error);
-        document.getElementById('scanResult').innerText = "ข้อผิดพลาดในการสแกน: " + error.message;
+        document.getElementById('scanResult').innerHTML = `ข้อผิดพลาดในการสแกน: ${error.message} <button onclick="startFaceScan(${window.teacherId}, ${currentScheduleId})" class="bg-blue-500 hover:bg-blue-600 text-white px-2 py-1 rounded">ลองใหม่</button>`;
         document.getElementById('scanResult').style.color = 'red';
         scanning = false;
         document.getElementById('startScanBtn').style.display = 'inline-block';
         document.getElementById('stopScanBtn').style.display = 'none';
     });
+}
+
+function getDayNameThai(day) {
+    const dayMapping = {
+        'Monday': 'วันจันทร์',
+        'Tuesday': 'วันอังคาร',
+        'Wednesday': 'วันพุธ',
+        'Thursday': 'วันพฤหัสบดี',
+        'Friday': 'วันศุกร์',
+        'Saturday': 'วันเสาร์',
+        'Sunday': 'วันอาทิตย์'
+    };
+    return dayMapping[day] || day;
 }
 
 window.scanning = scanning;
