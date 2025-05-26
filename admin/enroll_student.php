@@ -20,6 +20,18 @@ if (!isAdmin()) {
 $enrollmentMessage = '';
 $enrollmentCompleted = false;
 
+// Handle template download
+if (isset($_GET['download_template'])) {
+    header('Content-Type: text/csv');
+    header('Content-Disposition: attachment; filename="enrollment_template.csv"');
+    
+    $output = fopen('php://output', 'w');
+    // Write CSV header
+    fputcsv($output, ['student_code', 'name', 'course_code', 'course_name', 'group']);
+    fclose($output);
+    exit();
+}
+
 // Handle file upload
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['enrollment_file'])) {
     $file = $_FILES['enrollment_file'];
@@ -63,13 +75,15 @@ function processEnrollmentFile($file, $file_ext, $conn) {
         
         // Cache course information
         $validCourses = [];
-        $courseQuery = "SELECT course_id, course_name, group_number, day_of_week, start_time, end_time 
+        $courseQuery = "SELECT course_id, course_name, course_code, group_number, day_of_week, start_time, end_time 
                        FROM courses";
         $result = $conn->query($courseQuery);
         while ($row = $result->fetch_assoc()) {
             $group_key = $row['course_name'] . '_' . strval($row['group_number']);
             $validCourses[$group_key] = [
                 'course_id' => $row['course_id'],
+                'course_code' => $row['course_code'],
+                'group_number' => $row['group_number'],
                 'schedule' => [
                     'day_of_week' => $row['day_of_week'],
                     'start_time' => $row['start_time'],
@@ -83,14 +97,16 @@ function processEnrollmentFile($file, $file_ext, $conn) {
         for ($i = 1; $i < count($rows); $i++) {
             if (empty($rows[$i][1])) continue;
             
+            $student_code = trim($rows[$i][0]);
             $student_name = trim($rows[$i][1]);
+            $course_code = trim($rows[$i][2]);
             $course_name = trim($rows[$i][3]);
             $group_number = trim($rows[$i][4]);
             
-            error_log("Processing row $i: Student: $student_name, Course: $course_name, Group: $group_number");
+            error_log("Processing row $i: Student: $student_name ($student_code), Course: $course_name ($course_code), Group: $group_number");
             
             if (!is_numeric($group_number)) {
-                $errors[] = "Row $i: Invalid group number format for student $student_name";
+                $errors[] = "Row $i: Invalid group number format for student $student_name. Group must be numeric.";
                 $errorCount++;
                 continue;
             }
@@ -98,23 +114,38 @@ function processEnrollmentFile($file, $file_ext, $conn) {
             $course_group_key = $course_name . '_' . $group_number;
             
             if (!isset($validCourses[$course_group_key])) {
-                $errors[] = "Row $i: Course '$course_name' with group $group_number does not exist";
+                // Suggest valid courses
+                $suggested_courses = [];
+                foreach ($validCourses as $key => $course) {
+                    if (strpos($key, $course_name . '_') === 0) {
+                        $suggested_courses[] = "Course: {$course['course_name']}, Code: {$course['course_code']}, Group: {$course['group_number']}";
+                    }
+                }
+                $suggestion = !empty($suggested_courses) ? " Available options: " . implode("; ", $suggested_courses) : "No matching courses found.";
+                $errors[] = "Row $i: Course '$course_name' with group $group_number does not exist.$suggestion";
                 $errorCount++;
                 continue;
             }
             
-            $entry_key = $student_name . '_' . $course_group_key;
+            if ($validCourses[$course_group_key]['course_code'] !== $course_code) {
+                $errors[] = "Row $i: Course code '$course_code' does not match course '$course_name' group $group_number. Expected code: {$validCourses[$course_group_key]['course_code']}.";
+                $errorCount++;
+                continue;
+            }
+            
+            $entry_key = $student_code . '_' . $course_group_key;
             
             if (isset($processed[$entry_key])) {
-                $errors[] = "Row $i: Duplicate entry for $student_name in $course_name group $group_number";
+                $errors[] = "Row $i: Duplicate entry for $student_name ($student_code) in $course_name group $group_number";
+                $errorCount++;
                 continue;
             }
             
             $processed[$entry_key] = true;
             
-            $student_id = getStudentId($student_name, $conn);
+            $student_id = getStudentId($student_code, $student_name, $conn);
             if (!$student_id) {
-                $errors[] = "Row $i: Student not found - $student_name";
+                $errors[] = "Row $i: Student not found - $student_name ($student_code)";
                 $errorCount++;
                 continue;
             }
@@ -129,7 +160,7 @@ function processEnrollmentFile($file, $file_ext, $conn) {
                 continue;
             }
             
-            $result = enrollStudent($student_id, $course_info['course_id'], $group_number, $conn);
+            $result = enrollStudent($student_id, $course_info['course_id'], $course_info['group_number'], $conn);
             
             if (strpos($result, "successfully") !== false) {
                 $successCount++;
@@ -162,10 +193,10 @@ function processEnrollmentFile($file, $file_ext, $conn) {
     }
 }
 
-function getStudentId($student_name, $conn) {
-    $query = "SELECT student_id FROM students WHERE name = ?";
+function getStudentId($student_code, $student_name, $conn) {
+    $query = "SELECT student_id FROM students WHERE citizen_id = ? OR name = ?";
     $stmt = $conn->prepare($query);
-    $stmt->bind_param("s", $student_name);
+    $stmt->bind_param("ss", $student_code, $student_name);
     $stmt->execute();
     $result = $stmt->get_result();
     $row = $result->fetch_assoc();
@@ -174,10 +205,69 @@ function getStudentId($student_name, $conn) {
 }
 
 function enrollStudent($student_id, $course_id, $group_number, $conn) {
-    // Begin transaction
     $conn->begin_transaction();
-
     try {
+        // Check if enrollment_id is AUTO_INCREMENT
+        $column_check_query = "SHOW COLUMNS FROM enrollments WHERE Field = 'enrollment_id' AND Extra LIKE '%auto_increment%'";
+        $column_result = $conn->query($column_check_query);
+        if ($column_result->num_rows === 0) {
+            throw new Exception("Table 'enrollments' does not have AUTO_INCREMENT on 'enrollment_id'. Please update the database schema.");
+        }
+
+        // Check if group_number column exists
+        $column_check_query = "SHOW COLUMNS FROM enrollments LIKE 'group_number'";
+        $column_result = $conn->query($column_check_query);
+        if ($column_result->num_rows === 0) {
+            throw new Exception("Table 'enrollments' does not have 'group_number' column. Please update the database schema.");
+        }
+
+        // Verify course exists in courses table
+        $course_verify_query = "SELECT course_id FROM courses WHERE course_id = ? AND group_number = ?";
+        $course_verify_stmt = $conn->prepare($course_verify_query);
+        $course_verify_stmt->bind_param("ii", $course_id, $group_number);
+        $course_verify_stmt->execute();
+        $course_verify_result = $course_verify_stmt->get_result();
+        
+        if ($course_verify_result->num_rows === 0) {
+            $course_verify_stmt->close();
+            $conn->rollback();
+            return "Invalid course ID $course_id or group number $group_number.";
+        }
+        $course_verify_stmt->close();
+
+        // Get all schedules for the course
+        $schedule_query = "SELECT day_of_week, start_time, end_time 
+                          FROM schedules 
+                          WHERE course_id = ?";
+        $schedule_stmt = $conn->prepare($schedule_query);
+        $schedule_stmt->bind_param("i", $course_id);
+        $schedule_stmt->execute();
+        $schedule_result = $schedule_stmt->get_result();
+        
+        if ($schedule_result->num_rows === 0) {
+            $schedule_stmt->close();
+            $conn->rollback();
+            return "No schedule found for course ID $course_id.";
+        }
+
+        // Store all valid schedules
+        $course_schedules = [];
+        while ($row = $schedule_result->fetch_assoc()) {
+            if (empty($row['day_of_week']) || empty($row['start_time']) || empty($row['end_time'])) {
+                $schedule_stmt->close();
+                $conn->rollback();
+                return "Incomplete schedule information for course ID $course_id.";
+            }
+            // Check if start_time equals end_time
+            if ($row['start_time'] === $row['end_time']) {
+                $schedule_stmt->close();
+                $conn->rollback();
+                return "Invalid schedule for course ID $course_id: start_time equals end_time ({$row['start_time']}).";
+            }
+            $course_schedules[] = $row;
+        }
+        $schedule_stmt->close();
+
         // Check for existing enrollment
         $check_query = "SELECT * FROM enrollments WHERE student_id = ? AND course_id = ? AND group_number = ?";
         $check_stmt = $conn->prepare($check_query);
@@ -192,34 +282,39 @@ function enrollStudent($student_id, $course_id, $group_number, $conn) {
         }
         $check_stmt->close();
 
-        // Check for schedule conflicts using courses table
-        $conflict_check_query = "
-            SELECT COUNT(*) as conflict_count 
-            FROM schedules s1 
-            JOIN ( 
-                SELECT day_of_week, start_time, end_time 
-                FROM courses 
-                WHERE course_id = ? AND group_number = ?
-            ) s2 ON s2.day_of_week = s1.day_of_week 
-            AND (
-                (s2.start_time BETWEEN s1.start_time AND s1.end_time) OR 
-                (s2.end_time BETWEEN s1.start_time AND s1.end_time) OR 
-                (s1.start_time BETWEEN s2.start_time AND s2.end_time)
-            ) 
-            WHERE s1.student_id = ?";
-        
-        $conflict_stmt = $conn->prepare($conflict_check_query);
-        $conflict_stmt->bind_param("iii", $course_id, $group_number, $student_id);
-        $conflict_stmt->execute();
-        $conflict_result = $conflict_stmt->get_result();
-        $conflict_row = $conflict_result->fetch_assoc();
-        
-        if ($conflict_row['conflict_count'] > 0) {
+        // Check for schedule conflicts
+        foreach ($course_schedules as $schedule) {
+            $conflict_query = "
+                SELECT COUNT(*) as conflict_count 
+                FROM student_schedules ss
+                WHERE ss.student_id = ?
+                AND ss.day_of_week = ?
+                AND (
+                    (? BETWEEN ss.start_time AND ss.end_time) OR
+                    (? BETWEEN ss.start_time AND ss.end_time) OR
+                    (ss.start_time BETWEEN ? AND ?)
+                )";
+            
+            $conflict_stmt = $conn->prepare($conflict_query);
+            $conflict_stmt->bind_param("isssss", 
+                $student_id, 
+                $schedule['day_of_week'], 
+                $schedule['start_time'], 
+                $schedule['end_time'], 
+                $schedule['start_time'], 
+                $schedule['end_time']
+            );
+            $conflict_stmt->execute();
+            $conflict_result = $conflict_stmt->get_result();
+            $conflict_row = $conflict_result->fetch_assoc();
+            
+            if ($conflict_row['conflict_count'] > 0) {
+                $conflict_stmt->close();
+                $conn->rollback();
+                return "Schedule conflict detected for {$schedule['day_of_week']} {$schedule['start_time']}-{$schedule['end_time']}.";
+            }
             $conflict_stmt->close();
-            $conn->rollback();
-            return "Schedule conflict detected. Cannot enroll in this course.";
         }
-        $conflict_stmt->close();
 
         // Insert enrollment record
         $enroll_query = "INSERT INTO enrollments (student_id, course_id, group_number) VALUES (?, ?, ?)";
@@ -231,43 +326,25 @@ function enrollStudent($student_id, $course_id, $group_number, $conn) {
         }
         $enroll_stmt->close();
 
-        // Get course schedule from courses table
-        $course_time_query = "SELECT day_of_week, start_time, end_time 
-                             FROM courses 
-                             WHERE course_id = ? AND group_number = ?";
-        $course_time_stmt = $conn->prepare($course_time_query);
-        $course_time_stmt->bind_param("ii", $course_id, $group_number);
-        $course_time_stmt->execute();
-        $course_time_result = $course_time_stmt->get_result();
-        
-        if ($course_time_result->num_rows === 0) {
-            $course_time_stmt->close();
-            throw new Exception("Course schedule not found.");
+        // Insert all schedules into student_schedules
+        foreach ($course_schedules as $schedule) {
+            $student_schedule_query = "INSERT INTO student_schedules (student_id, course_id, day_of_week, start_time, end_time) 
+                                      VALUES (?, ?, ?, ?, ?)";
+            $student_schedule_stmt = $conn->prepare($student_schedule_query);
+            $student_schedule_stmt->bind_param("iisss", 
+                $student_id, 
+                $course_id, 
+                $schedule['day_of_week'], 
+                $schedule['start_time'], 
+                $schedule['end_time']
+            );
+            
+            if (!$student_schedule_stmt->execute()) {
+                throw new Exception("Error creating student schedule: " . $conn->error);
+            }
+            $student_schedule_stmt->close();
         }
-        
-        $course_time_row = $course_time_result->fetch_assoc();
-        $start_time = $course_time_row['start_time'];
-        $end_time = $course_time_row['end_time'];
-        $day_of_week = $course_time_row['day_of_week'];
-        $course_time_stmt->close();
-        
-        // Insert schedule
-        $schedule_query = "INSERT INTO schedules (student_id, day_of_week, start_time, end_time, course_id) 
-                          VALUES (?, ?, ?, ?, ?)";
-        $schedule_stmt = $conn->prepare($schedule_query);
-        $schedule_stmt->bind_param("isssi", 
-            $student_id,
-            $day_of_week,
-            $start_time,
-            $end_time,
-            $course_id);
-        
-        if (!$schedule_stmt->execute()) {
-            throw new Exception("Error creating schedule: " . $conn->error);
-        }
-        $schedule_stmt->close();
 
-        // Commit the transaction
         $conn->commit();
         return "Student enrolled successfully.";
     } catch (Exception $e) {
@@ -279,10 +356,10 @@ function enrollStudent($student_id, $course_id, $group_number, $conn) {
 }
 
 function getEnrolledStudents($conn) {
-    $query = "SELECT c.course_id, c.course_name, s.name AS student_name, e.group_number
-              FROM courses c
-              JOIN enrollments e ON c.course_id = e.course_id
-              JOIN students s ON e.student_id = s.student_id
+    $query = "SELECT c.course_id, c.course_name, s.name AS student_name, e.group_number 
+              FROM courses c 
+              JOIN enrollments e ON c.course_id = e.course_id 
+              JOIN students s ON e.student_id = s.student_id 
               ORDER BY c.course_name, e.group_number, s.name";
     
     $result = $conn->query($query);
@@ -304,7 +381,6 @@ function getEnrolledStudents($conn) {
 
     return $enrollments;
 }
-
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -313,179 +389,36 @@ function getEnrolledStudents($conn) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Enroll Student</title>
     <style>
-        /* Reset CSS */
-        body, html {
-            margin: 0;
-            padding: 0;
-            font-family: Arial, sans-serif;
-            height: 100%;
-            display: flex;
-            flex-direction: column;
-        }
-
-        /* Top Bar */
-        .top-bar {
-            width: 100%;
-            background-color: #2980b9;
-            color: white;
-            padding: 15px 20px;
-            text-align: left;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .top-bar h1 {
-            margin: 0;
-            font-size: 24px;
-        }
-
-        /* Admin Page Layout */
-        .admin-container {
-            display: flex;
-            flex: 1;
-            width: 100%;
-            background: white;
-        }
-
-        /* Sidebar Styling */
-        .sidebar {
-            width: 250px;
-            background-color: #2c3e50;
-            color: white;
-            padding: 20px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            height: 100vh;
-        }
-
-        .sidebar ul {
-            list-style-type: none;
-            padding: 0;
-            width: 100%;
-        }
-
-        .sidebar ul li {
-            margin: 15px 0;
-            text-align: center;
-        }
-
-        .sidebar ul li a {
-            color: white;
-            text-decoration: none;
-            display: block;
-            padding: 10px;
-            transition: background 0.3s;
-        }
-
-        .sidebar ul li a:hover {
-            background-color: #34495e;
-            border-radius: 5px;
-        }
-
-        /* Main Content Area */
-        .main-content {
-            flex: 1;
-            padding: 20px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            background-color: #ecf0f1;
-            height: 100vh;
-            overflow-y: auto;
-        }
-
-        .form-container {
-            background-color: white;
-            border-radius: 8px;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-            padding: 20px;
-            margin-bottom: 20px;
-            width: 100%;
-            max-width: 600px;
-        }
-
-        h2, h3 {
-            color: #2980b9;
-        }
-
-        label {
-            display: block;
-            margin-bottom: 5px;
-            font-weight: bold;
-        }
-
-        input[type="file"],
-        input[type="text"],
-        select {
-            width: calc(100% - 22px);
-            padding: 10px;
-            margin-bottom: 15px;
-            border-radius: 4px;
-            border: 1px solid #ccc;
-        }
-
-        button {
-            background-color: #3498db;
-            color: white;
-            padding: 10px 15px;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-        }
-
-        button:hover {
-            background-color: #2980b9;
-        }
-
-        .file-details {
-            font-size: 12px;
-            color: #666;
-        }
-
-        .enrollment-message {
-            padding: 10px;
-            margin-bottom: 20px;
-            border-radius: 4px;
-        }
-
-        .enrollment-message.success {
-            background-color: #dff0d8;
-            color: #3c763d;
-        }
-
-        .enrollment-message.error {
-            background-color: #f2dede;
-            color: #a94442;
-        }
-
-        .enrollment-list {
-            margin-top: 20px;
-            width: 100%;
-            max-width: 600px;
-        }
-
-        .course-item {
-            margin-bottom: 20px;
-        }
-
-        .course-name {
-            font-weight: bold;
-        }
-
-        .student-list {
-            list-style-type: none;
-            padding-left: 20px;
-        }
+        body, html { margin: 0; padding: 0; font-family: Arial, sans-serif; height: 100%; display: flex; flex-direction: column; }
+        .top-bar { width: 100%; background-color: #2980b9; color: white; padding: 15px 20px; text-align: left; box-shadow: 0 2px 4px rgba(0,0,0,0.2); display: flex; justify-content: space-between; align-items: center; }
+        .top-bar h1 { margin: 0; font-size: 24px; }
+        .admin-container { display: flex; flex: 1; width: 100%; background: white; }
+        .sidebar { width: 250px; background-color: #2c3e50; color: white; padding: 20px; display: flex; flex-direction: column; align-items: center; height: 100vh; }
+        .sidebar ul { list-style: none; padding: 0; width: 100%; }
+        .sidebar ul li { margin: 15px 0; text-align: center; }
+        .sidebar ul li a { color: white; text-decoration: none; display: block; padding: 10px; transition: background 0.3s; }
+        .sidebar ul li a:hover { background-color: #34495e; border-radius: 5px; }
+        .main-content { flex: 1; padding: 20px; display: flex; flex-direction: column; align-items: center; background-color: #ecf0f1; height: 100vh; overflow-y: auto; }
+        .form-container { background: white; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); padding: 20px; margin-bottom: 20px; width: 100%; max-width: 600px; }
+        h2, h3 { color: #2980b9; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; }
+        input[type="file"], input[type="text"], select { width: calc(100% - 22px); padding: 10px; margin-bottom: 15px; border-radius: 4px; border: 1px solid #ccc; }
+        button { background: #3498db; color: white; padding: 10px 15px; border: none; border-radius: 4px; cursor: pointer; margin-right: 10px; }
+        button:hover { background: #2980b9; }
+        .file-details { font-size: 12px; color: #666; }
+        .enrollment-message { padding: 10px; margin-bottom: 20px; border-radius: 5px; }
+        .enrollment-message.success { background: #dff0d8; color: #3c763d; }
+        .enrollment-message.error { background: #f2dede; color: #a94442; }
+        .enrollment-list { margin-top: 20px; width: 100%; max-width: 600px; }
+        .course-item { margin-bottom: 20px; }
+        .course-name { font-weight: bold; }
+        .student-list { list-style: none; padding-left: 20px; }
     </style>
 </head>
 <body>
     <div class="top-bar">
         <h1>Enroll Student</h1>
     </div>
-
     <div class="admin-container">
         <aside class="sidebar">
             <ul>
@@ -497,28 +430,26 @@ function getEnrolledStudents($conn) {
                 <li><a href="logout.php">Logout</a></li>
             </ul>
         </aside>
-
         <div class="main-content">
-            <section class="dashboard-section" id="enroll-student">
+            <section class="dashboard-section">
                 <h2>Enroll Student in a Course</h2>
                 <?php if ($enrollmentMessage): ?>
                     <p class="enrollment-message <?php echo strpos($enrollmentMessage, 'successfully') !== false ? 'success' : 'error'; ?>">
                         <?php echo nl2br(htmlspecialchars($enrollmentMessage)); ?>
                     </p>
                 <?php endif; ?>
-
                 <div class="form-container">
                     <h3>Upload Enrollment File</h3>
-                    <form method="POST" action="enroll_student.php" enctype="multipart/form-data" class="upload-form">
+                    <form method="POST" action="" enctype="multipart/form-data">
                         <input type="file" name="enrollment_file" accept=".csv,.xlsx" required>
                         <button type="submit" name="upload_file">Upload and Enroll</button>
-                        <label class="file-details">The file should contain columns: student_code, name, course_code, course_name, group</label>
+                        <a href="?download_template=1"><button type="button">Download CSV Template</button></a>
+                        <label class="file-details">File should contain: student_code, name, course_code, course_name, group</label>
                     </form>
                 </div>
-
                 <div class="form-container">
                     <h3>Enroll Individual Student</h3>
-                    <form method="POST" action="enroll_student.php" class="individual-enroll-form">
+                    <form method="POST" action="">
                         <label for="student_id">Select Student:</label>
                         <select name="student_id" id="student_id" required>
                             <option value="">Select a Student</option>
@@ -534,31 +465,22 @@ function getEnrolledStudents($conn) {
                             }
                             ?>
                         </select>
-
                         <label for="course_id">Select Course:</label>
                         <select name="course_id" id="course_id" required>
                             <option value="">Select a Course</option>
                             <?php
-                            $courses_query = "SELECT course_id, course_name, group_number 
-                                            FROM courses 
-                                            ORDER BY course_name, group_number";
+                            $courses_query = "SELECT course_id, course_name, group_number FROM courses ORDER BY course_name, group_number";
                             $result = $conn->query($courses_query);
                             while ($course = $result->fetch_assoc()) {
-                                echo "<option value='{$course['course_id']}'>" . 
-                                     htmlspecialchars($course['course_name']) . 
-                                     " (Group {$course['group_number']})" . 
-                                     "</option>";
+                                echo "<option value='{$course['course_id']}'>" . htmlspecialchars($course['course_name']) . " (Group {$course['group_number']})</option>";
                             }
                             ?>
                         </select>
-
                         <label for="group_number">Enter Group Number:</label>
                         <input type="text" name="group_number" id="group_number" required placeholder="Enter group number" pattern="\d+" title="Group number must be numeric">
-
                         <button type="submit" name="enroll_student">Enroll Student</button>
                     </form>
                 </div>
-
                 <?php if ($enrollmentCompleted): ?>
                     <div class="enrollment-list">
                         <h3>Current Enrollments</h3>

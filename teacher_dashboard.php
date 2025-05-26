@@ -349,6 +349,7 @@ $conn->close();
                             <option value="Present">มาเรียน</option>
                             <option value="Late">สาย</option>
                             <option value="Absent">ขาดเรียน</option>
+                            <option value="Absent">ลา</option>
                         </select>
                     </div>
                     <div class="mb-2">
