@@ -7,6 +7,7 @@ require 'database_connection.php';
 require 'vendor/autoload.php';
 
 use PhpOffice\PhpSpreadsheet\IOFactory;
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
 
 // Authentication check (admin only)
 if (!isset($_SESSION['admin_id']) || $_SESSION['user_role'] !== 'admin') {
@@ -40,7 +41,7 @@ function validate_year_code($year_code) {
 
 function insert_course($conn, $course_data, $schedules) {
     $course_name = isset($course_data['course_name']) ? trim($course_data['course_name']) : '';
-    $name_en = isset($course_data['course_name_en']) ? trim($course_data['course_name_en']) : '';
+    $name_en = isset($course_data['name_en']) ? trim($course_data['name_en']) : '';
     $course_code = isset($course_data['course_code']) ? trim($course_data['course_code']) : '';
     $teacher_name = isset($course_data['teacher_name']) ? trim($course_data['teacher_name']) : '';
     $group_number = isset($course_data['group_number']) ? trim($course_data['group_number']) : '';
@@ -80,6 +81,11 @@ function insert_course($conn, $course_data, $schedules) {
         if (!in_array($day_of_week, $valid_days)) {
             return "Invalid day of the week at index $index for course: $course_code. Allowed values: " . implode(', ', $valid_days);
         }
+
+        // Check if start_time equals end_time
+        if ($start_time === $end_time) {
+            return "Invalid schedule for course $course_code: start_time equals end_time ($start_time) on $day_of_week.";
+        }
     }
 
     // Look up teacher_id
@@ -118,8 +124,8 @@ function insert_course($conn, $course_data, $schedules) {
     // Check for time conflicts
     foreach ($schedules as $index => $schedule) {
         $day_of_week = $schedule['day_of_week'];
-        $start_time = $schedule['start_time'];
-        $end_time = $schedule['end_time'];
+        $start_time = format_time($schedule['start_time']);
+        $end_time = format_time($schedule['end_time']);
 
         $conflict_stmt = $conn->prepare(
             "SELECT c.course_code, c.group_number 
@@ -189,6 +195,36 @@ function insert_course($conn, $course_data, $schedules) {
     return null;
 }
 
+// Handle download template
+if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['download_template'])) {
+    $format = $_GET['download_template'];
+    $columns = ['course_name', 'name_en', 'course_code', 'teacher_name', 'group_number', 'semester', 'c_year', 'year_code', 'day_of_week', 'start_time', 'end_time'];
+    
+    if ($format === 'csv') {
+        header('Content-Type: text/csv');
+        header('Content-Disposition: attachment; filename="course_template.csv"');
+        
+        $output = fopen('php://output', 'w');
+        fputcsv($output, $columns);
+        
+        fclose($output);
+        exit();
+    } elseif ($format === 'xlsx') {
+        $spreadsheet = new Spreadsheet();
+        $sheet = $spreadsheet->getActiveSheet();
+        
+        // Set headers
+        foreach ($columns as $index => $column) {
+            $sheet->setCellValue(chr(65 + $index) . '1', $column);
+        }
+        
+        header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        header('Content-Disposition: attachment; filename="course_template.xlsx"');
+        $writer = IOFactory::createWriter($spreadsheet, 'Xlsx');
+        $writer->save('php://output');
+        exit();
+    }
+}
 // Handle single course addition
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_single_course'])) {
     $schedules = [];
@@ -526,6 +562,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['upload_file']) && iss
             font-size: 0.9em;
         }
 
+        .download-template {
+            background-color: #10b981;
+            margin: 10px;
+        }
+
+        .download-template:hover {
+            background-color: #059669;
+        }
+
         .back-button {
             background-color: #6b7280;
             margin-top: 20px;
@@ -726,13 +771,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['upload_file']) && iss
                             <label for="course_file">Select CSV or XLSX file</label>
                             <input type="file" name="course_file" id="course_file" accept=".csv, .xlsx" required>
                             <button type="submit" name="upload_file">Upload File</button>
+                            <a href="/attend_system/admin/add_course.php?download_template=csv">
+                                <button type="button" class="download-template">Download CSV Template</button>
+                            </a>
+                            <a href="/attend_system/admin/add_course.php?download_template=xlsx">
+                                <button type="button" class="download-template">Download XLSX Template</button>
+                            </a>
                         </div>
                     </form>
 
                     <div class="file-info">
                         <strong>Required columns:</strong>
-                        <p>course_name, course_name_en, course_code, teacher_name, group_number, semester, c_year, year_code, day_of_week, start_time, end_time</p>
+                        <p>course_name, name_en, course_code, teacher_name, group_number, semester, c_year, year_code, day_of_week, start_time, end_time</p>
                         <p><strong>Note:</strong> For courses with multiple schedules, repeat the course details with different day_of_week, start_time, and end_time values in separate rows.</p>
+                        <p><strong>Teachers:</strong> Ensure teacher names match those in the system (e.g., <?php
+                            $teacher_query = $conn->query("SELECT name FROM teachers ORDER BY name LIMIT 3");
+                            $teachers = [];
+                            while ($teacher = $teacher_query->fetch_assoc()) {
+                                $teachers[] = htmlspecialchars($teacher['name']);
+                            }
+                            echo implode(', ', $teachers);
+                        ?>).</p>
                     </div>
 
                     <a href="/attend_system/admin/admin_dashboard.php">
@@ -744,7 +803,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['upload_file']) && iss
     </div>
 
     <footer>
-        <p>© <?php echo date("Y"); ?> University Admin Dashboard. All rights reserved.</p>
+        <p>&copy; <?php echo date("Y"); ?> University Admin System. All rights reserved.</p>
     </footer>
 
     <script>
