@@ -144,14 +144,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_user'])) {
             $delete_enrollments->close();
 
             $remove_stmt = $conn->prepare("DELETE FROM students WHERE student_id = ?");
-        } elseif ($old_role === 'teacher') {
+        } else if ($old_role === 'teacher') {
             $delete_courses = $conn->prepare("DELETE FROM courses WHERE teacher_id = ?");
             $delete_courses->bind_param("s", $old_role_specific_id);
             $delete_courses->execute();
             $delete_courses->close();
 
             $remove_stmt = $conn->prepare("DELETE FROM teachers WHERE teacher_id = ?");
-        } elseif ($old_role === 'admin') {
+        } else if ($old_role === 'admin') {
             $remove_stmt = $conn->prepare("DELETE FROM admins WHERE admin_id = ?");
         }
 
@@ -167,11 +167,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_user'])) {
             $stmt->bind_param("ssssssss", $new_role_specific_id, $name, $name_en, $email, $citizen_id, $gender, $birth_date, $phone_number);
         } elseif ($user_role === 'teacher') {
             $stmt = $conn->prepare("INSERT INTO teachers (teacher_id, name, name_en, email, citizen_id, gender, birth_date, phone_number, hashed_password, password_changed) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, 0)");
-            $stmt->bind_param("ssssssss", $new_role_specific_id, $name, $name_en, $email, $citizen_id, $gender, $birth_date, $phone_number);
+          $stmt->bind_param("ssssssss", $new_role_specific_id, $name, $name_en, $email, $citizen_id, $gender, $birth_date, $phone_number);
         } elseif ($user_role === 'admin') {
             $stmt = $conn->prepare("INSERT INTO admins (admin_id, admin_name, name_en, email, citizen_id, gender, birth_date, phone_number, hashed_password, password_changed) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, 0)");
             $stmt->bind_param("ssssssss", $new_role_specific_id, $name, $name_en, $email, $citizen_id, $gender, $birth_date, $phone_number);
         } else {
+            error_log("Update user error: Invalid new user role: $user_role");
             throw new Exception("Invalid new user role: $user_role");
         }
 
@@ -197,7 +198,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_user'])) {
     }
 }
 
-// Fetch and display users with search and sort functionality
+// Fetch and display users with search, role filter, and sort functionality
 function getUsers($conn) {
     $base_query = "
         SELECT admin_id AS id, admin_name AS name, name_en, email, citizen_id, gender, birth_date, phone_number, 'admin' AS user_role FROM admins
@@ -207,57 +208,55 @@ function getUsers($conn) {
         SELECT student_id AS id, name, name_en, email, citizen_id, gender, birth_date, phone_number, 'student' AS user_role FROM students
     ";
 
-    // Handle search
-    if (isset($_GET['search']) && !empty($_GET['search'])) {
-        $search = $_GET['search'];
-        $sort_column = isset($_GET['sort']) ? $_GET['sort'] : 'name';
-        $sort_order = isset($_GET['order']) && $_GET['order'] === 'desc' ? 'DESC' : 'ASC';
-        $valid_columns = ['name', 'id', 'user_role'];
-        if (!in_array($sort_column, $valid_columns)) {
-            $sort_column = 'name';
-        }
-        $query = "
-            SELECT * FROM (
-                $base_query
-            ) AS combined_users
-            WHERE name LIKE ?
-            ORDER BY $sort_column $sort_order
-        ";
-        $stmt = $conn->prepare($query);
-        $search_param = "%$search%";
-        $stmt->bind_param("s", $search_param);
-        $stmt->execute();
-        $result = $stmt->get_result();
-        $users = [];
-        while ($row = $result->fetch_assoc()) {
-            $users[] = $row;
-        }
-        $stmt->close();
-        return $users;
-    }
-
-    // Handle sorting
-    $sort_column = isset($_GET['sort']) ? $_GET['sort'] : 'name';
+    // Handle role filter, search, and sorting
+    $role_filter = isset($_GET['role_filter']) && in_array($_GET['role_filter'], ['admin', 'teacher', 'student']) ? $_GET['role_filter'] : '';
+    $search = isset($_GET['search']) && !empty(trim($_GET['search'])) ? trim($_GET['search']) : '';
+    $sort_column = isset($_GET['sort']) && in_array($_GET['sort'], ['name', 'id', 'user_role']) ? $_GET['sort'] : 'name';
     $sort_order = isset($_GET['order']) && $_GET['order'] === 'desc' ? 'DESC' : 'ASC';
 
-    $valid_columns = ['name', 'id', 'user_role'];
-    if (!in_array($sort_column, $valid_columns)) {
-        $sort_column = 'name';
+    // Build query
+    $query = "SELECT * FROM ($base_query) AS combined_users WHERE 1=1";
+    $params = [];
+    $types = '';
+
+    if (!empty($search)) {
+        $query .= " AND name LIKE ?";
+        $params[] = "%$search%";
+        $types .= 's';
     }
 
-    $query = $base_query . " ORDER BY $sort_column $sort_order";
+    if (!empty($role_filter)) {
+        $query .= " AND user_role = ?";
+        $params[] = $role_filter;
+        $types .= 's';
+    }
 
-    $result = $conn->query($query);
-    if ($result === false) {
-        error_log("Query error: " . $conn->error);
+    $query .= " ORDER BY $sort_column $sort_order";
+
+    $stmt = $conn->prepare($query);
+    if (!$stmt) {
+        error_log("Query prepare failed: " . $conn->error);
         return [];
     }
 
+    if (!empty($params)) {
+        $stmt->bind_param($types, ...$params);
+    }
+
+    if (!$stmt->execute()) {
+        error_log("Query execute failed: " . $stmt->error);
+        $stmt->close();
+        return [];
+    }
+
+    $result = $stmt->get_result();
     $users = [];
     while ($row = $result->fetch_assoc()) {
         $users[] = $row;
     }
     $result->free();
+    $stmt->close();
+
     return $users;
 }
 ?>
@@ -367,8 +366,11 @@ function getUsers($conn) {
             margin-bottom: 20px;
             display: flex;
             justify-content: flex-end;
+            align-items: center;
+            gap: 10px;
         }
 
+        .search-bar select,
         .search-bar input[type="text"] {
             padding: 8px;
             width: 200px;
@@ -382,7 +384,6 @@ function getUsers($conn) {
             color: white;
             border: none;
             border-radius: 4px;
-            margin-left: 10px;
             cursor: pointer;
         }
 
@@ -554,9 +555,15 @@ function getUsers($conn) {
                 }
                 ?>
 
-                <!-- Search Bar -->
+                <!-- Search Bar with Role Filter -->
                 <div class="search-bar">
                     <form method="GET" action="">
+                        <select name="role_filter" onchange="this.form.submit()">
+                            <option value="" <?php echo (!isset($_GET['role_filter']) || $_GET['role_filter'] === '') ? 'selected' : ''; ?>>All Roles</option>
+                            <option value="admin" <?php echo (isset($_GET['role_filter']) && $_GET['role_filter'] === 'admin') ? 'selected' : ''; ?>>Admin</option>
+                            <option value="teacher" <?php echo (isset($_GET['role_filter']) && $_GET['role_filter'] === 'teacher') ? 'selected' : ''; ?>>Teacher</option>
+                            <option value="student" <?php echo (isset($_GET['role_filter']) && $_GET['role_filter'] === 'student') ? 'selected' : ''; ?>>Student</option>
+                        </select>
                         <input type="text" name="search" placeholder="Search by name..." value="<?php echo isset($_GET['search']) ? htmlspecialchars($_GET['search']) : ''; ?>">
                         <input type="submit" value="Search">
                     </form>
@@ -569,13 +576,13 @@ function getUsers($conn) {
                         <thead>
                             <tr>
                                 <th style="border: 1px solid #ddd; padding: 8px;">
-                                    <a href="?sort=name&order=<?php echo (isset($_GET['sort']) && $_GET['sort'] === 'name' && isset($_GET['order']) && $_GET['order'] === 'asc') ? 'desc' : 'asc'; ?>&search=<?php echo isset($_GET['search']) ? htmlspecialchars($_GET['search']) : ''; ?>">Name</a>
+                                    <a href="?sort=name&order=<?php echo (isset($_GET['sort']) && $_GET['sort'] === 'name' && isset($_GET['order']) && $_GET['order'] === 'asc') ? 'desc' : 'asc'; ?>&search=<?php echo isset($_GET['search']) ? htmlspecialchars($_GET['search']) : ''; ?>&role_filter=<?php echo isset($_GET['role_filter']) ? htmlspecialchars($_GET['role_filter']) : ''; ?>">Name</a>
                                 </th>
                                 <th style="border: 1px solid #ddd; padding: 8px;">
-                                    <a href="?sort=id&order=<?php echo (isset($_GET['sort']) && $_GET['sort'] === 'id' && isset($_GET['order']) && $_GET['order'] === 'asc') ? 'desc' : 'asc'; ?>&search=<?php echo isset($_GET['search']) ? htmlspecialchars($_GET['search']) : ''; ?>">ID</a>
+                                    <a href="?sort=id&order=<?php echo (isset($_GET['sort']) && $_GET['sort'] === 'id' && isset($_GET['order']) && $_GET['order'] === 'asc') ? 'desc' : 'asc'; ?>&search=<?php echo isset($_GET['search']) ? htmlspecialchars($_GET['search']) : ''; ?>&role_filter=<?php echo isset($_GET['role_filter']) ? htmlspecialchars($_GET['role_filter']) : ''; ?>">ID</a>
                                 </th>
                                 <th style="border: 1px solid #ddd; padding: 8px;">
-                                    <a href="?sort=user_role&order=<?php echo (isset($_GET['sort']) && $_GET['sort'] === 'user_role' && isset($_GET['order']) && $_GET['order'] === 'asc') ? 'desc' : 'asc'; ?>&search=<?php echo isset($_GET['search']) ? htmlspecialchars($_GET['search']) : ''; ?>">Role</a>
+                                    <a href="?sort=user_role&order=<?php echo (isset($_GET['sort']) && $_GET['sort'] === 'user_role' && isset($_GET['order']) && $_GET['order'] === 'asc') ? 'desc' : 'asc'; ?>&search=<?php echo isset($_GET['search']) ? htmlspecialchars($_GET['search']) : ''; ?>&role_filter=<?php echo isset($_GET['role_filter']) ? htmlspecialchars($_GET['role_filter']) : ''; ?>">Role</a>
                                 </th>
                             </tr>
                         </thead>
@@ -612,17 +619,17 @@ function getUsers($conn) {
                     <input type="hidden" name="user_role" id="detailRoleHidden">
                     <label for="detailName">Name (TH):</label>
                     <input type="text" name="name" id="detailName" required>
-                    <label for="detailNameEn">Name (EN):</label>
-                    <input type="text" name="name_en" id="detailNameEn" required>
+                    <label for="detailNameEn">Name En):</label>
+                    <input type="text" name="detailNameEn" id="name_en" required>
                     <label for="detailEmail">Email:</label>
                     <input type="email" name="email" id="detailEmail" required>
                     <label for="detailCitizenId">Citizen ID:</label>
                     <input type="text" name="citizen_id" id="detailCitizenId" pattern="\d{13}" required>
                     <label for="detailGender">Gender:</label>
                     <select name="gender" id="detailGender" required>
-                        <option value="male">Male</option>
-                        <option value="female">Female</option>
-                        <option value="other">Other</option>
+                    <option value="male">Male</option>
+                    <option value="female">Female</option>
+                    <option value="other">Other</option>
                     </select>
                     <label for="detailBirthDate">Birth Date:</label>
                     <input type="date" name="birth_date" id="detailBirthDate" required>
@@ -634,7 +641,7 @@ function getUsers($conn) {
                         <option value="teacher">Teacher</option>
                         <option value="admin">Admin</option>
                     </select>
-                    <button type="submit" name="update_user" class="save-btn">Save Changes</button>
+                    <button type="submit" name="update_user" class="save-btn">Update User</button>
                     <button type="submit" name="delete_user" class="delete-btn" onclick="return confirm('Are you sure you want to delete this user?');">Delete User</button>
                 </form>
             </div>
@@ -653,8 +660,8 @@ function getUsers($conn) {
                 }
 
                 function showDetails(id, name, nameEn, email, citizenId, gender, birthDate, phoneNumber, role) {
-                    document.getElementById('detailOldId').value = id; // Store the original ID
-                    document.getElementById('detailId').value = id; // Editable ID field
+                    document.getElementById('detailOldId').value = id; // Store the original role-specific ID
+                    document.getElementById('detailId').value = id; // Editable role-specific ID field
                     document.getElementById('detailName').value = name;
                     document.getElementById('detailNameEn').value = nameEn;
                     document.getElementById('detailEmail').value = email;
@@ -665,7 +672,7 @@ function getUsers($conn) {
                     document.getElementById('detailRole').value = role;
                     document.getElementById('detailRoleHidden').value = role;
 
-                    updateIdLabel(); // Update the ID label based on the role
+                    updateIdLabel(); // Update the label based on the ID role
 
                     const sidebar = document.getElementById('detailsSidebar');
                     sidebar.classList.add('open');
@@ -678,5 +685,4 @@ function getUsers($conn) {
             </script>
         </div>
     </div>
-</body>
 </html>
