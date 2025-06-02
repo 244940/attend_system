@@ -424,7 +424,8 @@ function getEnrolledStudents($conn) {
             <ul>
                 <li><a href="admin_dashboard.php">Dashboard</a></li>
                 <li><a href="manage_users.php">Manage Users</a></li>
-                <li><a href="add_users.php">Add Users</a></li>
+                <li><a href="add_users.php">Add User</a></li>
+                <li><a href="manage_course.php">Manage Courses</a></li>
                 <li><a href="add_course.php">Add Course</a></li>
                 <li><a href="enroll_student.php">Enroll Student</a></li>
                 <li><a href="logout.php">Logout</a></li>
