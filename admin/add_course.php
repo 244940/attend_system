@@ -490,7 +490,7 @@ if (basename(__FILE__) !== basename($_SERVER['PHP_SELF'])) {
                 <li><a href="/attend_system/admin/add_users.php">Add User</a></li>
                 <li><a href="/attend_system/admin/manage_course.php">Manage Courses</a></li>
                 <li><a href="/attend_system/admin/add_course.php">Add Course</a></li>
-                
+                <li><a href="/attend_system/admin/manage_enrollments.php">Manage Enrollments</a></li>
                 <li><a href="/attend_system/admin/enroll_student.php">Enroll Student</a></li>
                 <li><a href="/attend_system/logout.php">Logout</a></li>
             </ul>

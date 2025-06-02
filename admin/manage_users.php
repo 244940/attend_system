@@ -535,6 +535,7 @@ function getUsers($conn) {
                 <li><a href="add_users.php">Add User</a></li>
                 <li><a href="manage_course.php">Manage Courses</a></li>
                 <li><a href="add_course.php">Add Course</a></li>
+                <li><a href="manage_enrollments.php">Manage Enrollments</a></li>
                 <li><a href="enroll_student.php">Enroll Student</a></li>
                 <li><a href="logout.php">Logout</a></li>
             </ul>
@@ -661,10 +662,10 @@ function getUsers($conn) {
                 }
 
                 function showDetails(id, name, nameEn, email, citizenId, gender, birthDate, phoneNumber, role) {
-                    document.getElementById('detailOldId').value = id; // Store the original role-specific ID
-                    document.getElementById('detailId').value = id; // Editable role-specific ID field
+                    document.getElementById('detailOldId').value = id;
+                    document.getElementById('detailId').value = id;
                     document.getElementById('detailName').value = name;
-                    document.getElementById('detailNameEn').value = nameEn;
+                    document.getElementById('name_en').value = nameEn; // Fix: Changed 'detailNameEn' to 'name_en'
                     document.getElementById('detailEmail').value = email;
                     document.getElementById('detailCitizenId').value = citizenId;
                     document.getElementById('detailGender').value = gender;
@@ -673,8 +674,7 @@ function getUsers($conn) {
                     document.getElementById('detailRole').value = role;
                     document.getElementById('detailRoleHidden').value = role;
 
-                    updateIdLabel(); // Update the label based on the ID role
-
+                    updateIdLabel();
                     const sidebar = document.getElementById('detailsSidebar');
                     sidebar.classList.add('open');
                 }
