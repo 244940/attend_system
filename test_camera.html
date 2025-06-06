@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Test Camera</title>
+</head>
+<body>
+    <h2>Test Camera</h2>
+    <video id="video" width="640" height="480" autoplay></video>
+    <p id="error"></p>
+    <script>
+        const video = document.getElementById('video');
+        const error = document.getElementById('error');
+
+        navigator.mediaDevices.getUserMedia({ video: true })
+            .then(stream => {
+                video.srcObject = stream;
+                error.textContent = 'Camera is working!';
+            })
+            .catch(err => {
+                error.textContent = 'Error accessing camera: ' + err.name + ' - ' + err.message;
+                console.error(err);
+            });
+    </script>
+</body>
+</html>

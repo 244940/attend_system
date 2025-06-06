@@ -231,95 +231,82 @@ function insert_face_encoding($conn, $name, $name_en, $id, $citizen_id, $email, 
         $script_dir = __DIR__;
         $python_script = $script_dir . DIRECTORY_SEPARATOR . 'process_image.py';
         
-        error_log("Script directory: " . $script_dir);
-        error_log("Python script path: " . $python_script);
-        error_log("Image path: " . $image_path);
+        error_log("Script directory: $script_dir");
+        error_log("Python script path: $python_script");
+        error_log("Image path: $image_path");
 
         if (!file_exists($python_script)) {
-            throw new Exception("Python script not found at: " . $python_script);
+            throw new Exception("Python script not found at: $python_script");
         }
-
         if (!file_exists($image_path)) {
-            throw new Exception("Image file not found at: " . $image_path);
+            throw new Exception("Image file not found at: $image_path");
         }
 
-        if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {
-            $command = sprintf(
-                'python "%s" "%s"',
-                str_replace('\\', '\\\\', $python_script),
-                str_replace('\\', '\\\\', $image_path)
-            );
-        } else {
-            $command = sprintf(
-                'python3 %s %s',
-                escapeshellarg($python_script),
-                escapeshellarg($image_path)
-            );
+        // Check if image is readable
+        if (!is_readable($image_path)) {
+            throw new Exception("Image file is not readable: $image_path");
         }
 
-        error_log("Executing command: " . $command);
+        $command = (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN')
+            ? sprintf('python "%s" "%s"', str_replace('\\', '\\\\', $python_script), str_replace('\\', '\\\\', $image_path))
+            : sprintf('python3 %s %s', escapeshellarg($python_script), escapeshellarg($image_path));
+
+        error_log("Executing command: $command");
 
         $output = shell_exec($command . " 2>&1");
-        
+        error_log("Python script output: " . ($output ?? 'null'));
+
         if ($output === null) {
-            throw new Exception("Failed to execute Python script. Command: " . $command);
+            throw new Exception("Failed to execute Python script. Command: $command");
         }
 
-        error_log("Python script output: " . $output);
-        
         $result = json_decode(trim($output), true);
-        
         if (json_last_error() !== JSON_ERROR_NONE) {
-            throw new Exception("Invalid JSON output from Python script: " . $output);
+            throw new Exception("Invalid JSON output from Python script: $output (JSON error: " . json_last_error_msg() . ")");
         }
-        
         if ($result['status'] === 'error') {
             throw new Exception("Python script error: " . $result['message']);
         }
-        
+
         $encoding_binary = base64_decode($result['encoding']);
-        
+        if ($encoding_binary === false) {
+            throw new Exception("Failed to decode base64 encoding");
+        }
+
         $conn->autocommit(FALSE);
-        
+
         switch ($user_role) {
             case 'admin':
                 $stmt = $conn->prepare("INSERT INTO admins (admin_id, admin_name, name_en, email, citizen_id, gender, birth_date, phone_number, face_encoding, hashed_password, password_changed) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, 0)");
                 $stmt->bind_param("sssssssss", $id, $name, $name_en, $email, $citizen_id, $gender, $birth_date, $phone_number, $encoding_binary);
                 break;
-                
             case 'student':
                 $stmt = $conn->prepare("INSERT INTO students (student_id, name, name_en, email, citizen_id, gender, birth_date, phone_number, face_encoding, hashed_password, password_changed) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, 0)");
                 $stmt->bind_param("sssssssss", $id, $name, $name_en, $email, $citizen_id, $gender, $birth_date, $phone_number, $encoding_binary);
                 break;
-                
             case 'teacher':
                 $stmt = $conn->prepare("INSERT INTO teachers (teacher_id, name, name_en, email, citizen_id, gender, birth_date, phone_number, face_encoding, hashed_password, password_changed) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, 0)");
                 $stmt->bind_param("sssssssss", $id, $name, $name_en, $email, $citizen_id, $gender, $birth_date, $phone_number, $encoding_binary);
                 break;
-                
             default:
-                throw new Exception("Invalid user role: " . $user_role);
+                throw new Exception("Invalid user role: $user_role");
         }
-        
+
         if (!$stmt->execute()) {
             throw new Exception("Error inserting into role table: " . $stmt->error);
         }
-        
-        if (!$conn->commit()) {
-            throw new Exception("Failed to commit transaction");
-        }
-        
-        $conn->autocommit(TRUE);
+
+        $conn->commit();
         $stmt->close();
-        
+        $conn->autocommit(TRUE);
         return true;
-        
+
     } catch (Exception $e) {
         if ($conn) {
             $conn->rollback();
             $conn->autocommit(TRUE);
         }
-        error_log("Error in insert_face_encoding: " . $e->getMessage());
+        error_log("Error in insert_face_encoding for $name (ID: $id): " . $e->getMessage());
         $_SESSION['error_message'] = "Error adding user $name: " . $e->getMessage();
         return false;
     }

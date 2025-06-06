@@ -67,9 +67,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_user'])) {
 }
 
 // Handle user update from Sidebar
+// Handle user update with face encoding
+// Handle user update
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_user'])) {
-    $old_role_specific_id = $_POST['old_role_specific_id']; // The original role-specific ID
-    $new_role_specific_id = $_POST['role_specific_id']; // The new role-specific ID (may be changed)
+    $old_role_specific_id = $_POST['old_role_specific_id'];
+    $new_role_specific_id = $_POST['role_specific_id'];
     $name = $_POST['name'];
     $name_en = $_POST['name_en'];
     $email = $_POST['email'];
@@ -78,9 +80,55 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_user'])) {
     $birth_date = $_POST['birth_date'];
     $phone_number = $_POST['phone_number'];
     $user_role = $_POST['user_role'];
+    $upload_dir = 'Uploads/';
 
     try {
         $conn->autocommit(FALSE);
+
+        // Handle file upload if provided
+        $encoding_binary = null;
+        if (isset($_FILES['user_image']) && $_FILES['user_image']['error'] === UPLOAD_ERR_OK) {
+            $file_name = $_FILES['user_image']['name'];
+            $tmp_name = $_FILES['user_image']['tmp_name'];
+            $unique_filename = uniqid() . '_' . $file_name;
+            $image_path = $upload_dir . $unique_filename;
+
+            if (!file_exists($upload_dir)) {
+                mkdir($upload_dir, 0777, true);
+            }
+
+            if (move_uploaded_file($tmp_name, $image_path)) {
+                $script_dir = __DIR__;
+                $python_script = $script_dir . DIRECTORY_SEPARATOR . 'process_image.py';
+                if (!file_exists($python_script)) {
+                    throw new Exception("Python script not found at: $python_script");
+                }
+                if (!file_exists($image_path)) {
+                    throw new Exception("Image file not found at: $image_path");
+                }
+
+                $command = (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN')
+                    ? sprintf('python "%s" "%s"', str_replace('\\', '\\\\', $python_script), str_replace('\\', '\\\\', $image_path))
+                    : sprintf('python3 %s %s', escapeshellarg($python_script), escapeshellarg($image_path));
+
+                $output = shell_exec($command . " 2>&1");
+                if ($output === null) {
+                    throw new Exception("Failed to execute Python script. Command: $command");
+                }
+
+                $result = json_decode(trim($output), true);
+                if (json_last_error() !== JSON_ERROR_NONE) {
+                    throw new Exception("Invalid JSON output from Python script: $output");
+                }
+                if ($result['status'] === 'error') {
+                    throw new Exception("Python script error: " . $result['message']);
+                }
+
+                $encoding_binary = base64_decode($result['encoding']);
+            } else {
+                throw new Exception("Failed to move uploaded file: $file_name");
+            }
+        }
 
         // Fetch previous role
         $old_role_query = "
@@ -102,8 +150,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_user'])) {
             throw new Exception("User with ID $old_role_specific_id not found.");
         }
 
-        // Check if the new role-specific ID already exists (if it has changed and the role hasn't changed)
-        if ($old_role_specific_id !== $new_role_specific_id && $old_role === $user_role) {
+        // Check if new ID exists
+        if ($old_role_specific_id !== $new_role_specific_id) {
             $check_new_id_query = "";
             if ($user_role === 'admin') {
                 $check_new_id_query = "SELECT admin_id FROM admins WHERE admin_id = ?";
@@ -121,72 +169,122 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_user'])) {
                 throw new Exception("The new $user_role ID $new_role_specific_id already exists.");
             }
             $check_stmt->close();
+        }
 
-            // Update related tables if the ID has changed
-            if ($old_role === 'student') {
-                $update_enrollments = $conn->prepare("UPDATE enrollments SET student_id = ? WHERE student_id = ?");
-                $update_enrollments->bind_param("ss", $new_role_specific_id, $old_role_specific_id);
-                $update_enrollments->execute();
-                $update_enrollments->close();
-            } elseif ($old_role === 'teacher') {
-                $update_courses = $conn->prepare("UPDATE courses SET teacher_id = ? WHERE teacher_id = ?");
-                $update_courses->bind_param("ss", $new_role_specific_id, $old_role_specific_id);
-                $update_courses->execute();
-                $update_courses->close();
+        // Update or move user
+        if ($old_role === $user_role) {
+            // Same role, update existing record
+            if ($user_role === 'student') {
+                if ($encoding_binary !== null) {
+                    $stmt = $conn->prepare("UPDATE students SET student_id = ?, name = ?, name_en = ?, email = ?, citizen_id = ?, gender = ?, birth_date = ?, phone_number = ?, face_encoding = ? WHERE student_id = ?");
+                    $stmt->bind_param("ssssssssss", $new_role_specific_id, $name, $name_en, $email, $citizen_id, $gender, $birth_date, $phone_number, $encoding_binary, $old_role_specific_id);
+                } else {
+                    $stmt = $conn->prepare("UPDATE students SET student_id = ?, name = ?, name_en = ?, email = ?, citizen_id = ?, gender = ?, birth_date = ?, phone_number = ? WHERE student_id = ?");
+                    $stmt->bind_param("sssssssss", $new_role_specific_id, $name, $name_en, $email, $citizen_id, $gender, $birth_date, $phone_number, $old_role_specific_id);
+                }
+            } elseif ($user_role === 'teacher') {
+                if ($encoding_binary !== null) {
+                    $stmt = $conn->prepare("UPDATE teachers SET teacher_id = ?, name = ?, name_en = ?, email = ?, citizen_id = ?, gender = ?, birth_date = ?, phone_number = ?, face_encoding = ? WHERE teacher_id = ?");
+                    $stmt->bind_param("ssssssssss", $new_role_specific_id, $name, $name_en, $email, $citizen_id, $gender, $birth_date, $phone_number, $encoding_binary, $old_role_specific_id);
+                } else {
+                    $stmt = $conn->prepare("UPDATE teachers SET teacher_id = ?, name = ?, name_en = ?, email = ?, citizen_id = ?, gender = ?, birth_date = ?, phone_number = ? WHERE teacher_id = ?");
+                    $stmt->bind_param("sssssssss", $new_role_specific_id, $name, $name_en, $email, $citizen_id, $gender, $birth_date, $phone_number, $old_role_specific_id);
+                }
+            } elseif ($user_role === 'admin') {
+                if ($encoding_binary !== null) {
+                    $stmt = $conn->prepare("UPDATE admins SET admin_id = ?, admin_name = ?, name_en = ?, email = ?, citizen_id = ?, gender = ?, birth_date = ?, phone_number = ?, face_encoding = ? WHERE admin_id = ?");
+                    $stmt->bind_param("ssssssssss", $new_role_specific_id, $name, $name_en, $email, $citizen_id, $gender, $birth_date, $phone_number, $encoding_binary, $old_role_specific_id);
+                } else {
+                    $stmt = $conn->prepare("UPDATE admins SET admin_id = ?, admin_name = ?, name_en = ?, email = ?, citizen_id = ?, gender = ?, birth_date = ?, phone_number = ? WHERE admin_id = ?");
+                    $stmt->bind_param("sssssssss", $new_role_specific_id, $name, $name_en, $email, $citizen_id, $gender, $birth_date, $phone_number, $old_role_specific_id);
+                }
             }
-        }
 
-        // Remove from the previous role's table
-        if ($old_role === 'student') {
-            $delete_enrollments = $conn->prepare("DELETE FROM enrollments WHERE student_id = ?");
-            $delete_enrollments->bind_param("s", $old_role_specific_id);
-            $delete_enrollments->execute();
-            $delete_enrollments->close();
+            if ($stmt->execute()) {
+                $stmt->close();
+                // Update related tables if ID changed
+                if ($old_role_specific_id !== $new_role_specific_id) {
+                    if ($user_role === 'student') {
+                        $update_enrollments = $conn->prepare("UPDATE enrollments SET student_id = ? WHERE student_id = ?");
+                        $update_enrollments->bind_param("ss", $new_role_specific_id, $old_role_specific_id);
+                        $update_enrollments->execute();
+                        $update_enrollments->close();
 
-            $remove_stmt = $conn->prepare("DELETE FROM students WHERE student_id = ?");
-        } else if ($old_role === 'teacher') {
-            $delete_courses = $conn->prepare("DELETE FROM courses WHERE teacher_id = ?");
-            $delete_courses->bind_param("s", $old_role_specific_id);
-            $delete_courses->execute();
-            $delete_courses->close();
-
-            $remove_stmt = $conn->prepare("DELETE FROM teachers WHERE teacher_id = ?");
-        } else if ($old_role === 'admin') {
-            $remove_stmt = $conn->prepare("DELETE FROM admins WHERE admin_id = ?");
-        }
-
-        if (isset($remove_stmt)) {
-            $remove_stmt->bind_param("s", $old_role_specific_id);
-            $remove_stmt->execute();
-            $remove_stmt->close();
-        }
-
-        // Insert into new role's table with updated data (using the new role-specific ID)
-        if ($user_role === 'student') {
-            $stmt = $conn->prepare("INSERT INTO students (student_id, name, name_en, email, citizen_id, gender, birth_date, phone_number, hashed_password, password_changed) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, 0)");
-            $stmt->bind_param("ssssssss", $new_role_specific_id, $name, $name_en, $email, $citizen_id, $gender, $birth_date, $phone_number);
-        } elseif ($user_role === 'teacher') {
-            $stmt = $conn->prepare("INSERT INTO teachers (teacher_id, name, name_en, email, citizen_id, gender, birth_date, phone_number, hashed_password, password_changed) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, 0)");
-          $stmt->bind_param("ssssssss", $new_role_specific_id, $name, $name_en, $email, $citizen_id, $gender, $birth_date, $phone_number);
-        } elseif ($user_role === 'admin') {
-            $stmt = $conn->prepare("INSERT INTO admins (admin_id, admin_name, name_en, email, citizen_id, gender, birth_date, phone_number, hashed_password, password_changed) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, 0)");
-            $stmt->bind_param("ssssssss", $new_role_specific_id, $name, $name_en, $email, $citizen_id, $gender, $birth_date, $phone_number);
+                        $update_schedules = $conn->prepare("UPDATE student_schedules SET student_id = ? WHERE student_id = ?");
+                        $update_schedules->bind_param("ss", $new_role_specific_id, $old_role_specific_id);
+                        $update_schedules->execute();
+                        $update_schedules->close();
+                    } elseif ($user_role === 'teacher') {
+                        $update_courses = $conn->prepare("UPDATE courses SET teacher_id = ? WHERE teacher_id = ?");
+                        $update_courses->bind_param("ss", $new_role_specific_id, $old_role_specific_id);
+                        $update_courses->execute();
+                        $update_courses->close();
+                    }
+                }
+            } else {
+                $error = $stmt->error;
+                $stmt->close();
+                throw new Exception("Error updating user: $error");
+            }
         } else {
-            error_log("Update user error: Invalid new user role: $user_role");
-            throw new Exception("Invalid new user role: $user_role");
+            // Role changed, delete from old role and insert into new role
+            if ($old_role === 'student') {
+                $delete_enrollments = $conn->prepare("DELETE FROM enrollments WHERE student_id = ?");
+                $delete_enrollments->bind_param("s", $old_role_specific_id);
+                $delete_enrollments->execute();
+                $delete_enrollments->close();
+
+                $delete_schedules = $conn->prepare("DELETE FROM student_schedules WHERE student_id = ?");
+                $delete_schedules->bind_param("s", $old_role_specific_id);
+                $delete_schedules->execute();
+                $delete_schedules->close();
+
+                $remove_stmt = $conn->prepare("DELETE FROM students WHERE student_id = ?");
+            } elseif ($old_role === 'teacher') {
+                $delete_courses = $conn->prepare("DELETE FROM courses WHERE teacher_id = ?");
+                $delete_courses->bind_param("s", $old_role_specific_id);
+                $delete_courses->execute();
+                $delete_courses->close();
+
+                $remove_stmt = $conn->prepare("DELETE FROM teachers WHERE teacher_id = ?");
+            } elseif ($old_role === 'admin') {
+                $remove_stmt = $conn->prepare("DELETE FROM admins WHERE admin_id = ?");
+            }
+
+            if (isset($remove_stmt)) {
+                $remove_stmt->bind_param("s", $old_role_specific_id);
+                $remove_stmt->execute();
+                $remove_stmt->close();
+            }
+
+            // Insert into new role's table
+            if ($user_role === 'student') {
+                $stmt = $conn->prepare("INSERT INTO students (student_id, name, name_en, email, citizen_id, gender, birth_date, phone_number, face_encoding, hashed_password, password_changed) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, 0)");
+                $stmt->bind_param("sssssssss", $new_role_specific_id, $name, $name_en, $email, $citizen_id, $gender, $birth_date, $phone_number, $encoding_binary);
+            } elseif ($user_role === 'teacher') {
+                $stmt = $conn->prepare("INSERT INTO teachers (teacher_id, name, name_en, email, citizen_id, gender, birth_date, phone_number, face_encoding, hashed_password, password_changed) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, 0)");
+                $stmt->bind_param("sssssssss", $new_role_specific_id, $name, $name_en, $email, $citizen_id, $gender, $birth_date, $phone_number, $encoding_binary);
+            } elseif ($user_role === 'admin') {
+                $stmt = $conn->prepare("INSERT INTO admins (admin_id, admin_name, name_en, email, citizen_id, gender, birth_date, phone_number, face_encoding, hashed_password, password_changed) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, 0)");
+                $stmt->bind_param("sssssssss", $new_role_specific_id, $name, $name_en, $email, $citizen_id, $gender, $birth_date, $phone_number, $encoding_binary);
+            } else {
+                throw new Exception("Invalid new user role: $user_role");
+            }
+
+            if (!$stmt->execute()) {
+                $error = $stmt->error;
+                $stmt->close();
+                throw new Exception("Error inserting user: $error");
+            }
+            $stmt->close();
         }
 
-        if ($stmt->execute()) {
-            $stmt->close();
-            $conn->commit();
-            $_SESSION['success_message'] = "User updated successfully.";
-            header("Location: manage_users.php");
-            exit();
-        } else {
-            $error = $stmt->error;
-            $stmt->close();
-            throw new Exception("Error updating user: $error");
-        }
+        $conn->commit();
+        // Reload faces in Flask server
+        reloadFaces();
+        $_SESSION['success_message'] = "User updated successfully.";
+        header("Location: manage_users.php");
+        exit();
     } catch (Exception $e) {
         $conn->rollback();
         error_log("Update user error for role_specific_id=$old_role_specific_id: " . $e->getMessage());
@@ -198,6 +296,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_user'])) {
     }
 }
 
+// Function to reload faces in Flask server
+function reloadFaces() {
+    $curl = curl_init('http://localhost:5000/reload_faces');
+    curl_setopt($curl, CURLOPT_POST, true);
+    curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
+    $response = curl_exec($curl);
+    if ($response === false) {
+        error_log("Failed to reload faces: " . curl_error($curl));
+    } else {
+        error_log("Reload faces response: $response");
+    }
+    curl_close($curl);
+}
 // Fetch and display users with search, role filter, and sort functionality
 function getUsers($conn) {
     $base_query = "
@@ -610,28 +721,27 @@ function getUsers($conn) {
                 </div>
             </section>
 
-            <!-- Details Sidebar -->
             <div id="detailsSidebar" class="details-sidebar">
                 <span class="close-btn" onclick="closeDetails()">×</span>
                 <h2>User Details</h2>
-                <form method="POST" action="">
+                <form method="POST" action="" enctype="multipart/form-data">
                     <input type="hidden" name="old_role_specific_id" id="detailOldId">
                     <label id="roleSpecificIdLabel" for="detailId">ID:</label>
                     <input type="text" name="role_specific_id" id="detailId" required>
                     <input type="hidden" name="user_role" id="detailRoleHidden">
                     <label for="detailName">Name (TH):</label>
                     <input type="text" name="name" id="detailName" required>
-                    <label for="detailNameEn">Name En):</label>
-                    <input type="text" name="detailNameEn" id="name_en" required>
+                    <label for="detailNameEn">Name (EN):</label>
+                    <input type="text" name="name_en" id="name_en" required>
                     <label for="detailEmail">Email:</label>
                     <input type="email" name="email" id="detailEmail" required>
                     <label for="detailCitizenId">Citizen ID:</label>
                     <input type="text" name="citizen_id" id="detailCitizenId" pattern="\d{13}" required>
                     <label for="detailGender">Gender:</label>
                     <select name="gender" id="detailGender" required>
-                    <option value="male">Male</option>
-                    <option value="female">Female</option>
-                    <option value="other">Other</option>
+                        <option value="male">Male</option>
+                        <option value="female">Female</option>
+                        <option value="other">Other</option>
                     </select>
                     <label for="detailBirthDate">Birth Date:</label>
                     <input type="date" name="birth_date" id="detailBirthDate" required>
@@ -643,6 +753,8 @@ function getUsers($conn) {
                         <option value="teacher">Teacher</option>
                         <option value="admin">Admin</option>
                     </select>
+                    <label for="user_image">Upload Face Image (optional):</label>
+                    <input type="file" name="user_image" id="user_image" accept="image/*">
                     <button type="submit" name="update_user" class="save-btn">Update User</button>
                     <button type="submit" name="delete_user" class="delete-btn" onclick="return confirm('Are you sure you want to delete this user?');">Delete User</button>
                 </form>

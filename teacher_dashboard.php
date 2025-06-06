@@ -321,12 +321,12 @@ $conn->close();
                 <div><span id="scanningCourseInfo"></span></div>
                 <div>
                     <button id="startScanBtn" class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded">เริ่มสแกน</button>
-                    <button id="stopScanBtn" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded" onclick="stopFaceScan()" style="display: none;">หยุดสแกน</button>
+                    <button id="stopScanBtn" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded" style="display: none;">หยุดสแกน</button>
                 </div>
             </div>
             <div class="relative">
-                <video id="videoFeed" autoplay playsinline class="w-full max-w-2xl mx-auto"></video>
-                <canvas id="overlayCanvas" class="absolute top-0 left-0 w-full max-w-2xl mx-auto" style="display: none;"></canvas>
+                <video id="videoFeed" autoplay playsinline></video>
+                <canvas id="overlayCanvas" style="display: none;"></canvas>
             </div>
             <div id="scanResult" class="text-center mt-4 font-medium"></div>
         </div>
@@ -394,6 +394,7 @@ $conn->close();
             const initialStats = <?php echo json_encode($attendance_stats); ?>;
             console.log('Initial attendance stats:', initialStats);
             updateAttendanceChart(initialStats);
+            window.initializeVideo?.(); // Initialize video on page load
             startAutoRefresh();
         });
 
@@ -419,10 +420,6 @@ $conn->close();
             document.getElementById('faceScanSection').style.display = 'block';
             window.currentCourseId = courseId;
 
-            if (!window.video) {
-                window.initializeVideo?.();
-            }
-
             const course = courses.find(c => c.course_id == courseId);
             if (!course) {
                 console.error("Course not found:", courseId);
@@ -433,11 +430,24 @@ $conn->close();
             }
 
             let scheduleInfo = 'ไม่มีตาราง';
+            let scheduleId = null;
+            const selectedDate = document.getElementById('selectedDate').value;
+            const selectedDay = new Date(selectedDate).toLocaleString('en-US', { weekday: 'long' });
+
             if (course.schedules && course.schedules.length > 0) {
-                scheduleInfo = course.schedules.map(sched => 
-                    `${getDayNameThai(sched.day_of_week)} ${sched.start_time.slice(0, 5)} - ${sched.end_time.slice(0, 5)}`
-                ).join(' | ');
+                const matchingSchedule = course.schedules.find(sched => sched.day_of_week === selectedDay);
+                if (matchingSchedule) {
+                    scheduleId = matchingSchedule.schedule_id;
+                    scheduleInfo = course.schedules.map(sched =>
+                        `${getDayNameThai(sched.day_of_week)} ${sched.start_time.slice(0, 5)} - ${sched.end_time.slice(0, 5)}`
+                    ).join(' | ');
+                } else {
+                    scheduleInfo = course.schedules.map(sched =>
+                        `${getDayNameThai(sched.day_of_week)} ${sched.start_time.slice(0, 5)} - ${sched.end_time.slice(0, 5)}`
+                    ).join(' | ');
+                }
             }
+
             document.getElementById('scanningCourseInfo').innerHTML = `
                 วิชา: ${course.course_code} ${course.course_name} |
                 กลุ่ม ${course.group_number} |
@@ -445,17 +455,14 @@ $conn->close();
             `;
             updateCourseInfo(course);
 
-            window.currentScheduleId = course.schedules && course.schedules.length > 0 ? course.schedules[0].schedule_id : null;
+            window.currentScheduleId = scheduleId;
+            document.getElementById('startScanBtn').disabled = !scheduleId;
 
-            const selectedDate = document.getElementById('selectedDate').value;
-            const selectedDay = new Date(selectedDate).toLocaleString('en-US', { weekday: 'long' });
-            document.getElementById('startScanBtn').disabled = !window.currentScheduleId;
-
-            if (!window.currentScheduleId) {
-                document.getElementById('scanResult').innerText = "ไม่พบตารางเรียนสำหรับวิชานี้";
+            if (!scheduleId) {
+                document.getElementById('scanResult').innerText = `ไม่มีตารางเรียนสำหรับวันนี้ (${getDayNameThai(selectedDay)})`;
                 document.getElementById('scanResult').style.color = 'red';
             } else {
-                document.getElementById('scanResult').innerText = "";
+                document.getElementById('scanResult').innerText = '';
             }
 
             document.getElementById('attendanceSection').style.display = 'block';
@@ -471,7 +478,7 @@ $conn->close();
                     if (data.error) throw new Error(data.error);
 
                     if (data.message) {
-                        document.getElementById('attendanceTableBody').innerHTML = 
+                        document.getElementById('attendanceTableBody').innerHTML =
                             `<tr><td colspan="6" class="text-center text-gray-500">${data.message}</td></tr>`;
                         if (data.statistics) updateAttendanceChart(data.statistics);
                         return;
@@ -480,20 +487,22 @@ $conn->close();
                     if (data.students && Array.isArray(data.students)) {
                         updateAttendanceTable(data.students);
                     } else {
-                        document.getElementById('attendanceTableBody').innerHTML = 
+                        document.getElementById('attendanceTableBody').innerHTML =
                             '<tr><td colspan="6" class="text-center text-gray-500">ไม่มีข้อมูลการเข้าเรียนสำหรับวันที่เลือก</td></tr>';
                     }
 
                     if (data.warning) {
-                        document.getElementById('scanResult').innerText = data.warning;
-                        document.getElementById('scanResult').style.color = 'orange';
+                        if (!window.scanning) { // Prevent overwriting scan results
+                            document.getElementById('scanResult').innerText = data.warning;
+                            document.getElementById('scanResult').style.color = 'orange';
+                        }
                     }
 
                     if (data.statistics) updateAttendanceChart(data.statistics);
                 })
                 .catch(error => {
                     console.error("Error fetching attendance:", error);
-                    document.getElementById('attendanceTableBody').innerHTML = 
+                    document.getElementById('attendanceTableBody').innerHTML =
                         `<tr><td colspan="6" class="text-center text-red-500">เกิดข้อผิดพลาด: ${error.message}</td></tr>`;
                 });
         }
@@ -593,15 +602,15 @@ $conn->close();
         function updateCourseInfo(course) {
             let scheduleInfo = 'ไม่มีตาราง';
             if (course.schedules && course.schedules.length > 0) {
-                scheduleInfo = course.schedules.map(sched => 
+                scheduleInfo = course.schedules.map(sched =>
                     `${getDayNameThai(sched.day_of_week)} ${sched.start_time.slice(0, 5)} - ${sched.end_time.slice(0, 5)}`
                 ).join(' | ');
             }
             document.getElementById('courseInfo').innerHTML = `
                 <h3 class="text-lg font-bold">${course.course_code} ${course.course_name}</h3>
                 <p class="text-sm text-gray-600">
-                    กลุ่ม ${course.group_number} | 
-                    ${scheduleInfo} | 
+                    กลุ่ม ${course.group_number} |
+                    ${scheduleInfo} |
                     ภาคการศึกษาที่ <?php echo getSemesterThai($current_semester); ?>/${course.c_year}
                 </p>
             `;
@@ -680,17 +689,17 @@ $conn->close();
                     status: status
                 })
             })
-            .then(response => response.json())
-            .then(data => {
-                if (data.error) throw new Error(data.error);
-                alert(data.message || 'บันทึกการเข้าเรียนสำเร็จ');
-                hideAddAttendanceForm();
-                showAttendance(courseId);
-            })
-            .catch(error => {
-                console.error('Error adding attendance:', error);
-                alert('เกิดข้อผิดพลาด: ' + error.message);
-            });
+                .then(response => response.json())
+                .then(data => {
+                    if (data.error) throw new Error(data.error);
+                    alert(data.message || 'บันทึกการเข้าเรียนสำเร็จ');
+                    hideAddAttendanceForm();
+                    showAttendance(courseId);
+                })
+                .catch(error => {
+                    console.error('Error adding attendance:', error);
+                    alert('เกิดข้อผิดพลาด: ' + error.message);
+                });
         });
 
         function exportAttendance() {
@@ -747,7 +756,9 @@ $conn->close();
         function startAutoRefresh() {
             setInterval(() => {
                 const selectedCourseId = document.querySelector('.course-button.selected')?.dataset.courseId;
-                if (selectedCourseId) showAttendance(selectedCourseId);
+                if (selectedCourseId && !window.scanning) { // Avoid refresh during scanning
+                    showAttendance(selectedCourseId);
+                }
             }, 30000);
         }
 
@@ -758,7 +769,7 @@ $conn->close();
 
         window.addEventListener('beforeunload', () => {
             if (window.scanning) {
-                fetch('http://localhost:5000/stop_scan', {
+                fetch('http://127.0.0.1:5000/stop_scan', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' }
                 }).catch(error => console.error("Error stopping scan on unload:", error));
@@ -769,9 +780,17 @@ $conn->close();
         });
 
         document.getElementById('startScanBtn').onclick = function() {
-            const course = courses.find(c => c.course_id == window.currentCourseId);
+            const courseId = window.currentCourseId;
+            const course = courses.find(c => c.course_id == courseId);
             const selectedDate = document.getElementById('selectedDate').value;
             const selectedDay = new Date(selectedDate).toLocaleString('en-US', { weekday: 'long' });
+
+            if (!course) {
+                alert('กรุณาเลือกวิชา');
+                document.getElementById('scanResult').innerText = "กรุณาเลือกวิชา";
+                document.getElementById('scanResult').style.color = 'red';
+                return;
+            }
 
             if (!window.currentScheduleId) {
                 alert('ไม่พบตารางเรียนสำหรับวิชานี้');
@@ -783,17 +802,19 @@ $conn->close();
             const matchingSchedule = course.schedules.find(sched => sched.day_of_week === selectedDay);
             if (!matchingSchedule) {
                 const scheduleDays = course.schedules.map(sched => getDayNameThai(sched.day_of_week)).join(', ');
-                alert(`วันนี้ (${getDayNameThai(selectedDay)}) ไม่ใช่วันเรียน (${scheduleDays}) ของวิชานี้`);
-                document.getElementById('scanResult').innerText = `วันนี้ (${getDayNameThai(selectedDay)}) ไม่ใช่วันเรียน (${scheduleDays}) ของวิชานี้`;
+                document.getElementById('scanResult').innerText = `วันนี้ (${getDayNameThai(selectedDay)}) ไม่ใช่วันเรียน (${scheduleDays})`;
                 document.getElementById('scanResult').style.color = 'red';
-                return;
+                if (!confirm(`วันนี้ (${getDayNameThai(selectedDay)}) ไม่ใช่วันเรียน (${scheduleDays}). ต้องการสแกนต่อหรือไม่?`)) {
+                    return;
+                }
             }
 
             if (typeof window.startFaceScan === 'function') {
-                window.startFaceScan(teacherId, matchingSchedule.schedule_id);
+                window.startFaceScan(teacherId, window.currentScheduleId);
             } else {
                 console.error('startFaceScan function not found.');
-                alert('ไม่สามารถเริ่มการสแกนใบหน้าได้ กรุณาตรวจสอบการเชื่อมต่อหรือติดต่อผู้ดูแลระบบ');
+                document.getElementById('scanResult').innerText = 'ไม่สามารถเริ่มการสแกนใบหน้าได้ กรุณาตรวจสอบการเชื่อมต่อหรือติดต่อผู้ดูแลระบบ';
+                document.getElementById('scanResult').style.color = 'red';
             }
         };
     </script>

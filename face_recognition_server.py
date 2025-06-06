@@ -11,14 +11,49 @@ from PIL import Image
 import logging
 
 # Setup logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler('face_recognition_server.log'),
+        logging.StreamHandler()
+    ]
+)
 
 app = Flask(__name__)
-CORS(app, resources={r"/*": {"origins": "http://localhost"}})  # Allow XAMPP frontend
+CORS(app, resources={r"/*": {"origins": ["http://localhost", "http://localhost:80"]}})  # Support XAMPP ports
 
 # Initialize database manager and load known faces
 db_manager = DatabaseManager()
-known_face_encodings, known_face_names, known_face_ids = db_manager.load_known_faces()
+known_faces = []  # Store face encodings, names, and IDs
+
+def load_known_faces():
+    """Load face encodings from the database."""
+    global known_faces
+    known_faces.clear()
+    try:
+        db_manager.cursor.execute("SELECT student_id, name, face_encoding FROM students WHERE face_encoding IS NOT NULL")
+        rows = db_manager.cursor.fetchall()
+        for row in rows:
+            student_id, name, encoding = row
+            try:
+                encoding_array = np.frombuffer(encoding)
+                if encoding_array.size == 128:  # Ensure valid face encoding (128 dimensions)
+                    known_faces.append({
+                        'id': student_id,
+                        'name': name,
+                        'encoding': encoding_array
+                    })
+                else:
+                    logging.warning(f"Invalid face encoding size for student {student_id}: {encoding_array.size}")
+            except Exception as e:
+                logging.error(f"Error loading face encoding for student {student_id}: {e}")
+        logging.info(f"Loaded {len(known_faces)} known faces")
+    except Exception as e:
+        logging.error(f"Error loading known faces: {e}")
+
+# Load faces at startup
+load_known_faces()
 
 @app.route('/start_scan', methods=['POST'])
 def start_scan():
@@ -76,14 +111,19 @@ def process_frame():
 
         results = []
         for (top, right, bottom, left), face_encoding in zip(face_locations, face_encodings):
-            matches = face_recognition.compare_faces(known_face_encodings, face_encoding)
             name = "Unknown"
             student_id = None
 
-            if True in matches:
-                first_match_index = matches.index(True)
-                name = known_face_names[first_match_index]
-                student_id = known_face_ids[first_match_index]
+            if known_faces:
+                matches = face_recognition.compare_faces(
+                    [face['encoding'] for face in known_faces], face_encoding
+                )
+                if True in matches:
+                    first_match_index = matches.index(True)
+                    name = known_faces[first_match_index]['name']
+                    student_id = known_faces[first_match_index]['id']
+            else:
+                logging.warning("No known faces available for comparison")
 
             # Log attendance if a student is recognized
             attendance_text = "No attendance record"
@@ -121,5 +161,17 @@ def stop_scan():
     logging.info("Scanning stopped")
     return jsonify({"status": "Scanning stopped"})
 
+@app.route('/reload_faces', methods=['POST'])
+def reload_faces():
+    try:
+        load_known_faces()
+        return jsonify({"status": "success", "message": f"Reloaded {len(known_faces)} faces"})
+    except Exception as e:
+        logging.error(f"Error reloading faces: {e}")
+        return jsonify({"status": "error", "message": str(e)}), 500
+
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000, debug=True)
+    try:
+        app.run(host="0.0.0.0", port=5000, debug=True)
+    finally:
+        db_manager.close()
