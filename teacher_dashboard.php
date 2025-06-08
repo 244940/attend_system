@@ -383,7 +383,7 @@ $conn->close();
         </div>
     </div>
 
-    <script src="js/faceScanner.js"></script>
+    <script src="faceScan.js"></script>
     <script>
         let currentChart = null;
         const courses = <?php echo json_encode($courses); ?>;

@@ -236,4 +236,4 @@ function getDayNameThai(day) {
 window.startFaceScan = startFaceScan;
 window.stopFaceScan = stopFaceScan;
 window.initializeVideo = initializeVideo;
-console.log('faceScanner.js loaded successfully');
+console.log('faceScan.js loaded successfully');

@@ -227,7 +227,7 @@ $conn->close();
     <div class="top-bar">
         <h1>Admin Dashboard</h1>
         <div class="user-info">
-            <span>Welcome, <?php echo htmlspecialchars($_SESSION['user_name']); ?></span>
+            <span><?php echo htmlspecialchars($_SESSION['user_name']); ?></span>
         </div>
     </div>
 

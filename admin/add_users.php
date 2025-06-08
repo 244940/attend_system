@@ -490,7 +490,7 @@ function insert_face_encoding($conn, $name, $name_en, $id, $citizen_id, $email, 
     <div class="top-bar">
         <h1>Add New User</h1>
         <div class="user-info">
-            <span>Welcome, <?php echo htmlspecialchars($_SESSION['user_name']); ?></span>
+            <span><?php echo htmlspecialchars($_SESSION['user_name']); ?></span>
         </div>
     </div>
 

@@ -9,6 +9,7 @@ if (session_status() === PHP_SESSION_NONE) {
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
+require 'database_connection.php';
 require 'course_functions.php';
 require 'vendor/autoload.php';
 
@@ -478,7 +479,7 @@ if (basename(__FILE__) !== basename($_SERVER['PHP_SELF'])) {
     <div class="top-bar">
         <h1>Add New Course</h1>
         <div class="user-info">
-            <span>Welcome, <?php echo htmlspecialchars($_SESSION['user_name']); ?></span>
+            <span><?php echo htmlspecialchars($_SESSION['user_name']); ?></span>
         </div>
     </div>
 
