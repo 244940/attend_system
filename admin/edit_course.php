@@ -7,7 +7,11 @@ if (session_status() === PHP_SESSION_NONE) {
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
-require 'course_functions.php';
+// **** ADD THIS LINE ****
+require 'database_connection.php'; // Or your actual database connection file name
+// ***********************
+
+require 'course_functions.php'; // Your functions rely on $conn being available
 
 if (!isset($_SESSION['admin_id']) || $_SESSION['user_role'] !== 'admin') {
     header("Location: /attend_system/login.php");
@@ -21,14 +25,22 @@ if (!$course_id) {
     exit();
 }
 
+// Line 24, $conn should now be defined
 $course_stmt = $conn->prepare("SELECT * FROM courses WHERE course_id = ?");
 if (!$course_stmt) {
+    // It's good practice to log the actual DB error if prepare fails
+    error_log("DB Prepare Error (fetch course): " . $conn->error);
     $_SESSION['error_message'] = "Database error: Unable to prepare course query.";
     header("Location: /attend_system/admin/manage_course.php");
     exit();
 }
 $course_stmt->bind_param("i", $course_id);
-$course_stmt->execute();
+if (!$course_stmt->execute()) {
+    error_log("DB Execute Error (fetch course): " . $course_stmt->error);
+    $_SESSION['error_message'] = "Database error: Unable to execute course query.";
+    header("Location: /attend_system/admin/manage_course.php");
+    exit();
+}
 $course_result = $course_stmt->get_result();
 if ($course_result->num_rows === 0) {
     $course_stmt->close();
@@ -39,83 +51,74 @@ if ($course_result->num_rows === 0) {
 $course = $course_result->fetch_assoc();
 $course_stmt->close();
 
-$schedule_stmt = $conn->prepare("SELECT * FROM schedules WHERE course_id = ?");
+$schedule_stmt = $conn->prepare("SELECT * FROM schedules WHERE course_id = ? ORDER BY day_of_week, start_time"); // Added ORDER BY for consistency
 if (!$schedule_stmt) {
+    error_log("DB Prepare Error (fetch schedules): " . $conn->error);
     $_SESSION['error_message'] = "Database error: Unable to prepare schedules query.";
     header("Location: /attend_system/admin/manage_course.php");
     exit();
 }
 $schedule_stmt->bind_param("i", $course_id);
-$schedule_stmt->execute();
+if (!$schedule_stmt->execute()) {
+    error_log("DB Execute Error (fetch schedules): " . $schedule_stmt->error);
+    $_SESSION['error_message'] = "Database error: Unable to execute schedules query.";
+    header("Location: /attend_system/admin/manage_course.php");
+    exit();
+}
 $schedule_result = $schedule_stmt->get_result();
 $schedules = [];
 while ($row = $schedule_result->fetch_assoc()) {
+    // Ensure time is formatted for HTML5 time input (HH:MM) if it's stored as HH:MM:SS
+    $row['start_time'] = date("H:i", strtotime($row['start_time']));
+    $row['end_time'] = date("H:i", strtotime($row['end_time']));
     $schedules[] = $row;
 }
 $schedule_stmt->close();
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_course'])) {
     $teacher_name = trim($_POST['teacher_name']);
-    error_log("Submitted teacher_name: '$teacher_name'");
-    $teacher_stmt = $conn->prepare("SELECT teacher_id FROM teachers WHERE name = ?");
-    $teacher_stmt->bind_param("s", $teacher_name);
-    $teacher_stmt->execute();
-    $teacher_result = $teacher_stmt->get_result();
-    if ($teacher_result->num_rows === 0) {
-        $teacher_stmt->close();
-        error_log("Teacher not found: '$teacher_name'");
-        $_SESSION['error_message'] = "Invalid teacher: $teacher_name.";
-        header("Location: /attend_system/admin/edit_course.php?course_id=$course_id");
-        exit();
-    }
-    $teacher_id = $teacher_result->fetch_assoc()['teacher_id'];
-    $teacher_stmt->close();
-    if (!is_numeric($teacher_id) || $teacher_id <= 0) {
-        error_log("Invalid teacher_id: $teacher_id for teacher: '$teacher_name'");
-        $_SESSION['error_message'] = "Invalid teacher ID for $teacher_name.";
-        header("Location: /attend_system/admin/edit_course.php?course_id=$course_id");
-        exit();
-    }
-    error_log("Teacher ID for '$teacher_name': $teacher_id");
+    // No need to re-fetch teacher_id here if your update_course function handles teacher_name correctly
+    // The update_course function should resolve teacher_name to teacher_id.
 
     $course_data = [
         'course_name' => trim($_POST['course_name']),
         'name_en' => trim($_POST['course_name_en']),
         'course_code' => trim($_POST['course_code']),
-        'teacher_name' => $teacher_name,
+        'teacher_name' => $teacher_name, // Pass teacher_name, function will resolve ID
         'group_number' => trim($_POST['group_number']),
         'semester' => strtolower(trim($_POST['semester'])),
         'c_year' => trim($_POST['c_year']),
         'year_code' => trim($_POST['year_code'])
     ];
 
-    $new_schedules = [];
+    $new_schedules_from_post = [];
     if (isset($_POST['schedules']) && is_array($_POST['schedules'])) {
-        foreach ($_POST['schedules'] as $schedule) {
-            if (!empty($schedule['day_of_week']) && !empty($schedule['start_time']) && !empty($schedule['end_time'])) {
-                $new_schedules[] = [
-                    'day_of_week' => $schedule['day_of_week'],
-                    'start_time' => $schedule['start_time'],
-                    'end_time' => $schedule['end_time']
+        foreach ($_POST['schedules'] as $schedule_item) {
+            if (!empty($schedule_item['day_of_week']) && !empty($schedule_item['start_time']) && !empty($schedule_item['end_time'])) {
+                $new_schedules_from_post[] = [
+                    'day_of_week' => trim($schedule_item['day_of_week']),
+                    'start_time' => trim($schedule_item['start_time']),
+                    'end_time' => trim($schedule_item['end_time'])
                 ];
             }
         }
     }
 
-    if (empty($new_schedules)) {
+    if (empty($new_schedules_from_post)) {
         $_SESSION['error_message'] = "At least one schedule is required.";
         header("Location: /attend_system/admin/edit_course.php?course_id=$course_id");
         exit();
     }
 
-    $result = update_course($conn, $course_id, $course_data, $new_schedules);
+    // $conn is passed to update_course
+    $result = update_course($conn, $course_id, $course_data, $new_schedules_from_post);
 
     if ($result === null) {
         $_SESSION['success_message'] = "Course updated successfully.";
         header("Location: /attend_system/admin/manage_course.php");
         exit();
     } else {
-        $_SESSION['error_message'] = $result;
+        $_SESSION['error_message'] = $result; // This will show errors from update_course
         header("Location: /attend_system/admin/edit_course.php?course_id=$course_id");
         exit();
     }
@@ -163,7 +166,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_course'])) {
             display: flex;
             flex: 1;
             width: 100%;
-            height: calc(100vh - 70px);
+            height: calc(100vh - 70px); /* Adjusted for top-bar height */
             background: rgba(255, 255, 255, 0.9);
         }
 
@@ -175,7 +178,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_course'])) {
             display: flex;
             flex-direction: column;
             align-items: center;
-            height: 100%;
+            height: 100%; /* Fill available height */
+            box-sizing: border-box;
         }
 
         .sidebar ul {
@@ -205,12 +209,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_course'])) {
         .main-content {
             flex: 1;
             padding: 20px;
-            display: flex;
+            display: flex; /* Use flex for centering form-container */
             flex-direction: column;
-            align-items: center;
-            background-color: #ecf0f1;
-            height: 100%;
-            overflow-y: auto;
+            align-items: center; /* Center form-container horizontally */
+            /* background-color: #ecf0f1; */ /* Can be removed if background image is main focus */
+            height: 100%; /* Fill available height */
+            overflow-y: auto; /* Allow scrolling for content */
+            box-sizing: border-box;
         }
 
         .form-container {
@@ -219,14 +224,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_course'])) {
             border-radius: 8px;
             box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
             width: 100%;
-            max-width: 800px;
-            margin: 20px auto;
+            max-width: 800px; /* Max width for the form */
+            margin: 20px 0; /* Margin top and bottom, auto for left/right is handled by flex align-items */
         }
 
         .form-container h2 {
             margin-top: 0;
             color: #2980b9;
             font-size: 1.5em;
+            text-align: center;
+            margin-bottom: 20px;
         }
 
         .form-group {
@@ -240,7 +247,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_course'])) {
             font-weight: 500;
         }
 
-        input, select {
+        input[type="text"],
+        input[type="number"],
+        input[type="time"],
+        select {
             width: 100%;
             padding: 8px 12px;
             border: 1px solid #d1d5db;
@@ -248,6 +258,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_course'])) {
             font-size: 1em;
             outline: none;
             transition: border-color 0.2s ease;
+            box-sizing: border-box; /* Include padding and border in element's total width and height */
         }
 
         input:focus, select:focus {
@@ -273,6 +284,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_course'])) {
         .back-button {
             background-color: #6b7280;
             margin-top: 20px;
+            display: inline-block; /* To allow margin-top */
         }
 
         .back-button:hover {
@@ -285,6 +297,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_course'])) {
             border-radius: 4px;
             width: 100%;
             text-align: center;
+            box-sizing: border-box;
         }
 
         .success {
@@ -338,6 +351,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_course'])) {
             background-color: #34495e;
             color: white;
             width: 100%;
+            margin-top: auto; /* Push footer to the bottom if content is short */
         }
     </style>
 </head>
@@ -355,8 +369,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_course'])) {
                 <li><a href="/attend_system/admin/admin_dashboard.php">Dashboard</a></li>
                 <li><a href="/attend_system/admin/manage_users.php">Manage Users</a></li>
                 <li><a href="/attend_system/admin/add_users.php">Add User</a></li>
-                <li><a href="/attend_system/admin/add_course.php">Add Course</a></li>
                 <li><a href="/attend_system/admin/manage_course.php">Manage Courses</a></li>
+                <li><a href="/attend_system/admin/add_course.php">Add Course</a></li>
+                <li><a href="/attend_system/admin/manage_enrollments.php">Manage Enrollments</a></li>
                 <li><a href="/attend_system/admin/enroll_student.php">Enroll Student</a></li>
                 <li><a href="/attend_system/logout.php">Logout</a></li>
             </ul>
@@ -365,7 +380,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_course'])) {
         <div class="main-content">
             <section class="dashboard-section" id="edit-course">
                 <div class="form-container">
-                    <h2>Edit Course</h2>
+                    <h2>Edit Course: <?php echo htmlspecialchars($course['course_code'] . " - " . $course['course_name']); ?></h2>
 
                     <?php
                     if (isset($_SESSION['success_message'])) {
@@ -404,13 +419,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_course'])) {
                         </div>
 
                         <div class="form-group">
-                            <label for="c_year">Year (Full, e.g., 2560, ค.ศ.)</label>
-                            <input type="number" id="c_year" name="c_year" min="1901" max="2155" value="<?php echo htmlspecialchars($course['c_year']); ?>" required>
+                            <label for="c_year">Year (Full, e.g., 2025, ค.ศ.)</label>
+                            <input type="number" id="c_year" name="c_year" min="1900" max="2155" value="<?php echo htmlspecialchars($course['c_year']); ?>" required>
                         </div>
 
                         <div class="form-group">
                             <label for="year_code">Year Code (Last 2 digits, e.g., 60 for 2560)</label>
-                            <input type="text" id="year_code" name="year_code" pattern="\d{2}" maxlength="2" value="<?php echo htmlspecialchars($course['year_code']); ?>" required>
+                            <input type="text" id="year_code" name="year_code" pattern="\d{1,2}" maxlength="2" value="<?php echo htmlspecialchars($course['year_code']); ?>" required>
                         </div>
 
                         <div class="form-group">
@@ -422,20 +437,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_course'])) {
                             <label for="teacher_name">Teacher Name</label>
                             <select id="teacher_name" name="teacher_name" required>
                                 <?php
-                                $teacher_query = $conn->prepare("SELECT name FROM teachers ORDER BY name");
-                                $teacher_query->execute();
-                                $teacher_result = $teacher_query->get_result();
-                                $teacher_names = [];
-                                while ($teacher = $teacher_result->fetch_assoc()) {
-                                    $teacher_names[] = $teacher['name'];
-                                    $selected = $teacher['name'] === $course['teacher_name'] ? 'selected' : '';
-                                    echo '<option value="' . htmlspecialchars($teacher['name']) . '" ' . $selected . '>' . htmlspecialchars($teacher['name']) . '</option>';
+                                // $conn should be available here due to the require 'database_connection.php' at the top
+                                $teacher_list_stmt = $conn->prepare("SELECT name FROM teachers ORDER BY name");
+                                if ($teacher_list_stmt) {
+                                    $teacher_list_stmt->execute();
+                                    $teacher_list_result = $teacher_list_stmt->get_result();
+                                    $available_teachers = [];
+                                    while ($teacher_row = $teacher_list_result->fetch_assoc()) {
+                                        $available_teachers[] = $teacher_row['name'];
+                                        $selected = ($teacher_row['name'] === $course['teacher_name']) ? 'selected' : '';
+                                        echo '<option value="' . htmlspecialchars($teacher_row['name']) . '" ' . $selected . '>' . htmlspecialchars($teacher_row['name']) . '</option>';
+                                    }
+                                    $teacher_list_stmt->close();
+                                    if (empty($available_teachers)) {
+                                        echo '<option value="">No teachers available</option>';
+                                    }
+                                } else {
+                                    echo '<option value="">Error loading teachers</option>';
+                                    error_log("DB Prepare Error (teacher list dropdown): " . $conn->error);
                                 }
-                                $teacher_query->close();
-                                if (empty($teacher_names)) {
-                                    echo '<option value="">No teachers available</option>';
-                                }
-                                error_log("Available teacher names: " . implode(", ", $teacher_names));
                                 ?>
                             </select>
                         </div>
@@ -443,32 +463,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_course'])) {
                         <h2>Schedules</h2>
                         <div id="schedules-container">
                             <?php if (!empty($schedules)): ?>
-                                <?php foreach ($schedules as $index => $schedule): ?>
+                                <?php foreach ($schedules as $index => $schedule_item): ?>
                                     <div class="schedule-group">
                                         <button type="button" class="remove-schedule" onclick="removeSchedule(this)">Remove</button>
                                         <div class="form-group">
                                             <label>Day of the Week</label>
                                             <select name="schedules[<?php echo $index; ?>][day_of_week]" required>
-                                                <option value="Monday" <?php echo $schedule['day_of_week'] === 'Monday' ? 'selected' : ''; ?>>Monday</option>
-                                                <option value="Tuesday" <?php echo $schedule['day_of_week'] === 'Tuesday' ? 'selected' : ''; ?>>Tuesday</option>
-                                                <option value="Wednesday" <?php echo $schedule['day_of_week'] === 'Wednesday' ? 'selected' : ''; ?>>Wednesday</option>
-                                                <option value="Thursday" <?php echo $schedule['day_of_week'] === 'Thursday' ? 'selected' : ''; ?>>Thursday</option>
-                                                <option value="Friday" <?php echo $schedule['day_of_week'] === 'Friday' ? 'selected' : ''; ?>>Friday</option>
-                                                <option value="Saturday" <?php echo $schedule['day_of_week'] === 'Saturday' ? 'selected' : ''; ?>>Saturday</option>
-                                                <option value="Sunday" <?php echo $schedule['day_of_week'] === 'Sunday' ? 'selected' : ''; ?>>Sunday</option>
+                                                <option value="Monday" <?php echo $schedule_item['day_of_week'] === 'Monday' ? 'selected' : ''; ?>>Monday</option>
+                                                <option value="Tuesday" <?php echo $schedule_item['day_of_week'] === 'Tuesday' ? 'selected' : ''; ?>>Tuesday</option>
+                                                <option value="Wednesday" <?php echo $schedule_item['day_of_week'] === 'Wednesday' ? 'selected' : ''; ?>>Wednesday</option>
+                                                <option value="Thursday" <?php echo $schedule_item['day_of_week'] === 'Thursday' ? 'selected' : ''; ?>>Thursday</option>
+                                                <option value="Friday" <?php echo $schedule_item['day_of_week'] === 'Friday' ? 'selected' : ''; ?>>Friday</option>
+                                                <option value="Saturday" <?php echo $schedule_item['day_of_week'] === 'Saturday' ? 'selected' : ''; ?>>Saturday</option>
+                                                <option value="Sunday" <?php echo $schedule_item['day_of_week'] === 'Sunday' ? 'selected' : ''; ?>>Sunday</option>
                                             </select>
                                         </div>
                                         <div class="form-group">
                                             <label>Start Time</label>
-                                            <input type="time" name="schedules[<?php echo $index; ?>][start_time]" value="<?php echo htmlspecialchars($schedule['start_time']); ?>" required>
+                                            <input type="time" name="schedules[<?php echo $index; ?>][start_time]" value="<?php echo htmlspecialchars($schedule_item['start_time']); ?>" required>
                                         </div>
                                         <div class="form-group">
                                             <label>End Time</label>
-                                            <input type="time" name="schedules[<?php echo $index; ?>][end_time]" value="<?php echo htmlspecialchars($schedule['end_time']); ?>" required>
+                                            <input type="time" name="schedules[<?php echo $index; ?>][end_time]" value="<?php echo htmlspecialchars($schedule_item['end_time']); ?>" required>
                                         </div>
                                     </div>
                                 <?php endforeach; ?>
-                            <?php else: ?>
+                            <?php else: // Provide a blank schedule group if none exist ?>
                                 <div class="schedule-group">
                                     <button type="button" class="remove-schedule" onclick="removeSchedule(this)">Remove</button>
                                     <div class="form-group">
@@ -512,13 +532,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_course'])) {
     </footer>
 
     <script>
-        let scheduleIndex = <?php echo count($schedules) ?: 1; ?>;
+        let scheduleIndex = <?php echo max(1, count($schedules)); // Start index after existing schedules, or 1 if none ?>;
 
         function addSchedule() {
             const container = document.getElementById('schedules-container');
-            const scheduleGroup = document.createElement('div');
-            scheduleGroup.className = 'schedule-group';
-            scheduleGroup.innerHTML = `
+            const newScheduleGroup = document.createElement('div');
+            newScheduleGroup.className = 'schedule-group';
+            newScheduleGroup.innerHTML = `
                 <button type="button" class="remove-schedule" onclick="removeSchedule(this)">Remove</button>
                 <div class="form-group">
                     <label>Day of the Week</label>
@@ -541,7 +561,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_course'])) {
                     <input type="time" name="schedules[${scheduleIndex}][end_time]" required>
                 </div>
             `;
-            container.appendChild(scheduleGroup);
+            container.appendChild(newScheduleGroup);
             scheduleIndex++;
         }
 
@@ -549,6 +569,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_course'])) {
             const scheduleGroups = document.querySelectorAll('.schedule-group');
             if (scheduleGroups.length > 1) {
                 button.parentElement.remove();
+                // No need to decrement scheduleIndex here, as new additions will use the incremented value.
+                // If you re-index elements, it becomes more complex.
             } else {
                 alert('At least one schedule is required.');
             }
@@ -558,5 +580,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_course'])) {
 </html>
 
 <?php
-$conn->close();
+if (isset($conn) && $conn instanceof mysqli) { // Check if $conn is a valid mysqli object
+    $conn->close();
+}
 ?>
