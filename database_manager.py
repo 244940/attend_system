@@ -1,20 +1,26 @@
 import mysql.connector
 import numpy as np
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, time
 import logging
 
-# Setup logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logging.basicConfig(
+    level=logging.DEBUG,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler('database.log'),
+        logging.StreamHandler()
+    ]
+)
 
 class DatabaseManager:
-    def __init__(self):
+    def __init__(self, host="localhost", user="root", password="paganini019", database="attend_data", port=3308):
         try:
             self.db = mysql.connector.connect(
-                host="localhost",
-                user="root",
-                password="paganini019",
-                database="attend_data",
-                port=3308
+                host=host,
+                user=user,
+                password=password,
+                database=database,
+                port=port
             )
             self.cursor = self.db.cursor()
             logging.info("Connected to attend_data database")
@@ -23,20 +29,16 @@ class DatabaseManager:
             raise
 
     def load_known_faces(self):
-        """
-        Load face encodings from students table (assumes face_encoding is a BLOB).
-        """
         known_face_encodings = []
         known_face_names = []
         known_face_ids = []
         try:
             self.cursor.execute("SELECT student_id, name, face_encoding FROM students WHERE face_encoding IS NOT NULL")
-            for (student_id, name, face_encoding) in self.cursor:
+            for student_id, name, face_encoding in self.cursor:
                 if face_encoding:
-                    expected_size = 1024  # 128 floats * 8 bytes (np.float64)
-                    actual_size = len(face_encoding)
-                    if actual_size != expected_size:
-                        logging.warning(f"Invalid face encoding for student {name} (ID: {student_id}): {actual_size} bytes, expected {expected_size}")
+                    expected_size = 1024  # 128 floats * 8 bytes
+                    if len(face_encoding) != expected_size:
+                        logging.warning(f"Invalid face encoding for student {name} (ID: {student_id}): {len(face_encoding)} bytes")
                         continue
                     known_face_ids.append(student_id)
                     known_face_names.append(name)
@@ -47,9 +49,6 @@ class DatabaseManager:
         return known_face_encodings, known_face_names, known_face_ids
 
     def get_current_schedule(self, student_id, course_id, schedule_id):
-        """
-        Get schedule for a student based on course_id, schedule_id, and current day.
-        """
         try:
             day_of_week = datetime.now().strftime('%A')
             query = """
@@ -63,52 +62,82 @@ class DatabaseManager:
             self.cursor.execute(query, (student_id, course_id, schedule_id, day_of_week))
             result = self.cursor.fetchone()
             if result:
-                logging.info("Found schedule: student_id=%s, course_id=%s, schedule_id=%s", student_id, course_id, schedule_id)
-                return result
-            logging.warning("No schedule found: student_id=%s, course_id=%s, schedule_id=%s", student_id, course_id, schedule_id)
-            return None
+                logging.info(f"Found schedule: student_id={student_id}, course_id={course_id}, schedule_id={schedule_id}")
+                schedule_id_db, start_time, end_time, course_name = result
+                # Convert timedelta to time if necessary
+                if isinstance(start_time, timedelta):
+                    total_seconds = int(start_time.total_seconds())
+                    hours, remainder = divmod(total_seconds, 3600)
+                    minutes, seconds = divmod(remainder, 60)
+                    start_time = time(hours, minutes, seconds)
+                if isinstance(end_time, timedelta):
+                    total_seconds = int(end_time.total_seconds())
+                    hours, remainder = divmod(total_seconds, 3600)
+                    minutes, seconds = divmod(remainder, 60)
+                    end_time = time(hours, minutes, seconds)
+                now = datetime.now()
+                today = now.date()
+                start_dt = datetime.combine(today, start_time)
+                end_dt = datetime.combine(today, end_time)
+                if start_dt <= now <= end_dt:
+                    return (schedule_id_db, start_time, end_time, course_name), None
+                logging.warning(f"Current time {now} outside schedule {start_time}-{end_time}")
+                return None, "Outside schedule time"
+            logging.warning(f"No schedule found: student_id={student_id}, course_id={course_id}, schedule_id={schedule_id}")
+            return None, "Not enrolled or invalid schedule"
         except mysql.connector.Error as err:
             logging.error(f"Error in get_current_schedule: {err}")
-            return None
+            return None, str(err)
 
     def log_attendance(self, student_id, schedule_id):
-        """
-        Log attendance with status based on schedule time.
-        """
         try:
-            # Check for recent logs (within 30 minutes)
             last_log_time = self.get_last_log_time(student_id, schedule_id)
             if last_log_time and (datetime.now() - last_log_time).total_seconds() < 1800:
-                logging.info("Too soon to log again: student_id=%s, schedule_id=%s", student_id, schedule_id)
+                logging.info(f"Too soon to log again: student_id={student_id}, schedule_id={schedule_id}")
                 return "Too soon to log again"
 
-            # Get schedule start_time
             schedule = self.get_schedule_by_id(schedule_id)
             if not schedule:
-                logging.error("Invalid schedule: schedule_id=%s", schedule_id)
+                logging.error(f"Invalid schedule: schedule_id={schedule_id}")
                 return "Invalid schedule"
 
-            current_time = datetime.now().time()
+            now = datetime.now()
+            today = now.date()
             start_time = schedule['start_time']
             end_time = schedule['end_time']
+            # Convert timedelta to time if necessary
+            if isinstance(start_time, timedelta):
+                total_seconds = int(start_time.total_seconds())
+                hours, remainder = divmod(total_seconds, 3600)
+                minutes, seconds = divmod(remainder, 60)
+                start_time = time(hours, minutes, seconds)
+            if isinstance(end_time, timedelta):
+                total_seconds = int(end_time.total_seconds())
+                hours, remainder = divmod(total_seconds, 3600)
+                minutes, seconds = divmod(remainder, 60)
+                end_time = time(hours, minutes, seconds)
+            start_dt = datetime.combine(today, start_time)
+            late_dt = start_dt + timedelta(minutes=15)
+            end_dt = datetime.combine(today, end_time)
 
-            # Determine status (aligned with schema: present, late, absent)
+            if now > end_dt:
+                logging.warning(f"Class ended: student_id={student_id}, schedule_id={schedule_id}")
+                return "Class ended"
+
             status = "absent"
-            if current_time <= start_time:
+            if now <= start_dt:
                 status = "present"
-            elif current_time <= (datetime.combine(datetime.today(), start_time) + timedelta(minutes=15)).time():
+            elif now <= late_dt:
                 status = "late"
 
-            # Insert or update attendance
-            scan_time = datetime.now()
             query = """
             INSERT INTO attendance (student_id, schedule_id, scan_time, status)
             VALUES (%s, %s, %s, %s)
             ON DUPLICATE KEY UPDATE scan_time = %s, status = %s
             """
-            self.cursor.execute(query, (student_id, schedule_id, scan_time, status, scan_time, status))
+            self.cursor.execute(query, (student_id, schedule_id, now, status, now, status))
             self.db.commit()
-            logging.info("Attendance logged: student_id=%s, schedule_id=%s, status=%s", student_id, schedule_id, status)
+            logging.info(f"Attendance logged: student_id={student_id}, schedule_id={schedule_id}, status={status}")
             return status
         except mysql.connector.Error as err:
             logging.error(f"Error logging attendance: {err}")
@@ -116,9 +145,6 @@ class DatabaseManager:
             return "Error"
 
     def get_last_log_time(self, student_id, schedule_id):
-        """
-        Get the most recent scan time for today.
-        """
         try:
             query = """
             SELECT MAX(scan_time)
@@ -133,9 +159,6 @@ class DatabaseManager:
             return None
 
     def get_user_name(self, student_id):
-        """
-        Get student name by student_id.
-        """
         try:
             query = "SELECT name FROM students WHERE student_id = %s"
             self.cursor.execute(query, (student_id,))
@@ -146,9 +169,6 @@ class DatabaseManager:
             return None
 
     def get_schedule_by_id(self, schedule_id):
-        """
-        Get schedule details by schedule_id.
-        """
         try:
             query = "SELECT schedule_id, course_id, teacher_id, day_of_week, start_time, end_time FROM schedules WHERE schedule_id = %s"
             self.cursor.execute(query, (schedule_id,))
@@ -156,18 +176,26 @@ class DatabaseManager:
             if row:
                 columns = [column[0] for column in self.cursor.description]
                 result = dict(zip(columns, row))
-                logging.info("Fetched schedule: schedule_id=%s", schedule_id)
+                # Convert timedelta to time if necessary
+                if isinstance(result['start_time'], timedelta):
+                    total_seconds = int(result['start_time'].total_seconds())
+                    hours, remainder = divmod(total_seconds, 3600)
+                    minutes, seconds = divmod(remainder, 60)
+                    result['start_time'] = time(hours, minutes, seconds)
+                if isinstance(result['end_time'], timedelta):
+                    total_seconds = int(result['end_time'].total_seconds())
+                    hours, remainder = divmod(total_seconds, 3600)
+                    minutes, seconds = divmod(remainder, 60)
+                    result['end_time'] = time(hours, minutes, seconds)
+                logging.info(f"Fetched schedule: schedule_id={schedule_id}")
                 return result
-            logging.warning("No schedule found: schedule_id=%s", schedule_id)
+            logging.warning(f"No schedule found: schedule_id={schedule_id}")
             return None
         except mysql.connector.Error as err:
             logging.error(f"Error in get_schedule_by_id: {err}")
             return None
 
     def get_today_scanned_students(self):
-        """
-        Retrieve a sorted list of students who scanned today.
-        """
         try:
             query = """
             SELECT s.name, a.scan_time
@@ -178,17 +206,14 @@ class DatabaseManager:
             """
             self.cursor.execute(query)
             results = self.cursor.fetchall()
-            scanned_students = [{"name": name, "scan_time": scan_time} for (name, scan_time) in results]
-            logging.info("Fetched %d scanned students for today", len(scanned_students))
+            scanned_students = [{"name": name, "scan_time": scan_time} for name, scan_time in results]
+            logging.info(f"Fetched {len(scanned_students)} scanned students for today")
             return scanned_students
         except mysql.connector.Error as err:
             logging.error(f"Error in get_today_scanned_students: {err}")
             return []
 
     def close(self):
-        """
-        Close database connection.
-        """
         try:
             self.cursor.close()
             self.db.close()

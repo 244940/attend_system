@@ -9,26 +9,43 @@ import base64
 from io import BytesIO
 from PIL import Image
 import logging
+import sys
+import traceback
 
-# Setup logging
 logging.basicConfig(
-    level=logging.INFO,
+    level=logging.DEBUG,
     format='%(asctime)s - %(levelname)s - %(message)s',
     handlers=[
         logging.FileHandler('face_recognition_server.log'),
-        logging.StreamHandler()
+        logging.StreamHandler(sys.stdout)
     ]
 )
+logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
-CORS(app, resources={r"/*": {"origins": ["http://localhost", "http://localhost:80"]}})  # Support XAMPP ports
+CORS(app, resources={r"/*": {
+    "origins": [
+        "http://localhost",
+        "http://127.0.0.1",
+        "http://192.168.1.108",
+        "http://localhost:5000",
+        "http://127.0.0.1:5000",
+        "http://192.168.1.108:5000"
+    ],
+    "methods": ["GET", "POST", "OPTIONS"],
+    "allow_headers": ["Content-Type"]
+}})
 
-# Initialize database manager and load known faces
-db_manager = DatabaseManager()
-known_faces = []  # Store face encodings, names, and IDs
+try:
+    db_manager = DatabaseManager()
+    logger.info("Database manager initialized")
+except Exception as e:
+    logger.error(f"Failed to initialize database: {e}")
+    sys.exit(1)
+
+known_faces = []
 
 def load_known_faces():
-    """Load face encodings from the database."""
     global known_faces
     known_faces.clear()
     try:
@@ -37,77 +54,113 @@ def load_known_faces():
         for row in rows:
             student_id, name, encoding = row
             try:
-                encoding_array = np.frombuffer(encoding)
-                if encoding_array.size == 128:  # Ensure valid face encoding (128 dimensions)
+                encoding_array = np.frombuffer(encoding, dtype=np.float64)
+                if encoding_array.size == 128:
                     known_faces.append({
                         'id': student_id,
                         'name': name,
                         'encoding': encoding_array
                     })
                 else:
-                    logging.warning(f"Invalid face encoding size for student {student_id}: {encoding_array.size}")
+                    logger.warning(f"Invalid face encoding size for student {student_id}: {encoding_array.size}")
             except Exception as e:
-                logging.error(f"Error loading face encoding for student {student_id}: {e}")
-        logging.info(f"Loaded {len(known_faces)} known faces")
+                logger.error(f"Error loading face encoding for student {student_id}: {e}")
+        logger.info(f"Loaded {len(known_faces)} known faces")
     except Exception as e:
-        logging.error(f"Error loading known faces: {e}")
+        logger.error(f"Error loading known faces: {e}")
 
-# Load faces at startup
-load_known_faces()
+try:
+    load_known_faces()
+except Exception as e:
+    logger.error(f"Failed to load known faces at startup: {e}")
+    sys.exit(1)
+
+@app.route('/test', methods=['GET'])
+def test():
+    logger.info("Test endpoint called")
+    return jsonify({"status": "Flask server is running", "timestamp": datetime.now().isoformat()})
 
 @app.route('/start_scan', methods=['POST'])
 def start_scan():
-    data = request.get_json()
-    course_id = data.get('course_id')
-    teacher_id = data.get('teacher_id')
-    schedule_id = data.get('schedule_id')
-
-    if not all([course_id, teacher_id, schedule_id]):
-        logging.error("Missing parameters: course_id=%s, teacher_id=%s, schedule_id=%s", course_id, teacher_id, schedule_id)
-        return jsonify({"error": "Missing required parameters"}), 400
-
-    # Validate course, teacher, and schedule
-    query = """
-    SELECT c.teacher_id, s.schedule_id
-    FROM courses c
-    JOIN schedules s ON c.course_id = s.course_id
-    WHERE c.course_id = %s AND c.teacher_id = %s AND s.schedule_id = %s
-    """
     try:
+        logger.info("Received request to /start_scan")
+        data = request.get_json()
+        logger.info(f"Request data: {data}")
+        course_id = data.get('course_id')
+        teacher_id = data.get('teacher_id')
+        schedule_id = data.get('schedule_id')
+
+        if not all([course_id, teacher_id, schedule_id]):
+            logger.error(f"Missing parameters: course_id={course_id}, teacher_id={teacher_id}, schedule_id={schedule_id}")
+            return jsonify({"error": "Missing required parameters"}), 400
+
+        query = """
+        SELECT c.teacher_id, s.schedule_id
+        FROM courses c
+        JOIN schedules s ON c.course_id = s.course_id
+        WHERE c.course_id = %s AND c.teacher_id = %s AND s.schedule_id = %s
+        """
         db_manager.cursor.execute(query, (course_id, teacher_id, schedule_id))
         result = db_manager.cursor.fetchone()
         if not result:
-            logging.error("Invalid course, teacher, or schedule: course_id=%s, teacher_id=%s, schedule_id=%s", course_id, teacher_id, schedule_id)
+            logger.error(f"Invalid course, teacher, or schedule: course_id={course_id}, teacher_id={teacher_id}, schedule_id={schedule_id}")
             return jsonify({"error": "Invalid course, teacher, or schedule"}), 403
-    except Exception as e:
-        logging.error("Database error in start_scan: %s", e)
-        return jsonify({"error": "Database error"}), 500
 
-    logging.info("Scanning started: course_id=%s, teacher_id=%s, schedule_id=%s", course_id, teacher_id, schedule_id)
-    return jsonify({"status": "Scanning started", "course_id": course_id, "schedule_id": schedule_id})
+        logger.info(f"Scanning started: course_id={course_id}, teacher_id={teacher_id}, schedule_id={schedule_id}")
+        return jsonify({"status": "Scanning started", "course_id": course_id, "schedule_id": schedule_id})
+    except Exception as e:
+        logger.error(f"Error in start_scan: {str(e)}\n{traceback.format_exc()}")
+        return jsonify({"error": str(e)}), 500
 
 @app.route('/process_frame', methods=['POST'])
 def process_frame():
-    data = request.get_json()
-    frame_data = data.get('frame')
-    course_id = data.get('course_id')
-    schedule_id = data.get('schedule_id')
-
-    if not all([frame_data, course_id, schedule_id]):
-        logging.error("Missing parameters in process_frame: frame=%s, course_id=%s, schedule_id=%s", bool(frame_data), course_id, schedule_id)
-        return jsonify({"error": "Missing required parameters"}), 400
-
     try:
-        # Decode the base64 frame
-        img_data = base64.b64decode(frame_data.split(',')[1])
-        img = Image.open(BytesIO(img_data))
-        frame = np.array(img)
-        frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
+        logger.info("Received request to /process_frame")
+        data = request.get_json()
+        logger.debug(f"Request data keys: {list(data.keys())}")
+        frame_data = data.get('frame')
+        course_id = data.get('course_id')
+        schedule_id = data.get('schedule_id')
 
-        # Process the frame for face recognition
-        rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        face_locations = face_recognition.face_locations(rgb_frame)
-        face_encodings = face_recognition.face_encodings(rgb_frame, face_locations)
+        if not all([frame_data, course_id, schedule_id]):
+            logger.error(f"Missing parameters: frame={bool(frame_data)}, course_id={course_id}, schedule_id={schedule_id}")
+            return jsonify({"error": "Missing required parameters"}), 400
+
+        if not frame_data.startswith('data:image/'):
+            logger.error(f"Invalid frame_data format: {frame_data[:50]}")
+            return jsonify({"error": "Invalid frame data format"}), 400
+
+        try:
+            img_data = base64.b64decode(frame_data.split(',')[1])
+        except Exception as e:
+            logger.error(f"Base64 decode error: {e}")
+            return jsonify({"error": "Invalid base64 data"}), 400
+
+        try:
+            img = Image.open(BytesIO(img_data))
+            frame = np.array(img)
+        except Exception as e:
+            logger.error(f"Image open error: {e}")
+            return jsonify({"error": "Failed to open image"}), 400
+
+        if frame.ndim != 3 or frame.shape[2] != 3:
+            logger.error(f"Invalid frame shape: {frame.shape}")
+            return jsonify({"error": "Invalid frame dimensions"}), 400
+
+        try:
+            frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
+            rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        except Exception as e:
+            logger.error(f"Color conversion error: {e}")
+            return jsonify({"error": "Color conversion failed"}), 400
+
+        try:
+            face_locations = face_recognition.face_locations(rgb_frame)
+            face_encodings = face_recognition.face_encodings(rgb_frame, face_locations)
+            logger.info(f"Detected {len(face_locations)} faces")
+        except Exception as e:
+            logger.error(f"Face recognition error: {e}")
+            return jsonify({"error": "Face recognition failed"}), 500
 
         results = []
         for (top, right, bottom, left), face_encoding in zip(face_locations, face_encodings):
@@ -115,34 +168,50 @@ def process_frame():
             student_id = None
 
             if known_faces:
-                matches = face_recognition.compare_faces(
-                    [face['encoding'] for face in known_faces], face_encoding
-                )
-                if True in matches:
-                    first_match_index = matches.index(True)
-                    name = known_faces[first_match_index]['name']
-                    student_id = known_faces[first_match_index]['id']
+                try:
+                    matches = face_recognition.compare_faces(
+                        [face['encoding'] for face in known_faces], face_encoding
+                    )
+                    if True in matches:
+                        first_match_index = matches.index(True)
+                        name = known_faces[first_match_index]['name']
+                        student_id = known_faces[first_match_index]['id']
+                except Exception as e:
+                    logger.error(f"Face comparison error: {e}")
+                    continue
             else:
-                logging.warning("No known faces available for comparison")
+                logger.warning("No known faces available")
 
-            # Log attendance if a student is recognized
             attendance_text = "No attendance record"
             if student_id is not None:
-                current_schedule = db_manager.get_current_schedule(student_id, course_id, schedule_id)
-                if current_schedule:
-                    schedule_id_db, start_time, end_time, course_name = current_schedule
-                    if str(schedule_id_db) == str(schedule_id):
-                        status = db_manager.log_attendance(student_id, schedule_id)
-                        if status == "Too soon to log again":
-                            attendance_text = f"Attendance recently logged for {course_name}"
-                        elif status == "Error":
-                            attendance_text = "Failed to log attendance"
+                try:
+                    current_schedule, reason = db_manager.get_current_schedule(student_id, course_id, schedule_id)
+                    logger.debug(f"Current schedule for student {student_id}: {current_schedule}, reason: {reason}")
+                    if current_schedule:
+                        schedule_id_db, start_time, end_time, course_name = current_schedule
+                        if str(schedule_id_db) == str(schedule_id):
+                            status = db_manager.log_attendance(student_id, schedule_id)
+                            logger.debug(f"Attendance status for student {student_id}: {status}")
+                            if status == "Too soon to log again":
+                                attendance_text = f"ลงชื่อซ้ำเร็วเกินไปสำหรับ {course_name}"
+                            elif status == "Error":
+                                attendance_text = "บันทึกการเข้างานล้มเหลว"
+                            elif status == "Class ended":
+                                attendance_text = "คลาสสิ้นสุดแล้ว"
+                            else:
+                                attendance_text = f"บันทึกการเข้างานสำหรับ {course_name} สถานะ: {status}"
                         else:
-                            attendance_text = f"Attendance logged for {course_name}. Status: {status}"
+                            attendance_text = "รหัสตารางไม่ตรงกัน"
                     else:
-                        attendance_text = "Schedule ID mismatch"
-                else:
-                    attendance_text = "No matching schedule"
+                        if reason == "Not enrolled or invalid schedule":
+                            attendance_text = "ไม่อยู่ในรายชื่อการลงทะเบียนเรียน"
+                        elif reason == "Outside schedule time":
+                            attendance_text = "ไม่อยู่ในช่วงเวลาคลาส"
+                        else:
+                            attendance_text = f"ข้อผิดพลาด: {reason}"
+                except Exception as e:
+                    logger.error(f"Attendance logging error for student {student_id}: {str(e)}\n{traceback.format_exc()}")
+                    attendance_text = "บันทึกการเข้างานล้มเหลว"
 
             results.append({
                 "name": name,
@@ -150,28 +219,37 @@ def process_frame():
                 "box": {"top": top, "right": right, "bottom": bottom, "left": left}
             })
 
-        logging.info("Processed frame: course_id=%s, schedule_id=%s, results=%d", course_id, schedule_id, len(results))
+        logger.info(f"Processed frame: course_id={course_id}, schedule_id={schedule_id}, results={len(results)}")
         return jsonify({"results": results})
     except Exception as e:
-        logging.error("Error in process_frame: %s", e)
+        logger.error(f"Error in process_frame: {str(e)}\n{traceback.format_exc()}")
         return jsonify({"error": str(e)}), 500
 
 @app.route('/stop_scan', methods=['POST'])
 def stop_scan():
-    logging.info("Scanning stopped")
-    return jsonify({"status": "Scanning stopped"})
+    try:
+        logger.info("Received request to /stop_scan")
+        return jsonify({"status": "Scanning stopped"})
+    except Exception as e:
+        logger.error(f"Error in stop_scan: {str(e)}\n{traceback.format_exc()}")
+        return jsonify({"error": str(e)}), 500
 
 @app.route('/reload_faces', methods=['POST'])
 def reload_faces():
     try:
+        logger.info("Received request to /reload_faces")
         load_known_faces()
         return jsonify({"status": "success", "message": f"Reloaded {len(known_faces)} faces"})
     except Exception as e:
-        logging.error(f"Error reloading faces: {e}")
+        logger.error(f"Error reloading faces: {str(e)}\n{traceback.format_exc()}")
         return jsonify({"status": "error", "message": str(e)}), 500
 
 if __name__ == "__main__":
     try:
-        app.run(host="0.0.0.0", port=5000, debug=True)
+        logger.info("Starting Flask server...")
+        app.run(host="0.0.0.1", port=5000, debug=True)
+    except Exception as e:
+        logger.error(f"Failed to start Flask server: {str(e)}\n{traceback.format_exc()}")
     finally:
+        logger.info("Closing database connection...")
         db_manager.close()

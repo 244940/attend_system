@@ -1,113 +1,124 @@
-let video, canvas, ctx, stream;
-let scanning = false;
-let currentCourseId = null;
-let currentScheduleId = null;
+let video, canvas, ctx, scanning = false, stream;
 
-function fetchWithRetry(url, options, retries = 3, delay = 1000) {
-    return fetch(url, options)
-        .then(response => {
-            if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
-            return response.json();
-        })
-        .catch(error => {
-            if (retries > 0) {
-                console.log(`Retrying ${url}... (${retries} attempts left)`);
-                return new Promise(resolve => setTimeout(resolve, delay))
-                    .then(() => fetchWithRetry(url, options, retries - 1, delay));
-            }
-            throw error;
-        });
+async function fetchWithRetry(url, options, retries = 3, delay = 1000) {
+    for (let i = 0; i <= retries; i++) {
+        try {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout
+            console.log(`Attempting fetch to ${url}, attempt ${i + 1}`);
+            const response = await fetch(url, { ...options, signal: controller.signal });
+            clearTimeout(timeoutId);
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            return await response.json();
+        } catch (error) {
+            console.error(`Retrying ${url}... (${retries - i} attempts left): ${error.message}`);
+            if (i === retries) throw error;
+            await new Promise(resolve => setTimeout(resolve, delay));
+        }
+    }
 }
 
-function initializeVideo() {
-    video = document.getElementById('videoFeed');
-    canvas = document.getElementById('overlayCanvas');
-    ctx = canvas.getContext('2d');
-
-    if (!video || !canvas) {
-        console.error('Video or canvas element not found');
-        document.getElementById('scanResult').innerText = 'ไม่พบวิดีโอหรือ canvas element';
-        document.getElementById('scanResult').style.color = 'red';
-        return;
-    }
-
+async function initializeVideo() {
     console.log('Attempting to access webcam...');
-    navigator.mediaDevices.getUserMedia({ video: { width: { ideal: 640 }, height: { ideal: 480 } } })
-        .then(s => {
-            stream = s;
-            video.srcObject = stream;
-            console.log('Webcam accessed successfully');
-            video.onloadedmetadata = () => {
-                canvas.width = video.videoWidth;
-                canvas.height = video.videoHeight;
-                canvas.style.display = 'block';
-                console.log('Video metadata loaded:', video.videoWidth, video.videoHeight);
-                document.getElementById('scanResult').innerText = 'กล้องพร้อมใช้งาน';
-                document.getElementById('scanResult').style.color = 'green';
-            };
-        })
-        .catch(err => {
-            console.error('Error accessing webcam:', err);
-            let message = 'ไม่สามารถเข้าถึงกล้องได้: ' + err.message;
-            if (err.name === 'NotFoundError') {
-                message += ' กรุณาตรวจสอบว่าเชื่อมต่อกล้องแล้ว';
-            } else if (err.name === 'NotAllowedError') {
-                message += ' กรุณาอนุญาตการเข้าถึงกล้องในเบราว์เซอร์';
-            } else if (err.name === 'OverconstrainedError') {
-                message += ' กล้องไม่รองรับความละเอียดที่ระบุ';
-            }
-            document.getElementById('scanResult').innerText = message;
-            document.getElementById('scanResult').style.color = 'red';
-        });
+    try {
+        stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        video = document.getElementById('videoFeed');
+        video.srcObject = stream;
+        console.log('Webcam accessed successfully');
+        video.onloadedmetadata = () => {
+            console.log(`Video metadata loaded: ${video.videoWidth}x${video.videoHeight}`);
+            canvas = document.getElementById('overlayCanvas');
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            ctx = canvas.getContext('2d');
+        };
+    } catch (error) {
+        console.error('Error accessing webcam:', error);
+        document.getElementById('scanResult').innerText = 'ไม่สามารถเข้าถึงกล้องได้: ' + error.message;
+        document.getElementById('scanResult').style.color = 'red';
+    }
 }
 
-function startFaceScan(teacherId, scheduleId) {
+async function startFaceScan(teacherId, scheduleId) {
+    console.log('startFaceScan called with:', { teacherId, scheduleId, currentCourseId: window.currentCourseId });
+    console.log('Frontend origin:', window.location.origin);
+
     if (!video || !video.srcObject) {
-        initializeVideo();
-        setTimeout(() => startFaceScan(teacherId, scheduleId), 1000); // Retry after initialization
-        return;
-    }
-
-    if (!currentCourseId || !scheduleId) {
-        alert('กรุณาเลือกวิชาและตรวจสอบตารางเรียน');
-        document.getElementById('scanResult').innerText = 'กรุณาเลือกวิชาและตรวจสอบตารางเรียน';
-        document.getElementById('scanResult').style.color = 'red';
-        return;
-    }
-
-    const course = window.courses?.find(c => c.course_id == currentCourseId);
-    if (!course) {
-        document.getElementById('scanResult').innerText = 'ไม่พบข้อมูลวิชา';
-        document.getElementById('scanResult').style.color = 'red';
-        return;
-    }
-
-    const selectedDate = document.getElementById('selectedDate').value;
-    const selectedDay = new Date(selectedDate).toLocaleString('en-US', { weekday: 'long' });
-
-    if (selectedDay !== course.day_of_week) {
-        if (!confirm(`วันนี้ (${getDayNameThai(selectedDay)}) ไม่ใช่วันเรียน (${getDayNameThai(course.day_of_week)}). ต้องการดำเนินการสแกนต่อหรือไม่?`)) {
-            document.getElementById('scanResult').innerText = 'การสแกนถูกยกเลิก';
+        console.log('Initializing video...');
+        await initializeVideo();
+        if (!video || !video.srcObject) {
+            document.getElementById('scanResult').innerText = 'ไม่สามารถเริ่มกล้องได้';
             document.getElementById('scanResult').style.color = 'red';
             return;
         }
     }
 
-    currentScheduleId = scheduleId;
-    console.log('Starting scan with:', { course_id: currentCourseId, teacher_id: teacherId, schedule_id: scheduleId });
+    const currentCourseId = window.currentCourseId || null;
+    const currentScheduleId = scheduleId || window.currentScheduleId || null;
+
+    console.log('Validation check:', { currentCourseId, currentScheduleId });
+    console.log('Available courses:', window.courses);
+
+    if (!window.courses || !Array.isArray(window.courses) || window.courses.length === 0) {
+        console.error('No courses available:', window.courses);
+        document.getElementById('scanResult').innerText = 'ไม่พบข้อมูลรายวิชา';
+        document.getElementById('scanResult').style.color = 'red';
+        return;
+    }
+
+    const course = window.courses.find(c => c.course_id == currentCourseId);
+    if (!course) {
+        console.error('Course not found for ID:', currentCourseId);
+        document.getElementById('scanResult').innerText = `ไม่พบวิชา (ID: ${currentCourseId})`;
+        document.getElementById('scanResult').style.color = 'red';
+        return;
+    }
+
+    if (!currentScheduleId) {
+        console.log('No valid scheduleId, attempting fallback');
+        const fallbackSchedule = course.schedules[0]?.schedule_id || null;
+        window.currentScheduleId = fallbackSchedule;
+        if (!fallbackSchedule) {
+            console.log('No schedules available');
+            document.getElementById('scanResult').innerText = 'ไม่พบตารางเรียนสำหรับวิชานี้';
+            document.getElementById('scanResult').style.color = 'red';
+            return;
+        }
+        currentScheduleId = fallbackSchedule;
+    }
+
+    const selectedDate = document.getElementById('selectedDate')?.value;
+    const selectedDay = selectedDate ? new Date(selectedDate).toLocaleString('en-US', { weekday: 'long' }) : null;
+    const courseDay = course.schedules.find(s => s.schedule_id == currentScheduleId)?.day_of_week || course.schedules[0]?.day_of_week;
+
+    if (selectedDay && courseDay && selectedDay !== courseDay) {
+        console.log(`Warning: Selected day (${selectedDay}) does not match course day (${courseDay})`);
+        document.getElementById('scanResult').innerText = `วันนี้ (${getDayNameThai(selectedDay)}) ไม่ใช่วันเรียน (${getDayNameThai(courseDay)}) แต่จะสแกนต่อ`;
+        document.getElementById('scanResult').style.color = 'orange';
+    }
+
+    console.log('Starting scan with:', { course_id: currentCourseId, teacher_id: teacherId, schedule_id: currentScheduleId });
     document.getElementById('scanResult').innerText = 'กำลังเริ่มการสแกน...';
     document.getElementById('scanResult').style.color = 'black';
 
-    fetchWithRetry('http://127.0.0.1:5000/start_scan', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            course_id: currentCourseId,
-            teacher_id: teacherId,
-            schedule_id: scheduleId
-        })
-    })
-        .then(data => {
+    const urls = [
+        'http://127.0.0.1:5000/start_scan',
+        'http://192.168.1.108:5000/start_scan',
+        'http://localhost:5000/start_scan'
+    ];
+    let lastError = null;
+
+    for (const url of urls) {
+        try {
+            const data = await fetchWithRetry(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    course_id: currentCourseId,
+                    teacher_id: teacherId,
+                    schedule_id: currentScheduleId
+                })
+            });
             console.log('Scan started:', data);
             if (data.error) throw new Error(data.error);
             scanning = true;
@@ -116,107 +127,122 @@ function startFaceScan(teacherId, scheduleId) {
             document.getElementById('scanResult').innerText = 'กำลังสแกนใบหน้า...';
             document.getElementById('scanResult').style.color = 'green';
             processFrames();
-        })
-        .catch(error => {
-            console.error('Fetch error in startFaceScan:', error);
-            let message = 'ไม่สามารถเริ่มการสแกนได้: ' + error.message;
-            if (error.message.includes('Failed to fetch')) {
-                message += ' กรุณาตรวจสอบว่าเซิร์ฟเวอร์ทำงานอยู่ที่ http://127.0.0.1:5000';
+            return;
+        } catch (error) {
+            console.error(`Failed to connect to ${url}:`, error);
+            lastError = error;
+            document.getElementById('scanResult').innerText = `ลองเชื่อมต่อ ${url} ไม่สำเร็จ...`;
+            document.getElementById('scanResult').style.color = 'orange';
+        }
+    }
+
+    console.error('All URLs failed:', lastError);
+    let errorMessage = 'ไม่สามารถเริ่มการสแกนได้: เซิร์ฟเวอร์ไม่ตอบสนอง';
+    if (lastError.name === 'AbortError') {
+        errorMessage = 'การเชื่อมต่อเซิร์ฟเวอร์หมดเวลา';
+    } else if (lastError.message.includes('HTTP')) {
+        errorMessage = `ข้อผิดพลาดเซิร์ฟเวอร์: ${lastError.message}`;
+    }
+    document.getElementById('scanResult').innerHTML = `
+        ${errorMessage}
+        <button onclick="startFaceScan('${teacherId}', ${currentScheduleId})" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded ml-2">
+            ลองใหม่
+        </button>
+    `;
+    document.getElementById('scanResult').style.color = 'red';
+}
+
+async function processFrames() {
+    if (!scanning || !video || !canvas) return;
+
+    try {
+        const MAX_WIDTH = 640;
+        let scale = 1;
+        if (canvas.width > MAX_WIDTH) {
+            scale = MAX_WIDTH / canvas.width;
+            canvas.width = MAX_WIDTH;
+            canvas.height = canvas.height * scale;
+        }
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        const frameData = canvas.toDataURL('image/jpeg', 0.5);
+        console.log(`Frame data size: ${frameData.length} bytes`);
+
+        const urls = [
+            'http://127.0.0.1:5000/process_frame',
+            'http://192.168.1.108:5000/process_frame',
+            'http://localhost:5000/process_frame'
+        ];
+        let response = null;
+
+        for (const url of urls) {
+            try {
+                response = await fetchWithRetry(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        frame: frameData,
+                        course_id: window.currentCourseId,
+                        schedule_id: window.currentScheduleId
+                    })
+                });
+                break;
+            } catch (error) {
+                console.error(`Failed to process frame at ${url}:`, error);
+                if (error.name === 'AbortError') {
+                    console.warn('Fetch aborted, likely due to timeout or scan stop');
+                    return;
+                }
             }
-            document.getElementById('scanResult').innerHTML = `${message} <button onclick="startFaceScan(${teacherId}, ${scheduleId})" class="bg-blue-500 hover:bg-blue-600 text-white px-2 py-1 rounded">ลองใหม่</button>`;
-            document.getElementById('scanResult').style.color = 'red';
-        });
+        }
+
+        if (!response) throw new Error('All process_frame URLs failed');
+
+        const results = response.results || [];
+        console.log('Frame processing results:', results);
+
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        for (const result of results) {
+            const { top, right, bottom, left } = result.box;
+            ctx.strokeStyle = result.name === 'Unknown' ? 'red' : 'green';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(left * scale, top * scale, (right - left) * scale, (bottom - top) * scale);
+            ctx.fillStyle = ctx.strokeStyle;
+            ctx.font = '16px Sarabun';
+            ctx.fillText(`${result.name} (${result.attendance_text})`, left * scale, (top - 10) * scale);
+        }
+
+        document.getElementById('scanResult').innerText = `ตรวจพบ ${results.length} ใบหน้า`;
+    } catch (error) {
+        console.error('Error processing frame:', error);
+        document.getElementById('scanResult').innerText = 'ข้อผิดพลาดในการประมวลผลใบหน้า: ' + error.message;
+        document.getElementById('scanResult').style.color = 'red';
+    }
+
+    if (scanning) requestAnimationFrame(processFrames);
 }
 
 function stopFaceScan() {
     scanning = false;
-    fetchWithRetry('http://127.0.0.1:5000/stop_scan', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' }
-    })
-        .then(data => {
-            console.log('Scan stopped:', data);
-            document.getElementById('startScanBtn').style.display = 'inline-block';
-            document.getElementById('stopScanBtn').style.display = 'none';
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            document.getElementById('scanResult').innerText = 'การสแกนหยุดแล้ว';
-            document.getElementById('scanResult').style.color = 'blue';
-        })
-        .catch(error => {
-            console.error('Fetch error in stopFaceScan:', error);
-            document.getElementById('scanResult').innerText = 'ไม่สามารถหยุดการสแกนได้: ' + error.message;
-            document.getElementById('scanResult').style.color = 'red';
-        })
-        .finally(() => {
-            if (stream) {
-                stream.getTracks().forEach(track => track.stop());
-                stream = null;
-                video.srcObject = null;
-                canvas.style.display = 'none';
-            }
-        });
-}
-
-function processFrames() {
-    if (!scanning || !video || !video.srcObject) {
-        document.getElementById('scanResult').innerText = 'การสแกนหยุดหรือกล้องไม่พร้อม';
-        document.getElementById('scanResult').style.color = 'red';
-        return;
+    if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+        stream = null;
     }
+    document.getElementById('startScanBtn').style.display = 'inline-block';
+    document.getElementById('stopScanBtn').style.display = 'none';
+    document.getElementById('scanResult').innerText = 'หยุดการสแกนแล้ว';
+    document.getElementById('scanResult').style.color = 'blue';
 
-    const tempCanvas = document.createElement('canvas');
-    tempCanvas.width = 320; // Reduce resolution for performance
-    tempCanvas.height = 240;
-    const tempCtx = tempCanvas.getContext('2d');
-    tempCtx.drawImage(video, 0, 0, tempCanvas.width, tempCanvas.height);
-
-    const frameData = tempCanvas.toDataURL('image/jpeg', 0.5); // Lower quality for smaller size
-    fetchWithRetry('http://127.0.0.1:5000/process_frame', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            frame: frameData,
-            course_id: currentCourseId,
-            schedule_id: currentScheduleId
-        })
-    })
-        .then(data => {
-            if (data.error) throw new Error(data.error);
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-            let resultsText = [];
-            data.results.forEach(result => {
-                const { top, right, bottom, left } = result.box;
-                const scaleX = canvas.width / tempCanvas.width;
-                const scaleY = canvas.height / tempCanvas.height;
-
-                ctx.strokeStyle = result.name === 'Unknown' ? 'red' : 'green';
-                ctx.lineWidth = 2;
-                ctx.strokeRect(left * scaleX, top * scaleY, (right - left) * scaleX, (bottom - top) * scaleY);
-
-                ctx.fillStyle = 'white';
-                ctx.font = '16px Arial';
-                ctx.fillText(result.name, (left * scaleX) + 6, (top * scaleY) - 10);
-                ctx.fillText(result.attendance_text, (left * scaleX) + 6, (bottom * scaleY) + 20);
-
-                resultsText.push(`${result.name}: ${result.attendance_text}`);
-            });
-
-            document.getElementById('scanResult').innerText = resultsText.join('\n') || 'กำลังสแกน...';
-            document.getElementById('scanResult').style.color = resultsText.length ? 'black' : 'green';
-            if (typeof showAttendance === 'function') {
-                showAttendance(currentCourseId);
-            }
-            setTimeout(processFrames, 1500); // Increase interval to 1.5 seconds
-        })
-        .catch(error => {
-            console.error('Fetch error in processFrames:', error);
-            scanning = false;
-            document.getElementById('startScanBtn').style.display = 'inline-block';
-            document.getElementById('stopScanBtn').style.display = 'none';
-            document.getElementById('scanResult').innerHTML = `ข้อผิดพลาดในการสแกน: ${error.message} <button onclick="startFaceScan(${window.teacherId}, ${currentScheduleId})" class="bg-blue-500 hover:bg-blue-600 text-white px-2 py-1 rounded">ลองใหม่</button>`;
-            document.getElementById('scanResult').style.color = 'red';
-        });
+    const urls = [
+        'http://127.0.0.1:5000/stop_scan',
+        'http://192.168.1.108:5000/stop_scan',
+        'http://localhost:5000/stop_scan'
+    ];
+    for (const url of urls) {
+        fetchWithRetry(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+        }).catch(error => console.error(`Error stopping scan at ${url}:`, error));
+    }
 }
 
 function getDayNameThai(day) {
@@ -232,8 +258,6 @@ function getDayNameThai(day) {
     return dayMapping[day] || day;
 }
 
-// Expose only necessary functions
 window.startFaceScan = startFaceScan;
 window.stopFaceScan = stopFaceScan;
 window.initializeVideo = initializeVideo;
-console.log('faceScan.js loaded successfully');

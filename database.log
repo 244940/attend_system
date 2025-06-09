@@ -1,0 +1,1158 @@
+2025-06-09 18:04:13,340 - INFO - Connected to database
+2025-06-09 18:04:13,757 - INFO - Database manager initialized
+2025-06-09 18:04:13,764 - INFO - Loaded 7 known faces
+2025-06-09 18:04:14,458 - INFO - Starting Flask server...
+2025-06-09 18:04:15,338 - WARNING -  * Debugger is active!
+2025-06-09 18:04:16,671 - INFO -  * Debugger PIN: 249-321-551
+2025-06-09 18:04:24,026 - INFO - 127.0.0.1 - - [09/Jun/2025 18:04:24] "OPTIONS /process_frame HTTP/1.1" 200 -
+2025-06-09 18:04:25,015 - INFO - 127.0.0.1 - - [09/Jun/2025 18:04:25] "OPTIONS /process_frame HTTP/1.1" 200 -
+2025-06-09 18:04:26,356 - INFO - 127.0.0.1 - - [09/Jun/2025 18:04:26] "OPTIONS /process_frame HTTP/1.1" 200 -
+2025-06-09 18:04:28,498 - INFO - 192.168.1.108 - - [09/Jun/2025 18:04:28] "OPTIONS /process_frame HTTP/1.1" 200 -
+2025-06-09 18:04:30,333 - INFO - 192.168.1.108 - - [09/Jun/2025 18:04:30] "OPTIONS /process_frame HTTP/1.1" 200 -
+2025-06-09 18:04:31,713 - INFO - 192.168.1.108 - - [09/Jun/2025 18:04:31] "OPTIONS /process_frame HTTP/1.1" 200 -
+2025-06-09 18:04:35,502 - INFO - Received request to /process_frame
+2025-06-09 18:04:37,801 - INFO - 127.0.0.1 - - [09/Jun/2025 18:04:37] "OPTIONS /process_frame HTTP/1.1" 200 -
+2025-06-09 18:04:39,183 - INFO - Received request to /process_frame
+2025-06-09 18:04:45,865 - INFO - Received request to /process_frame
+2025-06-09 18:06:05,375 - INFO - Detected 1 faces
+2025-06-09 18:06:05,385 - INFO - 127.0.0.1 - - [09/Jun/2025 18:06:05] "OPTIONS /process_frame HTTP/1.1" 200 -
+2025-06-09 18:06:15,407 - INFO - Detected 1 faces
+2025-06-09 18:06:15,408 - INFO - Detected 1 faces
+2025-06-09 18:06:15,409 - INFO - Processed frame: course_id=6, schedule_id=11, results=1
+2025-06-09 18:06:16,459 - INFO - Processed frame: course_id=6, schedule_id=11, results=1
+2025-06-09 18:06:16,863 - INFO - Processed frame: course_id=6, schedule_id=11, results=1
+2025-06-09 18:06:17,190 - INFO - 127.0.0.1 - - [09/Jun/2025 18:06:17] "POST /process_frame HTTP/1.1" 200 -
+2025-06-09 18:06:17,706 - INFO - 127.0.0.1 - - [09/Jun/2025 18:06:17] "POST /process_frame HTTP/1.1" 200 -
+2025-06-09 18:06:18,188 - INFO - 192.168.1.108 - - [09/Jun/2025 18:06:18] "POST /process_frame HTTP/1.1" 200 -
+2025-06-09 18:09:59,454 - INFO - 127.0.0.1 - - [09/Jun/2025 18:09:59] "OPTIONS /process_frame HTTP/1.1" 200 -
+2025-06-09 18:10:02,147 - INFO - Received request to /process_frame
+2025-06-09 18:10:11,688 - INFO - Detected 1 faces
+2025-06-09 18:10:11,934 - ERROR - Error in get_current_schedule: 1054 (42S22): Unknown column 'c.id' in 'where clause'
+2025-06-09 18:10:12,403 - INFO - Processed frame: course_id=6, schedule_id=11, results=1
+2025-06-09 18:10:12,407 - INFO - 127.0.0.1 - - [09/Jun/2025 18:10:12] "POST /process_frame HTTP/1.1" 200 -
+2025-06-09 18:10:12,784 - INFO -  * Detected change in 'C:\\xampp\\htdocs\\attend_system\\database_manager.py', reloading
+2025-06-09 18:10:12,787 - INFO - 127.0.0.1 - - [09/Jun/2025 18:10:12] "OPTIONS /process_frame HTTP/1.1" 200 -
+2025-06-09 18:10:13,178 - INFO - Closing database connection...
+2025-06-09 18:10:13,892 - INFO - Database connection closed
+2025-06-09 18:10:54,004 - INFO - Connected to attend_data database
+2025-06-09 18:10:54,099 - INFO - Database manager initialized
+2025-06-09 18:10:54,364 - INFO - Loaded 7 known faces
+2025-06-09 18:10:54,551 - INFO - Starting Flask server...
+2025-06-09 18:10:57,486 - WARNING -  * Debugger is active!
+2025-06-09 18:10:57,768 - INFO -  * Debugger PIN: 249-321-551
+2025-06-09 18:10:59,783 - INFO - Received request to /process_frame
+2025-06-09 18:10:59,992 - DEBUG - Request data keys: ['frame', 'course_id', 'schedule_id']
+2025-06-09 18:10:59,997 - INFO - 192.168.1.108 - - [09/Jun/2025 18:10:59] "OPTIONS /process_frame HTTP/1.1" 200 -
+2025-06-09 18:11:00,145 - INFO - 192.168.1.108 - - [09/Jun/2025 18:11:00] "OPTIONS /process_frame HTTP/1.1" 200 -
+2025-06-09 18:11:00,975 - INFO - 192.168.1.108 - - [09/Jun/2025 18:11:00] "OPTIONS /process_frame HTTP/1.1" 200 -
+2025-06-09 18:11:01,169 - INFO - 127.0.0.1 - - [09/Jun/2025 18:11:01] "OPTIONS /process_frame HTTP/1.1" 200 -
+2025-06-09 18:11:01,839 - INFO - 127.0.0.1 - - [09/Jun/2025 18:11:01] "OPTIONS /process_frame HTTP/1.1" 200 -
+2025-06-09 18:11:02,176 - INFO - 127.0.0.1 - - [09/Jun/2025 18:11:02] "OPTIONS /process_frame HTTP/1.1" 200 -
+2025-06-09 18:11:05,600 - INFO - Received request to /process_frame
+2025-06-09 18:11:06,871 - DEBUG - Request data keys: ['frame', 'course_id', 'schedule_id']
+2025-06-09 18:11:10,921 - INFO - 127.0.0.1 - - [09/Jun/2025 18:11:10] "OPTIONS /process_frame HTTP/1.1" 200 -
+2025-06-09 18:11:16,215 - INFO - Detected 1 faces
+2025-06-09 18:11:16,219 - INFO - Detected 1 faces
+2025-06-09 18:11:16,227 - ERROR - Error in get_current_schedule: 1054 (42S22): Unknown column 'c.id' in 'where clause'
+2025-06-09 18:11:16,265 - INFO - 127.0.0.1 - - [09/Jun/2025 18:11:16] "OPTIONS /process_frame HTTP/1.1" 200 -
+2025-06-09 18:11:16,272 - ERROR - Error in get_current_schedule: 1054 (42S22): Unknown column 'c.id' in 'where clause'
+2025-06-09 18:11:16,272 - INFO - Processed frame: course_id=6, schedule_id=11, results=1
+2025-06-09 18:11:16,311 - INFO - 127.0.0.1 - - [09/Jun/2025 18:11:16] "POST /process_frame HTTP/1.1" 200 -
+2025-06-09 18:11:16,315 - INFO - Processed frame: course_id=6, schedule_id=11, results=1
+2025-06-09 18:11:16,363 - INFO - 127.0.0.1 - - [09/Jun/2025 18:11:16] "POST /process_frame HTTP/1.1" 200 -
+2025-06-09 18:11:16,411 - INFO - Received request to /process_frame
+2025-06-09 18:11:16,417 - DEBUG - Request data keys: ['frame', 'course_id', 'schedule_id']
+2025-06-09 18:11:18,907 - INFO - Detected 1 faces
+2025-06-09 18:11:18,911 - ERROR - Error in get_current_schedule: 1054 (42S22): Unknown column 'c.id' in 'where clause'
+2025-06-09 18:11:18,929 - INFO - Processed frame: course_id=6, schedule_id=11, results=1
+2025-06-09 18:11:18,941 - INFO - 127.0.0.1 - - [09/Jun/2025 18:11:18] "POST /process_frame HTTP/1.1" 200 -
+2025-06-09 18:27:23,681 - INFO - 127.0.0.1 - - [09/Jun/2025 18:27:23] "OPTIONS /process_frame HTTP/1.1" 200 -
+2025-06-09 18:27:26,094 - INFO - Received request to /process_frame
+2025-06-09 18:27:26,893 - DEBUG - Request data keys: ['frame', 'course_id', 'schedule_id']
+2025-06-09 18:27:32,052 - INFO - 127.0.0.1 - - [09/Jun/2025 18:27:32] "OPTIONS /process_frame HTTP/1.1" 200 -
+2025-06-09 18:27:39,379 - INFO - Detected 1 faces
+2025-06-09 18:27:39,381 - INFO - Received request to /process_frame
+2025-06-09 18:27:39,570 - INFO -  * Detected change in 'C:\\xampp\\htdocs\\attend_system\\face_recognition_server.py', reloading
+2025-06-09 18:27:39,778 - ERROR - Error in get_current_schedule: 1054 (42S22): Unknown column 'c.id' in 'where clause'
+2025-06-09 18:27:39,781 - DEBUG - Request data keys: ['frame', 'course_id', 'schedule_id']
+2025-06-09 18:27:40,204 - INFO - 127.0.0.1 - - [09/Jun/2025 18:27:40] "OPTIONS /process_frame HTTP/1.1" 200 -
+2025-06-09 18:27:40,587 - INFO - Closing database connection...
+2025-06-09 18:27:42,054 - INFO - Processed frame: course_id=6, schedule_id=11, results=1
+2025-06-09 18:27:43,464 - INFO - Database connection closed
+2025-06-09 18:27:43,498 - INFO - 127.0.0.1 - - [09/Jun/2025 18:27:43] "POST /process_frame HTTP/1.1" 200 -
+2025-06-09 18:33:03,589 - INFO - Connected to attend_data database
+2025-06-09 18:33:03,591 - INFO - Database manager initialized
+2025-06-09 18:33:03,598 - INFO - Loaded 7 known faces
+2025-06-09 18:33:03,640 - INFO - Starting Flask server...
+2025-06-09 18:33:04,755 - INFO - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://192.168.1.108:5000
+2025-06-09 18:33:04,763 - INFO - [33mPress CTRL+C to quit[0m
+2025-06-09 18:33:04,816 - INFO -  * Restarting with stat
+2025-06-09 18:33:12,907 - INFO - Connected to attend_data database
+2025-06-09 18:33:12,914 - INFO - Database manager initialized
+2025-06-09 18:33:12,937 - INFO - Loaded 7 known faces
+2025-06-09 18:33:12,975 - INFO - Starting Flask server...
+2025-06-09 18:33:13,073 - WARNING -  * Debugger is active!
+2025-06-09 18:33:13,102 - INFO -  * Debugger PIN: 249-321-551
+2025-06-09 18:34:30,637 - INFO - 127.0.0.1 - - [09/Jun/2025 18:34:30] "OPTIONS /start_scan HTTP/1.1" 200 -
+2025-06-09 18:34:31,245 - INFO - Received request to /start_scan
+2025-06-09 18:34:32,147 - INFO - Request data: {'course_id': '6', 'teacher_id': '5424000001', 'schedule_id': 11}
+2025-06-09 18:34:33,380 - ERROR - Error in start_scan: 1054 (42S22): Unknown column 'c.id' in 'where clause'
+Traceback (most recent call last):
+  File "C:\Python312\Lib\site-packages\mysql\connector\connection_cext.py", line 705, in cmd_query
+    self._cmysql.query(
+_mysql_connector.MySQLInterfaceError: Unknown column 'c.id' in 'where clause'
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\xampp\htdocs\attend_system\face_recognition_server.py", line 103, in start_scan
+    db_manager.cursor.execute(query, (course_id, teacher_id, schedule_id))
+  File "C:\Python312\Lib\site-packages\mysql\connector\cursor_cext.py", line 357, in execute
+    result = self._connection.cmd_query(
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python312\Lib\site-packages\mysql\connector\opentelemetry\context_propagation.py", line 97, in wrapper
+    return method(cnx, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python312\Lib\site-packages\mysql\connector\connection_cext.py", line 713, in cmd_query
+    raise get_mysql_exception(
+mysql.connector.errors.ProgrammingError: 1054 (42S22): Unknown column 'c.id' in 'where clause'
+
+2025-06-09 18:34:33,787 - INFO - 127.0.0.1 - - [09/Jun/2025 18:34:33] "[35m[1mPOST /start_scan HTTP/1.1[0m" 500 -
+2025-06-09 18:34:35,128 - INFO - Received request to /start_scan
+2025-06-09 18:34:35,257 - INFO - Request data: {'course_id': '6', 'teacher_id': '5424000001', 'schedule_id': 11}
+2025-06-09 18:34:35,328 - ERROR - Error in start_scan: 1054 (42S22): Unknown column 'c.id' in 'where clause'
+Traceback (most recent call last):
+  File "C:\Python312\Lib\site-packages\mysql\connector\connection_cext.py", line 705, in cmd_query
+    self._cmysql.query(
+_mysql_connector.MySQLInterfaceError: Unknown column 'c.id' in 'where clause'
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\xampp\htdocs\attend_system\face_recognition_server.py", line 103, in start_scan
+    db_manager.cursor.execute(query, (course_id, teacher_id, schedule_id))
+  File "C:\Python312\Lib\site-packages\mysql\connector\cursor_cext.py", line 357, in execute
+    result = self._connection.cmd_query(
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python312\Lib\site-packages\mysql\connector\opentelemetry\context_propagation.py", line 97, in wrapper
+    return method(cnx, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python312\Lib\site-packages\mysql\connector\connection_cext.py", line 713, in cmd_query
+    raise get_mysql_exception(
+mysql.connector.errors.ProgrammingError: 1054 (42S22): Unknown column 'c.id' in 'where clause'
+
+2025-06-09 18:34:35,356 - INFO - 127.0.0.1 - - [09/Jun/2025 18:34:35] "[35m[1mPOST /start_scan HTTP/1.1[0m" 500 -
+2025-06-09 18:34:36,483 - INFO - 127.0.0.1 - - [09/Jun/2025 18:34:36] "OPTIONS /start_scan HTTP/1.1" 200 -
+2025-06-09 18:34:36,540 - INFO - Received request to /start_scan
+2025-06-09 18:34:36,547 - INFO - Request data: {'course_id': '6', 'teacher_id': '5424000001', 'schedule_id': 11}
+2025-06-09 18:34:36,552 - ERROR - Error in start_scan: 1054 (42S22): Unknown column 'c.id' in 'where clause'
+Traceback (most recent call last):
+  File "C:\Python312\Lib\site-packages\mysql\connector\connection_cext.py", line 705, in cmd_query
+    self._cmysql.query(
+_mysql_connector.MySQLInterfaceError: Unknown column 'c.id' in 'where clause'
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\xampp\htdocs\attend_system\face_recognition_server.py", line 103, in start_scan
+    db_manager.cursor.execute(query, (course_id, teacher_id, schedule_id))
+  File "C:\Python312\Lib\site-packages\mysql\connector\cursor_cext.py", line 357, in execute
+    result = self._connection.cmd_query(
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python312\Lib\site-packages\mysql\connector\opentelemetry\context_propagation.py", line 97, in wrapper
+    return method(cnx, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python312\Lib\site-packages\mysql\connector\connection_cext.py", line 713, in cmd_query
+    raise get_mysql_exception(
+mysql.connector.errors.ProgrammingError: 1054 (42S22): Unknown column 'c.id' in 'where clause'
+
+2025-06-09 18:34:36,652 - INFO - 127.0.0.1 - - [09/Jun/2025 18:34:36] "[35m[1mPOST /start_scan HTTP/1.1[0m" 500 -
+2025-06-09 18:34:37,885 - INFO - Received request to /start_scan
+2025-06-09 18:34:37,891 - INFO - Request data: {'course_id': '6', 'teacher_id': '5424000001', 'schedule_id': 11}
+2025-06-09 18:34:37,907 - ERROR - Error in start_scan: 1054 (42S22): Unknown column 'c.id' in 'where clause'
+Traceback (most recent call last):
+  File "C:\Python312\Lib\site-packages\mysql\connector\connection_cext.py", line 705, in cmd_query
+    self._cmysql.query(
+_mysql_connector.MySQLInterfaceError: Unknown column 'c.id' in 'where clause'
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\xampp\htdocs\attend_system\face_recognition_server.py", line 103, in start_scan
+    db_manager.cursor.execute(query, (course_id, teacher_id, schedule_id))
+  File "C:\Python312\Lib\site-packages\mysql\connector\cursor_cext.py", line 357, in execute
+    result = self._connection.cmd_query(
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python312\Lib\site-packages\mysql\connector\opentelemetry\context_propagation.py", line 97, in wrapper
+    return method(cnx, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python312\Lib\site-packages\mysql\connector\connection_cext.py", line 713, in cmd_query
+    raise get_mysql_exception(
+mysql.connector.errors.ProgrammingError: 1054 (42S22): Unknown column 'c.id' in 'where clause'
+
+2025-06-09 18:34:37,970 - INFO - 127.0.0.1 - - [09/Jun/2025 18:34:37] "[35m[1mPOST /start_scan HTTP/1.1[0m" 500 -
+2025-06-09 18:34:38,320 - INFO - 192.168.1.108 - - [09/Jun/2025 18:34:38] "OPTIONS /start_scan HTTP/1.1" 200 -
+2025-06-09 18:34:38,460 - INFO - Received request to /start_scan
+2025-06-09 18:34:38,475 - INFO - Request data: {'course_id': '6', 'teacher_id': '5424000001', 'schedule_id': 11}
+2025-06-09 18:34:38,497 - ERROR - Error in start_scan: 1054 (42S22): Unknown column 'c.id' in 'where clause'
+Traceback (most recent call last):
+  File "C:\Python312\Lib\site-packages\mysql\connector\connection_cext.py", line 705, in cmd_query
+    self._cmysql.query(
+_mysql_connector.MySQLInterfaceError: Unknown column 'c.id' in 'where clause'
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\xampp\htdocs\attend_system\face_recognition_server.py", line 103, in start_scan
+    db_manager.cursor.execute(query, (course_id, teacher_id, schedule_id))
+  File "C:\Python312\Lib\site-packages\mysql\connector\cursor_cext.py", line 357, in execute
+    result = self._connection.cmd_query(
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python312\Lib\site-packages\mysql\connector\opentelemetry\context_propagation.py", line 97, in wrapper
+    return method(cnx, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python312\Lib\site-packages\mysql\connector\connection_cext.py", line 713, in cmd_query
+    raise get_mysql_exception(
+mysql.connector.errors.ProgrammingError: 1054 (42S22): Unknown column 'c.id' in 'where clause'
+
+2025-06-09 18:34:38,587 - INFO - 192.168.1.108 - - [09/Jun/2025 18:34:38] "[35m[1mPOST /start_scan HTTP/1.1[0m" 500 -
+2025-06-09 18:34:39,705 - INFO - Received request to /start_scan
+2025-06-09 18:34:39,709 - INFO - Request data: {'course_id': '6', 'teacher_id': '5424000001', 'schedule_id': 11}
+2025-06-09 18:34:39,759 - ERROR - Error in start_scan: 1054 (42S22): Unknown column 'c.id' in 'where clause'
+Traceback (most recent call last):
+  File "C:\Python312\Lib\site-packages\mysql\connector\connection_cext.py", line 705, in cmd_query
+    self._cmysql.query(
+_mysql_connector.MySQLInterfaceError: Unknown column 'c.id' in 'where clause'
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\xampp\htdocs\attend_system\face_recognition_server.py", line 103, in start_scan
+    db_manager.cursor.execute(query, (course_id, teacher_id, schedule_id))
+  File "C:\Python312\Lib\site-packages\mysql\connector\cursor_cext.py", line 357, in execute
+    result = self._connection.cmd_query(
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python312\Lib\site-packages\mysql\connector\opentelemetry\context_propagation.py", line 97, in wrapper
+    return method(cnx, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python312\Lib\site-packages\mysql\connector\connection_cext.py", line 713, in cmd_query
+    raise get_mysql_exception(
+mysql.connector.errors.ProgrammingError: 1054 (42S22): Unknown column 'c.id' in 'where clause'
+
+2025-06-09 18:34:39,879 - INFO - 192.168.1.108 - - [09/Jun/2025 18:34:39] "[35m[1mPOST /start_scan HTTP/1.1[0m" 500 -
+2025-06-09 18:34:41,024 - INFO - Received request to /start_scan
+2025-06-09 18:34:41,030 - INFO - Request data: {'course_id': '6', 'teacher_id': '5424000001', 'schedule_id': 11}
+2025-06-09 18:34:41,099 - ERROR - Error in start_scan: 1054 (42S22): Unknown column 'c.id' in 'where clause'
+Traceback (most recent call last):
+  File "C:\Python312\Lib\site-packages\mysql\connector\connection_cext.py", line 705, in cmd_query
+    self._cmysql.query(
+_mysql_connector.MySQLInterfaceError: Unknown column 'c.id' in 'where clause'
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\xampp\htdocs\attend_system\face_recognition_server.py", line 103, in start_scan
+    db_manager.cursor.execute(query, (course_id, teacher_id, schedule_id))
+  File "C:\Python312\Lib\site-packages\mysql\connector\cursor_cext.py", line 357, in execute
+    result = self._connection.cmd_query(
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python312\Lib\site-packages\mysql\connector\opentelemetry\context_propagation.py", line 97, in wrapper
+    return method(cnx, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python312\Lib\site-packages\mysql\connector\connection_cext.py", line 713, in cmd_query
+    raise get_mysql_exception(
+mysql.connector.errors.ProgrammingError: 1054 (42S22): Unknown column 'c.id' in 'where clause'
+
+2025-06-09 18:34:41,174 - INFO - 192.168.1.108 - - [09/Jun/2025 18:34:41] "[35m[1mPOST /start_scan HTTP/1.1[0m" 500 -
+2025-06-09 18:34:42,272 - INFO - Received request to /start_scan
+2025-06-09 18:34:42,309 - INFO - Request data: {'course_id': '6', 'teacher_id': '5424000001', 'schedule_id': 11}
+2025-06-09 18:34:42,334 - ERROR - Error in start_scan: 1054 (42S22): Unknown column 'c.id' in 'where clause'
+Traceback (most recent call last):
+  File "C:\Python312\Lib\site-packages\mysql\connector\connection_cext.py", line 705, in cmd_query
+    self._cmysql.query(
+_mysql_connector.MySQLInterfaceError: Unknown column 'c.id' in 'where clause'
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\xampp\htdocs\attend_system\face_recognition_server.py", line 103, in start_scan
+    db_manager.cursor.execute(query, (course_id, teacher_id, schedule_id))
+  File "C:\Python312\Lib\site-packages\mysql\connector\cursor_cext.py", line 357, in execute
+    result = self._connection.cmd_query(
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python312\Lib\site-packages\mysql\connector\opentelemetry\context_propagation.py", line 97, in wrapper
+    return method(cnx, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python312\Lib\site-packages\mysql\connector\connection_cext.py", line 713, in cmd_query
+    raise get_mysql_exception(
+mysql.connector.errors.ProgrammingError: 1054 (42S22): Unknown column 'c.id' in 'where clause'
+
+2025-06-09 18:34:42,363 - INFO - 192.168.1.108 - - [09/Jun/2025 18:34:42] "[35m[1mPOST /start_scan HTTP/1.1[0m" 500 -
+2025-06-09 18:34:42,926 - INFO - 127.0.0.1 - - [09/Jun/2025 18:34:42] "OPTIONS /start_scan HTTP/1.1" 200 -
+2025-06-09 18:34:43,003 - INFO - Received request to /start_scan
+2025-06-09 18:34:43,006 - INFO - Request data: {'course_id': '6', 'teacher_id': '5424000001', 'schedule_id': 11}
+2025-06-09 18:34:43,013 - ERROR - Error in start_scan: 1054 (42S22): Unknown column 'c.id' in 'where clause'
+Traceback (most recent call last):
+  File "C:\Python312\Lib\site-packages\mysql\connector\connection_cext.py", line 705, in cmd_query
+    self._cmysql.query(
+_mysql_connector.MySQLInterfaceError: Unknown column 'c.id' in 'where clause'
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\xampp\htdocs\attend_system\face_recognition_server.py", line 103, in start_scan
+    db_manager.cursor.execute(query, (course_id, teacher_id, schedule_id))
+  File "C:\Python312\Lib\site-packages\mysql\connector\cursor_cext.py", line 357, in execute
+    result = self._connection.cmd_query(
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python312\Lib\site-packages\mysql\connector\opentelemetry\context_propagation.py", line 97, in wrapper
+    return method(cnx, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python312\Lib\site-packages\mysql\connector\connection_cext.py", line 713, in cmd_query
+    raise get_mysql_exception(
+mysql.connector.errors.ProgrammingError: 1054 (42S22): Unknown column 'c.id' in 'where clause'
+
+2025-06-09 18:34:43,090 - INFO - 127.0.0.1 - - [09/Jun/2025 18:34:43] "[35m[1mPOST /start_scan HTTP/1.1[0m" 500 -
+2025-06-09 18:34:44,243 - INFO - Received request to /start_scan
+2025-06-09 18:34:44,331 - INFO - Request data: {'course_id': '6', 'teacher_id': '5424000001', 'schedule_id': 11}
+2025-06-09 18:34:44,468 - ERROR - Error in start_scan: 1054 (42S22): Unknown column 'c.id' in 'where clause'
+Traceback (most recent call last):
+  File "C:\Python312\Lib\site-packages\mysql\connector\connection_cext.py", line 705, in cmd_query
+    self._cmysql.query(
+_mysql_connector.MySQLInterfaceError: Unknown column 'c.id' in 'where clause'
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\xampp\htdocs\attend_system\face_recognition_server.py", line 103, in start_scan
+    db_manager.cursor.execute(query, (course_id, teacher_id, schedule_id))
+  File "C:\Python312\Lib\site-packages\mysql\connector\cursor_cext.py", line 357, in execute
+    result = self._connection.cmd_query(
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python312\Lib\site-packages\mysql\connector\opentelemetry\context_propagation.py", line 97, in wrapper
+    return method(cnx, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python312\Lib\site-packages\mysql\connector\connection_cext.py", line 713, in cmd_query
+    raise get_mysql_exception(
+mysql.connector.errors.ProgrammingError: 1054 (42S22): Unknown column 'c.id' in 'where clause'
+
+2025-06-09 18:34:44,501 - INFO - 127.0.0.1 - - [09/Jun/2025 18:34:44] "[35m[1mPOST /start_scan HTTP/1.1[0m" 500 -
+2025-06-09 18:34:45,951 - INFO - Received request to /start_scan
+2025-06-09 18:34:45,952 - INFO - Request data: {'course_id': '6', 'teacher_id': '5424000001', 'schedule_id': 11}
+2025-06-09 18:34:45,956 - ERROR - Error in start_scan: 1054 (42S22): Unknown column 'c.id' in 'where clause'
+Traceback (most recent call last):
+  File "C:\Python312\Lib\site-packages\mysql\connector\connection_cext.py", line 705, in cmd_query
+    self._cmysql.query(
+_mysql_connector.MySQLInterfaceError: Unknown column 'c.id' in 'where clause'
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\xampp\htdocs\attend_system\face_recognition_server.py", line 103, in start_scan
+    db_manager.cursor.execute(query, (course_id, teacher_id, schedule_id))
+  File "C:\Python312\Lib\site-packages\mysql\connector\cursor_cext.py", line 357, in execute
+    result = self._connection.cmd_query(
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python312\Lib\site-packages\mysql\connector\opentelemetry\context_propagation.py", line 97, in wrapper
+    return method(cnx, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python312\Lib\site-packages\mysql\connector\connection_cext.py", line 713, in cmd_query
+    raise get_mysql_exception(
+mysql.connector.errors.ProgrammingError: 1054 (42S22): Unknown column 'c.id' in 'where clause'
+
+2025-06-09 18:34:45,990 - INFO - 127.0.0.1 - - [09/Jun/2025 18:34:45] "[35m[1mPOST /start_scan HTTP/1.1[0m" 500 -
+2025-06-09 18:34:47,042 - INFO - Received request to /start_scan
+2025-06-09 18:34:47,118 - INFO - Request data: {'course_id': '6', 'teacher_id': '5424000001', 'schedule_id': 11}
+2025-06-09 18:34:47,125 - ERROR - Error in start_scan: 1054 (42S22): Unknown column 'c.id' in 'where clause'
+Traceback (most recent call last):
+  File "C:\Python312\Lib\site-packages\mysql\connector\connection_cext.py", line 705, in cmd_query
+    self._cmysql.query(
+_mysql_connector.MySQLInterfaceError: Unknown column 'c.id' in 'where clause'
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\xampp\htdocs\attend_system\face_recognition_server.py", line 103, in start_scan
+    db_manager.cursor.execute(query, (course_id, teacher_id, schedule_id))
+  File "C:\Python312\Lib\site-packages\mysql\connector\cursor_cext.py", line 357, in execute
+    result = self._connection.cmd_query(
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python312\Lib\site-packages\mysql\connector\opentelemetry\context_propagation.py", line 97, in wrapper
+    return method(cnx, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python312\Lib\site-packages\mysql\connector\connection_cext.py", line 713, in cmd_query
+    raise get_mysql_exception(
+mysql.connector.errors.ProgrammingError: 1054 (42S22): Unknown column 'c.id' in 'where clause'
+
+2025-06-09 18:34:47,276 - INFO - 127.0.0.1 - - [09/Jun/2025 18:34:47] "[35m[1mPOST /start_scan HTTP/1.1[0m" 500 -
+2025-06-09 18:42:59,997 - INFO -  * Detected change in 'C:\\xampp\\htdocs\\attend_system\\face_recognition_server.py', reloading
+2025-06-09 18:43:00,106 - INFO - Closing database connection...
+2025-06-09 18:43:01,294 - INFO - Database connection closed
+2025-06-09 18:43:05,015 - INFO -  * Restarting with stat
+2025-06-09 18:43:18,755 - INFO - Connected to attend_data database
+2025-06-09 18:43:18,756 - INFO - Database manager initialized
+2025-06-09 18:43:18,760 - INFO - Loaded 7 known faces
+2025-06-09 18:43:18,767 - INFO - Starting Flask server...
+2025-06-09 18:43:18,855 - WARNING -  * Debugger is active!
+2025-06-09 18:43:18,897 - INFO -  * Debugger PIN: 249-321-551
+2025-06-09 18:45:42,887 - INFO - 127.0.0.1 - - [09/Jun/2025 18:45:42] "OPTIONS /start_scan HTTP/1.1" 200 -
+2025-06-09 18:45:42,994 - INFO - Received request to /start_scan
+2025-06-09 18:45:43,002 - INFO - Request data: {'course_id': 6, 'teacher_id': '5424000001', 'schedule_id': 11}
+2025-06-09 18:45:43,201 - INFO - Scanning started: course_id=6, teacher_id=5424000001, schedule_id=11
+2025-06-09 18:45:43,230 - INFO - 127.0.0.1 - - [09/Jun/2025 18:45:43] "POST /start_scan HTTP/1.1" 200 -
+2025-06-09 18:45:44,428 - INFO - 127.0.0.1 - - [09/Jun/2025 18:45:44] "OPTIONS /process_frame HTTP/1.1" 200 -
+2025-06-09 18:45:45,044 - INFO - Received request to /process_frame
+2025-06-09 18:45:45,522 - DEBUG - Request data keys: ['frame', 'course_id', 'schedule_id']
+2025-06-09 18:45:48,082 - INFO - Detected 1 faces
+2025-06-09 18:45:48,095 - ERROR - Error in get_current_schedule: 1054 (42S22): Unknown column 'c.id' in 'where clause'
+2025-06-09 18:45:48,138 - DEBUG - Current schedule for student 6421600001: None
+2025-06-09 18:45:48,149 - INFO - Processed frame: course_id=6, schedule_id=11, results=1
+2025-06-09 18:45:48,151 - INFO - 127.0.0.1 - - [09/Jun/2025 18:45:48] "POST /process_frame HTTP/1.1" 200 -
+2025-06-09 18:45:48,456 - INFO - Received request to /process_frame
+2025-06-09 18:45:48,460 - DEBUG - Request data keys: ['frame', 'course_id', 'schedule_id']
+2025-06-09 18:45:50,593 - INFO - Detected 1 faces
+2025-06-09 18:45:50,596 - ERROR - Error in get_current_schedule: 1054 (42S22): Unknown column 'c.id' in 'where clause'
+2025-06-09 18:45:50,598 - DEBUG - Current schedule for student 6421600002: None
+2025-06-09 18:45:50,624 - INFO - Processed frame: course_id=6, schedule_id=11, results=1
+2025-06-09 18:45:50,633 - INFO - 127.0.0.1 - - [09/Jun/2025 18:45:50] "POST /process_frame HTTP/1.1" 200 -
+2025-06-09 18:45:50,802 - INFO - 127.0.0.1 - - [09/Jun/2025 18:45:50] "OPTIONS /process_frame HTTP/1.1" 200 -
+2025-06-09 18:45:50,841 - INFO - Received request to /process_frame
+2025-06-09 18:45:50,847 - DEBUG - Request data keys: ['frame', 'course_id', 'schedule_id']
+2025-06-09 18:45:56,301 - INFO - Detected 2 faces
+2025-06-09 18:45:56,305 - ERROR - Error in get_current_schedule: 1054 (42S22): Unknown column 'c.id' in 'where clause'
+2025-06-09 18:45:56,306 - DEBUG - Current schedule for student 6421600002: None
+2025-06-09 18:45:56,311 - INFO - Processed frame: course_id=6, schedule_id=11, results=2
+2025-06-09 18:45:56,329 - INFO - 127.0.0.1 - - [09/Jun/2025 18:45:56] "POST /process_frame HTTP/1.1" 200 -
+2025-06-09 18:46:00,648 - INFO - 127.0.0.1 - - [09/Jun/2025 18:46:00] "OPTIONS /process_frame HTTP/1.1" 200 -
+2025-06-09 18:46:00,859 - INFO - Received request to /process_frame
+2025-06-09 18:46:00,919 - DEBUG - Request data keys: ['frame', 'course_id', 'schedule_id']
+2025-06-09 18:46:03,451 - INFO - Detected 1 faces
+2025-06-09 18:46:03,457 - ERROR - Error in get_current_schedule: 1054 (42S22): Unknown column 'c.id' in 'where clause'
+2025-06-09 18:46:03,513 - DEBUG - Current schedule for student 6421600001: None
+2025-06-09 18:46:03,545 - INFO - Processed frame: course_id=6, schedule_id=11, results=1
+2025-06-09 18:46:03,547 - INFO - 127.0.0.1 - - [09/Jun/2025 18:46:03] "POST /process_frame HTTP/1.1" 200 -
+2025-06-09 18:46:03,777 - INFO - Received request to /process_frame
+2025-06-09 18:46:03,802 - DEBUG - Request data keys: ['frame', 'course_id', 'schedule_id']
+2025-06-09 18:46:05,769 - INFO - Detected 1 faces
+2025-06-09 18:46:05,772 - ERROR - Error in get_current_schedule: 1054 (42S22): Unknown column 'c.id' in 'where clause'
+2025-06-09 18:46:05,831 - DEBUG - Current schedule for student 6421600002: None
+2025-06-09 18:46:05,847 - INFO - Processed frame: course_id=6, schedule_id=11, results=1
+2025-06-09 18:46:05,859 - INFO - 127.0.0.1 - - [09/Jun/2025 18:46:05] "POST /process_frame HTTP/1.1" 200 -
+2025-06-09 18:46:06,491 - INFO - 127.0.0.1 - - [09/Jun/2025 18:46:06] "OPTIONS /process_frame HTTP/1.1" 200 -
+2025-06-09 18:46:06,605 - INFO - Received request to /process_frame
+2025-06-09 18:46:06,610 - DEBUG - Request data keys: ['frame', 'course_id', 'schedule_id']
+2025-06-09 18:46:08,452 - INFO - Detected 1 faces
+2025-06-09 18:46:08,456 - ERROR - Error in get_current_schedule: 1054 (42S22): Unknown column 'c.id' in 'where clause'
+2025-06-09 18:46:08,457 - DEBUG - Current schedule for student 6421600002: None
+2025-06-09 18:46:08,510 - INFO - Processed frame: course_id=6, schedule_id=11, results=1
+2025-06-09 18:46:08,514 - INFO - 127.0.0.1 - - [09/Jun/2025 18:46:08] "POST /process_frame HTTP/1.1" 200 -
+2025-06-09 18:46:08,748 - INFO - Received request to /process_frame
+2025-06-09 18:46:08,760 - DEBUG - Request data keys: ['frame', 'course_id', 'schedule_id']
+2025-06-09 18:46:10,611 - INFO - Detected 1 faces
+2025-06-09 18:46:10,624 - INFO - Processed frame: course_id=6, schedule_id=11, results=1
+2025-06-09 18:46:10,644 - INFO - 127.0.0.1 - - [09/Jun/2025 18:46:10] "POST /process_frame HTTP/1.1" 200 -
+2025-06-09 18:46:10,848 - INFO - Received request to /process_frame
+2025-06-09 18:46:10,894 - DEBUG - Request data keys: ['frame', 'course_id', 'schedule_id']
+2025-06-09 18:46:12,096 - INFO - Detected 0 faces
+2025-06-09 18:46:12,175 - INFO - Processed frame: course_id=6, schedule_id=11, results=0
+2025-06-09 18:46:12,281 - INFO - 127.0.0.1 - - [09/Jun/2025 18:46:12] "POST /process_frame HTTP/1.1" 200 -
+2025-06-09 18:46:13,648 - INFO - 127.0.0.1 - - [09/Jun/2025 18:46:13] "OPTIONS /process_frame HTTP/1.1" 200 -
+2025-06-09 18:46:14,013 - INFO - Received request to /process_frame
+2025-06-09 18:46:14,019 - DEBUG - Request data keys: ['frame', 'course_id', 'schedule_id']
+2025-06-09 18:46:17,015 - INFO - Detected 1 faces
+2025-06-09 18:46:17,033 - ERROR - Error in get_current_schedule: 1054 (42S22): Unknown column 'c.id' in 'where clause'
+2025-06-09 18:46:17,144 - DEBUG - Current schedule for student 6421600002: None
+2025-06-09 18:46:17,261 - INFO - Processed frame: course_id=6, schedule_id=11, results=1
+2025-06-09 18:46:17,303 - INFO - 127.0.0.1 - - [09/Jun/2025 18:46:17] "POST /process_frame HTTP/1.1" 200 -
+2025-06-09 18:46:38,645 - INFO - 127.0.0.1 - - [09/Jun/2025 18:46:38] "OPTIONS /process_frame HTTP/1.1" 200 -
+2025-06-09 18:46:38,817 - INFO - Received request to /process_frame
+2025-06-09 18:46:38,830 - DEBUG - Request data keys: ['frame', 'course_id', 'schedule_id']
+2025-06-09 18:46:42,174 - INFO - Detected 1 faces
+2025-06-09 18:46:42,473 - ERROR - Error in get_current_schedule: 1054 (42S22): Unknown column 'c.id' in 'where clause'
+2025-06-09 18:46:42,846 - DEBUG - Current schedule for student 6421600002: None
+2025-06-09 18:46:42,895 - INFO - Processed frame: course_id=6, schedule_id=11, results=1
+2025-06-09 18:46:42,911 - INFO - 127.0.0.1 - - [09/Jun/2025 18:46:42] "POST /process_frame HTTP/1.1" 200 -
+2025-06-09 18:46:57,681 - INFO - 127.0.0.1 - - [09/Jun/2025 18:46:57] "OPTIONS /process_frame HTTP/1.1" 200 -
+2025-06-09 18:46:58,501 - INFO - Received request to /process_frame
+2025-06-09 18:46:58,846 - DEBUG - Request data keys: ['frame', 'course_id', 'schedule_id']
+2025-06-09 18:47:01,482 - INFO - Detected 1 faces
+2025-06-09 18:47:01,561 - ERROR - Error in get_current_schedule: 1054 (42S22): Unknown column 'c.id' in 'where clause'
+2025-06-09 18:47:01,566 - DEBUG - Current schedule for student 6421600002: None
+2025-06-09 18:47:01,567 - INFO - Processed frame: course_id=6, schedule_id=11, results=1
+2025-06-09 18:47:01,587 - INFO - 127.0.0.1 - - [09/Jun/2025 18:47:01] "POST /process_frame HTTP/1.1" 200 -
+2025-06-09 18:47:02,252 - INFO - Received request to /process_frame
+2025-06-09 18:47:02,255 - DEBUG - Request data keys: ['frame', 'course_id', 'schedule_id']
+2025-06-09 18:47:04,669 - INFO - Detected 1 faces
+2025-06-09 18:47:04,673 - ERROR - Error in get_current_schedule: 1054 (42S22): Unknown column 'c.id' in 'where clause'
+2025-06-09 18:47:04,689 - DEBUG - Current schedule for student 6421600002: None
+2025-06-09 18:47:04,691 - INFO - Processed frame: course_id=6, schedule_id=11, results=1
+2025-06-09 18:47:04,721 - INFO - 127.0.0.1 - - [09/Jun/2025 18:47:04] "POST /process_frame HTTP/1.1" 200 -
+2025-06-09 18:47:04,944 - INFO - 127.0.0.1 - - [09/Jun/2025 18:47:04] "OPTIONS /process_frame HTTP/1.1" 200 -
+2025-06-09 18:47:04,973 - INFO - Received request to /process_frame
+2025-06-09 18:47:04,996 - DEBUG - Request data keys: ['frame', 'course_id', 'schedule_id']
+2025-06-09 18:47:07,462 - INFO - Detected 1 faces
+2025-06-09 18:47:07,466 - ERROR - Error in get_current_schedule: 1054 (42S22): Unknown column 'c.id' in 'where clause'
+2025-06-09 18:47:07,468 - DEBUG - Current schedule for student 6421600002: None
+2025-06-09 18:47:07,491 - INFO - Processed frame: course_id=6, schedule_id=11, results=1
+2025-06-09 18:47:07,503 - INFO - 127.0.0.1 - - [09/Jun/2025 18:47:07] "POST /process_frame HTTP/1.1" 200 -
+2025-06-09 18:47:07,759 - INFO - Received request to /process_frame
+2025-06-09 18:47:07,824 - DEBUG - Request data keys: ['frame', 'course_id', 'schedule_id']
+2025-06-09 18:47:10,732 - INFO - Detected 1 faces
+2025-06-09 18:47:10,736 - ERROR - Error in get_current_schedule: 1054 (42S22): Unknown column 'c.id' in 'where clause'
+2025-06-09 18:47:10,738 - DEBUG - Current schedule for student 6421600001: None
+2025-06-09 18:47:10,791 - INFO - Processed frame: course_id=6, schedule_id=11, results=1
+2025-06-09 18:47:10,801 - INFO - 127.0.0.1 - - [09/Jun/2025 18:47:10] "POST /process_frame HTTP/1.1" 200 -
+2025-06-09 18:47:10,938 - INFO - 127.0.0.1 - - [09/Jun/2025 18:47:10] "OPTIONS /process_frame HTTP/1.1" 200 -
+2025-06-09 18:47:10,970 - INFO - Received request to /process_frame
+2025-06-09 18:47:10,976 - DEBUG - Request data keys: ['frame', 'course_id', 'schedule_id']
+2025-06-09 18:47:13,510 - INFO - Detected 1 faces
+2025-06-09 18:47:13,534 - ERROR - Error in get_current_schedule: 1054 (42S22): Unknown column 'c.id' in 'where clause'
+2025-06-09 18:47:13,606 - DEBUG - Current schedule for student 6421600002: None
+2025-06-09 18:47:13,631 - INFO - Processed frame: course_id=6, schedule_id=11, results=1
+2025-06-09 18:47:13,636 - INFO - 127.0.0.1 - - [09/Jun/2025 18:47:13] "POST /process_frame HTTP/1.1" 200 -
+2025-06-09 18:47:13,800 - INFO - Received request to /process_frame
+2025-06-09 18:47:13,805 - DEBUG - Request data keys: ['frame', 'course_id', 'schedule_id']
+2025-06-09 18:47:18,821 - INFO - Detected 1 faces
+2025-06-09 18:47:18,825 - ERROR - Error in get_current_schedule: 1054 (42S22): Unknown column 'c.id' in 'where clause'
+2025-06-09 18:47:18,827 - DEBUG - Current schedule for student 6421600002: None
+2025-06-09 18:47:18,878 - INFO - Processed frame: course_id=6, schedule_id=11, results=1
+2025-06-09 18:47:19,048 - INFO - 127.0.0.1 - - [09/Jun/2025 18:47:19] "POST /process_frame HTTP/1.1" 200 -
+2025-06-09 18:47:19,522 - INFO - 127.0.0.1 - - [09/Jun/2025 18:47:19] "OPTIONS /process_frame HTTP/1.1" 200 -
+2025-06-09 18:47:19,633 - INFO - Received request to /process_frame
+2025-06-09 18:47:19,643 - DEBUG - Request data keys: ['frame', 'course_id', 'schedule_id']
+2025-06-09 18:47:28,926 - INFO - Detected 1 faces
+2025-06-09 18:47:30,115 - ERROR - Error in get_current_schedule: 1054 (42S22): Unknown column 'c.id' in 'where clause'
+2025-06-09 18:47:31,403 - DEBUG - Current schedule for student 6421600002: None
+2025-06-09 18:47:32,255 - INFO - Processed frame: course_id=6, schedule_id=11, results=1
+2025-06-09 18:47:33,271 - INFO - 127.0.0.1 - - [09/Jun/2025 18:47:33] "POST /process_frame HTTP/1.1" 200 -
+2025-06-09 18:47:33,275 - INFO - 127.0.0.1 - - [09/Jun/2025 18:47:33] "OPTIONS /process_frame HTTP/1.1" 200 -
+2025-06-09 18:47:37,754 - INFO - Received request to /process_frame
+2025-06-09 18:47:39,364 - DEBUG - Request data keys: ['frame', 'course_id', 'schedule_id']
+2025-06-09 18:47:47,574 - INFO - Detected 1 faces
+2025-06-09 18:47:47,603 - ERROR - Error in get_current_schedule: 1054 (42S22): Unknown column 'c.id' in 'where clause'
+2025-06-09 18:47:47,656 - INFO - 127.0.0.1 - - [09/Jun/2025 18:47:47] "OPTIONS /process_frame HTTP/1.1" 200 -
+2025-06-09 18:47:47,801 - DEBUG - Current schedule for student 6421600002: None
+2025-06-09 18:47:47,875 - INFO - Processed frame: course_id=6, schedule_id=11, results=1
+2025-06-09 18:47:47,877 - INFO - 127.0.0.1 - - [09/Jun/2025 18:47:47] "POST /process_frame HTTP/1.1" 200 -
+2025-06-09 18:47:48,085 - INFO - Received request to /process_frame
+2025-06-09 18:47:48,103 - DEBUG - Request data keys: ['frame', 'course_id', 'schedule_id']
+2025-06-09 18:47:52,287 - INFO - Detected 1 faces
+2025-06-09 18:47:52,540 - ERROR - Error in get_current_schedule: 1054 (42S22): Unknown column 'c.id' in 'where clause'
+2025-06-09 18:47:52,662 - DEBUG - Current schedule for student 6421600002: None
+2025-06-09 18:47:52,721 - INFO - Processed frame: course_id=6, schedule_id=11, results=1
+2025-06-09 18:47:52,750 - INFO - 127.0.0.1 - - [09/Jun/2025 18:47:52] "POST /process_frame HTTP/1.1" 200 -
+2025-06-09 18:52:53,236 - INFO - 127.0.0.1 - - [09/Jun/2025 18:52:53] "OPTIONS /process_frame HTTP/1.1" 200 -
+2025-06-09 18:52:54,760 - INFO - Received request to /process_frame
+2025-06-09 18:52:55,219 - DEBUG - Request data keys: ['frame', 'course_id', 'schedule_id']
+2025-06-09 18:53:06,675 - INFO - Detected 1 faces
+2025-06-09 18:53:07,161 - ERROR - Error in get_current_schedule: 1054 (42S22): Unknown column 'c.id' in 'where clause'
+2025-06-09 18:53:07,600 - DEBUG - Current schedule for student 6421600001: None
+2025-06-09 18:53:07,601 - INFO - Processed frame: course_id=6, schedule_id=11, results=1
+2025-06-09 18:53:07,604 - INFO - 127.0.0.1 - - [09/Jun/2025 18:53:07] "POST /process_frame HTTP/1.1" 200 -
+2025-06-09 18:53:07,929 - INFO - 127.0.0.1 - - [09/Jun/2025 18:53:07] "OPTIONS /process_frame HTTP/1.1" 200 -
+2025-06-09 18:53:09,285 - INFO - Received request to /process_frame
+2025-06-09 18:53:09,699 - DEBUG - Request data keys: ['frame', 'course_id', 'schedule_id']
+2025-06-09 18:53:14,827 - INFO - Detected 1 faces
+2025-06-09 18:53:14,847 - ERROR - Error in get_current_schedule: 1054 (42S22): Unknown column 'c.id' in 'where clause'
+2025-06-09 18:53:14,849 - DEBUG - Current schedule for student 6421600001: None
+2025-06-09 18:53:14,923 - INFO - Processed frame: course_id=6, schedule_id=11, results=1
+2025-06-09 18:53:15,020 - INFO - 127.0.0.1 - - [09/Jun/2025 18:53:15] "POST /process_frame HTTP/1.1" 200 -
+2025-06-09 18:54:00,230 - INFO - 127.0.0.1 - - [09/Jun/2025 18:54:00] "OPTIONS /process_frame HTTP/1.1" 200 -
+2025-06-09 18:54:00,812 - INFO - Received request to /process_frame
+2025-06-09 18:54:00,819 - DEBUG - Request data keys: ['frame', 'course_id', 'schedule_id']
+2025-06-09 18:54:04,099 - INFO - Detected 1 faces
+2025-06-09 18:54:04,103 - ERROR - Error in get_current_schedule: 1054 (42S22): Unknown column 'c.id' in 'where clause'
+2025-06-09 18:54:04,105 - DEBUG - Current schedule for student 6421600002: None
+2025-06-09 18:54:04,136 - INFO - Processed frame: course_id=6, schedule_id=11, results=1
+2025-06-09 18:54:04,138 - INFO - 127.0.0.1 - - [09/Jun/2025 18:54:04] "POST /process_frame HTTP/1.1" 200 -
+2025-06-09 18:54:42,553 - INFO -  * Detected change in 'C:\\xampp\\htdocs\\attend_system\\database_manager.py', reloading
+2025-06-09 18:54:42,557 - INFO - Closing database connection...
+2025-06-09 18:54:42,839 - INFO - Database connection closed
+2025-06-09 18:54:44,921 - INFO -  * Restarting with stat
+2025-06-09 18:55:09,938 - INFO - Connected to attend_data database
+2025-06-09 18:55:09,952 - INFO - Database manager initialized
+2025-06-09 18:55:09,958 - INFO - Loaded 7 known faces
+2025-06-09 18:55:10,007 - INFO - Starting Flask server...
+2025-06-09 18:55:10,211 - WARNING -  * Debugger is active!
+2025-06-09 18:55:10,301 - INFO -  * Debugger PIN: 249-321-551
+2025-06-09 18:55:11,190 - INFO - 127.0.0.1 - - [09/Jun/2025 18:55:11] "OPTIONS /process_frame HTTP/1.1" 200 -
+2025-06-09 18:55:11,456 - INFO - 127.0.0.1 - - [09/Jun/2025 18:55:11] "OPTIONS /process_frame HTTP/1.1" 200 -
+2025-06-09 18:55:11,721 - INFO - Received request to /process_frame
+2025-06-09 18:55:11,805 - DEBUG - Request data keys: ['frame', 'course_id', 'schedule_id']
+2025-06-09 18:55:15,172 - INFO - Detected 1 faces
+2025-06-09 18:55:15,325 - INFO - Processed frame: course_id=6, schedule_id=11, results=1
+2025-06-09 18:55:15,497 - INFO - 127.0.0.1 - - [09/Jun/2025 18:55:15] "POST /process_frame HTTP/1.1" 200 -
+2025-06-09 18:55:29,240 - INFO -  * Detected change in 'C:\\xampp\\htdocs\\attend_system\\face_recognition_server.py', reloading
+2025-06-09 18:55:29,545 - INFO - Closing database connection...
+2025-06-09 18:55:29,809 - INFO - Database connection closed
+2025-06-09 18:55:34,286 - INFO -  * Restarting with stat
+2025-06-09 18:56:04,154 - INFO - Connected to attend_data database
+2025-06-09 18:56:04,164 - INFO - Database manager initialized
+2025-06-09 18:56:04,171 - INFO - Loaded 7 known faces
+2025-06-09 18:56:04,231 - INFO - Starting Flask server...
+2025-06-09 18:56:04,388 - WARNING -  * Debugger is active!
+2025-06-09 18:56:04,553 - INFO -  * Debugger PIN: 249-321-551
+2025-06-09 18:56:05,666 - INFO - 127.0.0.1 - - [09/Jun/2025 18:56:05] "OPTIONS /process_frame HTTP/1.1" 200 -
+2025-06-09 18:56:05,946 - INFO - 127.0.0.1 - - [09/Jun/2025 18:56:05] "OPTIONS /process_frame HTTP/1.1" 200 -
+2025-06-09 18:56:06,206 - INFO - 127.0.0.1 - - [09/Jun/2025 18:56:06] "OPTIONS /process_frame HTTP/1.1" 200 -
+2025-06-09 18:56:06,595 - INFO - Received request to /process_frame
+2025-06-09 18:56:06,614 - DEBUG - Request data keys: ['frame', 'course_id', 'schedule_id']
+2025-06-09 18:56:08,612 - INFO - Detected 0 faces
+2025-06-09 18:56:08,659 - INFO - Processed frame: course_id=6, schedule_id=11, results=0
+2025-06-09 18:56:08,692 - INFO - 127.0.0.1 - - [09/Jun/2025 18:56:08] "POST /process_frame HTTP/1.1" 200 -
+2025-06-09 18:57:17,097 - INFO - 127.0.0.1 - - [09/Jun/2025 18:57:17] "OPTIONS /process_frame HTTP/1.1" 200 -
+2025-06-09 18:57:20,239 - INFO - Received request to /process_frame
+2025-06-09 18:57:20,726 - DEBUG - Request data keys: ['frame', 'course_id', 'schedule_id']
+2025-06-09 18:57:27,712 - INFO - Detected 1 faces
+2025-06-09 18:57:27,813 - INFO - Found schedule: student_id=6421600002, course_id=6, schedule_id=11
+2025-06-09 18:57:27,889 - ERROR - Attendance logging error for student 6421600002: combine() argument 2 must be datetime.time, not datetime.timedelta
+Traceback (most recent call last):
+  File "C:\xampp\htdocs\attend_system\face_recognition_server.py", line 188, in process_frame
+    current_schedule, reason = db_manager.get_current_schedule(student_id, course_id, schedule_id)
+                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\xampp\htdocs\attend_system\database_manager.py", line 69, in get_current_schedule
+    start_dt = datetime.combine(today, start_time)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: combine() argument 2 must be datetime.time, not datetime.timedelta
+
+2025-06-09 18:57:28,547 - INFO - Processed frame: course_id=6, schedule_id=11, results=1
+2025-06-09 18:57:28,609 - INFO - 127.0.0.1 - - [09/Jun/2025 18:57:28] "POST /process_frame HTTP/1.1" 200 -
+2025-06-09 18:57:40,276 - INFO - 127.0.0.1 - - [09/Jun/2025 18:57:40] "OPTIONS /start_scan HTTP/1.1" 200 -
+2025-06-09 18:57:40,371 - INFO - Received request to /start_scan
+2025-06-09 18:57:40,459 - INFO - Request data: {'course_id': 6, 'teacher_id': '5424000001', 'schedule_id': 11}
+2025-06-09 18:57:40,888 - INFO - Scanning started: course_id=6, teacher_id=5424000001, schedule_id=11
+2025-06-09 18:57:41,092 - INFO - 127.0.0.1 - - [09/Jun/2025 18:57:41] "POST /start_scan HTTP/1.1" 200 -
+2025-06-09 18:57:41,766 - INFO - 127.0.0.1 - - [09/Jun/2025 18:57:41] "OPTIONS /process_frame HTTP/1.1" 200 -
+2025-06-09 18:57:42,353 - INFO - Received request to /process_frame
+2025-06-09 18:57:42,572 - DEBUG - Request data keys: ['frame', 'course_id', 'schedule_id']
+2025-06-09 18:57:45,825 - INFO - Detected 1 faces
+2025-06-09 18:57:45,844 - INFO - Found schedule: student_id=6421600002, course_id=6, schedule_id=11
+2025-06-09 18:57:46,085 - ERROR - Attendance logging error for student 6421600002: combine() argument 2 must be datetime.time, not datetime.timedelta
+Traceback (most recent call last):
+  File "C:\xampp\htdocs\attend_system\face_recognition_server.py", line 188, in process_frame
+    current_schedule, reason = db_manager.get_current_schedule(student_id, course_id, schedule_id)
+                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\xampp\htdocs\attend_system\database_manager.py", line 69, in get_current_schedule
+    start_dt = datetime.combine(today, start_time)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: combine() argument 2 must be datetime.time, not datetime.timedelta
+
+2025-06-09 18:57:46,342 - INFO - Processed frame: course_id=6, schedule_id=11, results=1
+2025-06-09 18:57:46,730 - INFO - 127.0.0.1 - - [09/Jun/2025 18:57:46] "POST /process_frame HTTP/1.1" 200 -
+2025-06-09 18:57:46,905 - INFO - Received request to /process_frame
+2025-06-09 18:57:46,907 - DEBUG - Request data keys: ['frame', 'course_id', 'schedule_id']
+2025-06-09 18:57:48,885 - INFO - Detected 1 faces
+2025-06-09 18:57:48,891 - INFO - Found schedule: student_id=6421600002, course_id=6, schedule_id=11
+2025-06-09 18:57:48,912 - ERROR - Attendance logging error for student 6421600002: combine() argument 2 must be datetime.time, not datetime.timedelta
+Traceback (most recent call last):
+  File "C:\xampp\htdocs\attend_system\face_recognition_server.py", line 188, in process_frame
+    current_schedule, reason = db_manager.get_current_schedule(student_id, course_id, schedule_id)
+                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\xampp\htdocs\attend_system\database_manager.py", line 69, in get_current_schedule
+    start_dt = datetime.combine(today, start_time)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: combine() argument 2 must be datetime.time, not datetime.timedelta
+
+2025-06-09 18:57:48,945 - INFO - Processed frame: course_id=6, schedule_id=11, results=1
+2025-06-09 18:57:48,951 - INFO - 127.0.0.1 - - [09/Jun/2025 18:57:48] "POST /process_frame HTTP/1.1" 200 -
+2025-06-09 18:57:49,328 - INFO - 127.0.0.1 - - [09/Jun/2025 18:57:49] "OPTIONS /process_frame HTTP/1.1" 200 -
+2025-06-09 18:57:49,429 - INFO - Received request to /process_frame
+2025-06-09 18:57:49,510 - DEBUG - Request data keys: ['frame', 'course_id', 'schedule_id']
+2025-06-09 18:57:51,884 - INFO - Detected 1 faces
+2025-06-09 18:57:51,889 - INFO - Found schedule: student_id=6421600002, course_id=6, schedule_id=11
+2025-06-09 18:57:51,892 - ERROR - Attendance logging error for student 6421600002: combine() argument 2 must be datetime.time, not datetime.timedelta
+Traceback (most recent call last):
+  File "C:\xampp\htdocs\attend_system\face_recognition_server.py", line 188, in process_frame
+    current_schedule, reason = db_manager.get_current_schedule(student_id, course_id, schedule_id)
+                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\xampp\htdocs\attend_system\database_manager.py", line 69, in get_current_schedule
+    start_dt = datetime.combine(today, start_time)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: combine() argument 2 must be datetime.time, not datetime.timedelta
+
+2025-06-09 18:57:52,025 - INFO - Processed frame: course_id=6, schedule_id=11, results=1
+2025-06-09 18:57:52,027 - INFO - 127.0.0.1 - - [09/Jun/2025 18:57:52] "POST /process_frame HTTP/1.1" 200 -
+2025-06-09 18:57:52,296 - INFO - Received request to /process_frame
+2025-06-09 18:57:52,301 - DEBUG - Request data keys: ['frame', 'course_id', 'schedule_id']
+2025-06-09 18:57:54,456 - INFO - Detected 1 faces
+2025-06-09 18:57:54,578 - INFO - Found schedule: student_id=6421600002, course_id=6, schedule_id=11
+2025-06-09 18:57:54,707 - ERROR - Attendance logging error for student 6421600002: combine() argument 2 must be datetime.time, not datetime.timedelta
+Traceback (most recent call last):
+  File "C:\xampp\htdocs\attend_system\face_recognition_server.py", line 188, in process_frame
+    current_schedule, reason = db_manager.get_current_schedule(student_id, course_id, schedule_id)
+                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\xampp\htdocs\attend_system\database_manager.py", line 69, in get_current_schedule
+    start_dt = datetime.combine(today, start_time)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: combine() argument 2 must be datetime.time, not datetime.timedelta
+
+2025-06-09 18:57:54,748 - INFO - Processed frame: course_id=6, schedule_id=11, results=1
+2025-06-09 18:57:54,763 - INFO - 127.0.0.1 - - [09/Jun/2025 18:57:54] "POST /process_frame HTTP/1.1" 200 -
+2025-06-09 18:57:54,940 - INFO - 127.0.0.1 - - [09/Jun/2025 18:57:54] "OPTIONS /process_frame HTTP/1.1" 200 -
+2025-06-09 18:57:55,027 - INFO - Received request to /process_frame
+2025-06-09 18:57:55,037 - DEBUG - Request data keys: ['frame', 'course_id', 'schedule_id']
+2025-06-09 18:57:57,231 - INFO - Detected 1 faces
+2025-06-09 18:57:57,236 - INFO - Found schedule: student_id=6421600002, course_id=6, schedule_id=11
+2025-06-09 18:57:57,260 - ERROR - Attendance logging error for student 6421600002: combine() argument 2 must be datetime.time, not datetime.timedelta
+Traceback (most recent call last):
+  File "C:\xampp\htdocs\attend_system\face_recognition_server.py", line 188, in process_frame
+    current_schedule, reason = db_manager.get_current_schedule(student_id, course_id, schedule_id)
+                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\xampp\htdocs\attend_system\database_manager.py", line 69, in get_current_schedule
+    start_dt = datetime.combine(today, start_time)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: combine() argument 2 must be datetime.time, not datetime.timedelta
+
+2025-06-09 18:57:57,406 - INFO - Processed frame: course_id=6, schedule_id=11, results=1
+2025-06-09 18:57:58,578 - INFO - 127.0.0.1 - - [09/Jun/2025 18:57:58] "POST /process_frame HTTP/1.1" 200 -
+2025-06-09 18:58:20,805 - INFO - 127.0.0.1 - - [09/Jun/2025 18:58:20] "OPTIONS /process_frame HTTP/1.1" 200 -
+2025-06-09 18:58:21,406 - INFO - Received request to /process_frame
+2025-06-09 18:58:21,520 - DEBUG - Request data keys: ['frame', 'course_id', 'schedule_id']
+2025-06-09 18:58:29,929 - INFO - Detected 1 faces
+2025-06-09 18:58:30,013 - WARNING - No schedule found: student_id=6421600001, course_id=6, schedule_id=11
+2025-06-09 18:58:30,029 - DEBUG - Current schedule for student 6421600001: None, reason: Not enrolled or invalid schedule
+2025-06-09 18:58:30,030 - INFO - Processed frame: course_id=6, schedule_id=11, results=1
+2025-06-09 18:58:30,043 - INFO - 127.0.0.1 - - [09/Jun/2025 18:58:30] "POST /process_frame HTTP/1.1" 200 -
+2025-06-09 18:58:30,791 - INFO - 127.0.0.1 - - [09/Jun/2025 18:58:30] "OPTIONS /process_frame HTTP/1.1" 200 -
+2025-06-09 18:58:31,146 - INFO - Received request to /process_frame
+2025-06-09 18:58:31,152 - DEBUG - Request data keys: ['frame', 'course_id', 'schedule_id']
+2025-06-09 18:58:33,909 - INFO - Detected 1 faces
+2025-06-09 18:58:33,923 - INFO - Found schedule: student_id=6421600002, course_id=6, schedule_id=11
+2025-06-09 18:58:34,138 - ERROR - Attendance logging error for student 6421600002: combine() argument 2 must be datetime.time, not datetime.timedelta
+Traceback (most recent call last):
+  File "C:\xampp\htdocs\attend_system\face_recognition_server.py", line 188, in process_frame
+    current_schedule, reason = db_manager.get_current_schedule(student_id, course_id, schedule_id)
+                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\xampp\htdocs\attend_system\database_manager.py", line 69, in get_current_schedule
+    start_dt = datetime.combine(today, start_time)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: combine() argument 2 must be datetime.time, not datetime.timedelta
+
+2025-06-09 18:58:34,353 - INFO - Processed frame: course_id=6, schedule_id=11, results=1
+2025-06-09 18:58:34,489 - INFO - 127.0.0.1 - - [09/Jun/2025 18:58:34] "POST /process_frame HTTP/1.1" 200 -
+2025-06-09 18:58:34,712 - INFO - Received request to /process_frame
+2025-06-09 18:58:34,721 - DEBUG - Request data keys: ['frame', 'course_id', 'schedule_id']
+2025-06-09 18:58:37,946 - INFO - Detected 1 faces
+2025-06-09 18:58:37,965 - INFO - Found schedule: student_id=6421600002, course_id=6, schedule_id=11
+2025-06-09 18:58:38,034 - ERROR - Attendance logging error for student 6421600002: combine() argument 2 must be datetime.time, not datetime.timedelta
+Traceback (most recent call last):
+  File "C:\xampp\htdocs\attend_system\face_recognition_server.py", line 188, in process_frame
+    current_schedule, reason = db_manager.get_current_schedule(student_id, course_id, schedule_id)
+                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\xampp\htdocs\attend_system\database_manager.py", line 69, in get_current_schedule
+    start_dt = datetime.combine(today, start_time)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: combine() argument 2 must be datetime.time, not datetime.timedelta
+
+2025-06-09 18:58:38,084 - INFO - Processed frame: course_id=6, schedule_id=11, results=1
+2025-06-09 18:58:38,172 - INFO - 127.0.0.1 - - [09/Jun/2025 18:58:38] "POST /process_frame HTTP/1.1" 200 -
+2025-06-09 18:58:38,312 - INFO - 127.0.0.1 - - [09/Jun/2025 18:58:38] "OPTIONS /process_frame HTTP/1.1" 200 -
+2025-06-09 18:58:38,751 - INFO - Received request to /process_frame
+2025-06-09 18:58:38,759 - DEBUG - Request data keys: ['frame', 'course_id', 'schedule_id']
+2025-06-09 18:58:42,245 - INFO - Detected 1 faces
+2025-06-09 18:58:42,261 - INFO - Found schedule: student_id=6421600002, course_id=6, schedule_id=11
+2025-06-09 18:58:42,298 - ERROR - Attendance logging error for student 6421600002: combine() argument 2 must be datetime.time, not datetime.timedelta
+Traceback (most recent call last):
+  File "C:\xampp\htdocs\attend_system\face_recognition_server.py", line 188, in process_frame
+    current_schedule, reason = db_manager.get_current_schedule(student_id, course_id, schedule_id)
+                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\xampp\htdocs\attend_system\database_manager.py", line 69, in get_current_schedule
+    start_dt = datetime.combine(today, start_time)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: combine() argument 2 must be datetime.time, not datetime.timedelta
+
+2025-06-09 18:58:42,314 - INFO - Processed frame: course_id=6, schedule_id=11, results=1
+2025-06-09 18:58:42,316 - INFO - 127.0.0.1 - - [09/Jun/2025 18:58:42] "POST /process_frame HTTP/1.1" 200 -
+2025-06-09 18:58:42,563 - INFO - Received request to /process_frame
+2025-06-09 18:58:42,593 - DEBUG - Request data keys: ['frame', 'course_id', 'schedule_id']
+2025-06-09 18:58:45,815 - INFO - Detected 1 faces
+2025-06-09 18:58:45,819 - INFO - Found schedule: student_id=6421600002, course_id=6, schedule_id=11
+2025-06-09 18:58:45,865 - ERROR - Attendance logging error for student 6421600002: combine() argument 2 must be datetime.time, not datetime.timedelta
+Traceback (most recent call last):
+  File "C:\xampp\htdocs\attend_system\face_recognition_server.py", line 188, in process_frame
+    current_schedule, reason = db_manager.get_current_schedule(student_id, course_id, schedule_id)
+                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\xampp\htdocs\attend_system\database_manager.py", line 69, in get_current_schedule
+    start_dt = datetime.combine(today, start_time)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: combine() argument 2 must be datetime.time, not datetime.timedelta
+
+2025-06-09 18:58:45,878 - INFO - Processed frame: course_id=6, schedule_id=11, results=1
+2025-06-09 18:58:45,880 - INFO - 127.0.0.1 - - [09/Jun/2025 18:58:45] "POST /process_frame HTTP/1.1" 200 -
+2025-06-09 18:58:46,103 - INFO - 127.0.0.1 - - [09/Jun/2025 18:58:46] "OPTIONS /process_frame HTTP/1.1" 200 -
+2025-06-09 18:58:46,135 - INFO - Received request to /process_frame
+2025-06-09 18:58:46,153 - DEBUG - Request data keys: ['frame', 'course_id', 'schedule_id']
+2025-06-09 18:58:51,991 - INFO - Detected 1 faces
+2025-06-09 18:58:52,010 - INFO - Found schedule: student_id=6421600002, course_id=6, schedule_id=11
+2025-06-09 18:58:52,156 - ERROR - Attendance logging error for student 6421600002: combine() argument 2 must be datetime.time, not datetime.timedelta
+Traceback (most recent call last):
+  File "C:\xampp\htdocs\attend_system\face_recognition_server.py", line 188, in process_frame
+    current_schedule, reason = db_manager.get_current_schedule(student_id, course_id, schedule_id)
+                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\xampp\htdocs\attend_system\database_manager.py", line 69, in get_current_schedule
+    start_dt = datetime.combine(today, start_time)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: combine() argument 2 must be datetime.time, not datetime.timedelta
+
+2025-06-09 18:58:52,184 - INFO - Processed frame: course_id=6, schedule_id=11, results=1
+2025-06-09 18:58:52,190 - INFO - 127.0.0.1 - - [09/Jun/2025 18:58:52] "POST /process_frame HTTP/1.1" 200 -
+2025-06-09 19:02:58,359 - INFO -  * Detected change in 'C:\\xampp\\htdocs\\attend_system\\database_manager.py', reloading
+2025-06-09 19:02:59,446 - INFO - 127.0.0.1 - - [09/Jun/2025 19:02:59] "OPTIONS /process_frame HTTP/1.1" 200 -
+2025-06-09 19:02:59,447 - INFO - Closing database connection...
+2025-06-09 19:03:01,467 - INFO - Database connection closed
+2025-06-09 19:03:03,625 - INFO -  * Restarting with stat
+2025-06-09 19:03:17,901 - INFO - Connected to attend_data database
+2025-06-09 19:03:17,910 - INFO - Database manager initialized
+2025-06-09 19:03:17,914 - INFO - Loaded 7 known faces
+2025-06-09 19:03:17,927 - INFO - Starting Flask server...
+2025-06-09 19:03:18,020 - WARNING -  * Debugger is active!
+2025-06-09 19:03:18,058 - INFO -  * Debugger PIN: 249-321-551
+2025-06-09 19:03:18,263 - INFO - Received request to /process_frame
+2025-06-09 19:03:18,267 - INFO - 127.0.0.1 - - [09/Jun/2025 19:03:18] "OPTIONS /process_frame HTTP/1.1" 200 -
+2025-06-09 19:03:18,268 - DEBUG - Request data keys: ['frame', 'course_id', 'schedule_id']
+2025-06-09 19:03:18,886 - INFO - Received request to /process_frame
+2025-06-09 19:03:18,888 - DEBUG - Request data keys: ['frame', 'course_id', 'schedule_id']
+2025-06-09 19:03:22,457 - INFO - Detected 1 faces
+2025-06-09 19:03:22,459 - INFO - Detected 1 faces
+2025-06-09 19:03:22,594 - INFO - Found schedule: student_id=6421600002, course_id=6, schedule_id=11
+2025-06-09 19:03:22,740 - INFO - Found schedule: student_id=6421600002, course_id=6, schedule_id=11
+2025-06-09 19:03:22,901 - WARNING - Current time 2025-06-09 19:03:22.900301 outside schedule 14:20:00-15:20:00
+2025-06-09 19:03:22,913 - WARNING - Current time 2025-06-09 19:03:22.913288 outside schedule 14:20:00-15:20:00
+2025-06-09 19:03:22,915 - DEBUG - Current schedule for student 6421600002: None, reason: Outside schedule time
+2025-06-09 19:03:22,916 - DEBUG - Current schedule for student 6421600002: None, reason: Outside schedule time
+2025-06-09 19:03:22,927 - INFO - Processed frame: course_id=6, schedule_id=11, results=1
+2025-06-09 19:03:22,933 - INFO - 127.0.0.1 - - [09/Jun/2025 19:03:22] "POST /process_frame HTTP/1.1" 200 -
+2025-06-09 19:03:22,935 - INFO - Processed frame: course_id=6, schedule_id=11, results=1
+2025-06-09 19:03:22,956 - INFO - 127.0.0.1 - - [09/Jun/2025 19:03:22] "POST /process_frame HTTP/1.1" 200 -
+2025-06-09 19:04:00,755 - INFO - 127.0.0.1 - - [09/Jun/2025 19:04:00] "OPTIONS /process_frame HTTP/1.1" 200 -
+2025-06-09 19:04:01,170 - INFO - Received request to /process_frame
+2025-06-09 19:04:01,257 - DEBUG - Request data keys: ['frame', 'course_id', 'schedule_id']
+2025-06-09 19:04:13,119 - INFO - Detected 1 faces
+2025-06-09 19:04:13,247 - INFO - Found schedule: student_id=6421600002, course_id=6, schedule_id=11
+2025-06-09 19:04:13,428 - WARNING - Current time 2025-06-09 19:04:13.428511 outside schedule 14:20:00-15:20:00
+2025-06-09 19:04:13,470 - DEBUG - Current schedule for student 6421600002: None, reason: Outside schedule time
+2025-06-09 19:04:13,478 - INFO - Processed frame: course_id=6, schedule_id=11, results=1
+2025-06-09 19:04:13,521 - INFO - 127.0.0.1 - - [09/Jun/2025 19:04:13] "POST /process_frame HTTP/1.1" 200 -
+2025-06-09 19:04:23,954 - INFO - 127.0.0.1 - - [09/Jun/2025 19:04:23] "OPTIONS /start_scan HTTP/1.1" 200 -
+2025-06-09 19:04:25,831 - INFO - Received request to /start_scan
+2025-06-09 19:04:26,473 - INFO - Request data: {'course_id': 6, 'teacher_id': '5424000001', 'schedule_id': 11}
+2025-06-09 19:04:26,840 - INFO - Scanning started: course_id=6, teacher_id=5424000001, schedule_id=11
+2025-06-09 19:04:27,099 - INFO - 127.0.0.1 - - [09/Jun/2025 19:04:27] "POST /start_scan HTTP/1.1" 200 -
+2025-06-09 19:04:28,020 - INFO - 127.0.0.1 - - [09/Jun/2025 19:04:28] "OPTIONS /process_frame HTTP/1.1" 200 -
+2025-06-09 19:04:29,189 - INFO - Received request to /process_frame
+2025-06-09 19:04:29,737 - DEBUG - Request data keys: ['frame', 'course_id', 'schedule_id']
+2025-06-09 19:04:40,827 - INFO - Detected 1 faces
+2025-06-09 19:04:41,308 - INFO - Processed frame: course_id=6, schedule_id=11, results=1
+2025-06-09 19:04:41,490 - INFO - 127.0.0.1 - - [09/Jun/2025 19:04:41] "OPTIONS /process_frame HTTP/1.1" 200 -
+2025-06-09 19:04:41,492 - INFO - 127.0.0.1 - - [09/Jun/2025 19:04:41] "POST /process_frame HTTP/1.1" 200 -
+2025-06-09 19:04:42,137 - INFO - Received request to /process_frame
+2025-06-09 19:04:42,442 - DEBUG - Request data keys: ['frame', 'course_id', 'schedule_id']
+2025-06-09 19:04:49,880 - INFO - Detected 1 faces
+2025-06-09 19:04:50,041 - INFO - Processed frame: course_id=6, schedule_id=11, results=1
+2025-06-09 19:04:50,125 - INFO - 127.0.0.1 - - [09/Jun/2025 19:04:50] "POST /process_frame HTTP/1.1" 200 -
+2025-06-09 19:04:50,147 - INFO - 127.0.0.1 - - [09/Jun/2025 19:04:50] "OPTIONS /process_frame HTTP/1.1" 200 -
+2025-06-09 19:04:50,834 - INFO - Received request to /process_frame
+2025-06-09 19:04:51,128 - DEBUG - Request data keys: ['frame', 'course_id', 'schedule_id']
+2025-06-09 19:05:01,972 - INFO - Detected 1 faces
+2025-06-09 19:05:02,472 - INFO - Processed frame: course_id=6, schedule_id=11, results=1
+2025-06-09 19:05:02,719 - INFO - 127.0.0.1 - - [09/Jun/2025 19:05:02] "POST /process_frame HTTP/1.1" 200 -
+2025-06-09 19:10:57,924 - INFO - 127.0.0.1 - - [09/Jun/2025 19:10:57] "OPTIONS /start_scan HTTP/1.1" 200 -
+2025-06-09 19:10:58,745 - INFO - Received request to /start_scan
+2025-06-09 19:10:58,805 - INFO - Request data: {'course_id': 6, 'teacher_id': '5424000001', 'schedule_id': 11}
+2025-06-09 19:10:58,881 - INFO - Scanning started: course_id=6, teacher_id=5424000001, schedule_id=11
+2025-06-09 19:10:58,955 - INFO - 127.0.0.1 - - [09/Jun/2025 19:10:58] "POST /start_scan HTTP/1.1" 200 -
+2025-06-09 19:10:59,964 - INFO - 127.0.0.1 - - [09/Jun/2025 19:10:59] "OPTIONS /process_frame HTTP/1.1" 200 -
+2025-06-09 19:11:00,975 - INFO - Received request to /process_frame
+2025-06-09 19:11:01,497 - DEBUG - Request data keys: ['frame', 'course_id', 'schedule_id']
+2025-06-09 19:11:05,587 - INFO - Detected 1 faces
+2025-06-09 19:11:05,711 - INFO - Found schedule: student_id=6421600002, course_id=6, schedule_id=11
+2025-06-09 19:11:05,795 - WARNING - Current time 2025-06-09 19:11:05.794155 outside schedule 14:20:00-15:20:00
+2025-06-09 19:11:05,914 - DEBUG - Current schedule for student 6421600002: None, reason: Outside schedule time
+2025-06-09 19:11:05,928 - INFO - Processed frame: course_id=6, schedule_id=11, results=1
+2025-06-09 19:11:06,015 - INFO - 127.0.0.1 - - [09/Jun/2025 19:11:06] "POST /process_frame HTTP/1.1" 200 -
+2025-06-09 19:11:06,825 - INFO - 127.0.0.1 - - [09/Jun/2025 19:11:06] "OPTIONS /process_frame HTTP/1.1" 200 -
+2025-06-09 19:11:07,242 - INFO - Received request to /process_frame
+2025-06-09 19:11:07,281 - DEBUG - Request data keys: ['frame', 'course_id', 'schedule_id']
+2025-06-09 19:11:09,964 - INFO - Detected 1 faces
+2025-06-09 19:11:09,977 - INFO - Found schedule: student_id=6421600002, course_id=6, schedule_id=11
+2025-06-09 19:11:10,020 - WARNING - Current time 2025-06-09 19:11:10.020668 outside schedule 14:20:00-15:20:00
+2025-06-09 19:11:10,035 - DEBUG - Current schedule for student 6421600002: None, reason: Outside schedule time
+2025-06-09 19:11:10,050 - INFO - Processed frame: course_id=6, schedule_id=11, results=1
+2025-06-09 19:11:10,066 - INFO - 127.0.0.1 - - [09/Jun/2025 19:11:10] "POST /process_frame HTTP/1.1" 200 -
+2025-06-09 19:11:10,370 - INFO - Received request to /process_frame
+2025-06-09 19:11:10,381 - DEBUG - Request data keys: ['frame', 'course_id', 'schedule_id']
+2025-06-09 19:11:12,678 - INFO - Detected 1 faces
+2025-06-09 19:11:12,684 - INFO - Found schedule: student_id=6421600002, course_id=6, schedule_id=11
+2025-06-09 19:11:12,685 - WARNING - Current time 2025-06-09 19:11:12.685233 outside schedule 14:20:00-15:20:00
+2025-06-09 19:11:12,690 - DEBUG - Current schedule for student 6421600002: None, reason: Outside schedule time
+2025-06-09 19:11:12,691 - INFO - Processed frame: course_id=6, schedule_id=11, results=1
+2025-06-09 19:11:12,708 - INFO - 127.0.0.1 - - [09/Jun/2025 19:11:12] "POST /process_frame HTTP/1.1" 200 -
+2025-06-09 19:11:13,070 - INFO - 127.0.0.1 - - [09/Jun/2025 19:11:13] "OPTIONS /process_frame HTTP/1.1" 200 -
+2025-06-09 19:11:13,153 - INFO - Received request to /process_frame
+2025-06-09 19:11:13,163 - DEBUG - Request data keys: ['frame', 'course_id', 'schedule_id']
+2025-06-09 19:11:15,619 - INFO - Detected 1 faces
+2025-06-09 19:11:15,636 - INFO - Found schedule: student_id=6421600002, course_id=6, schedule_id=11
+2025-06-09 19:11:15,870 - WARNING - Current time 2025-06-09 19:11:15.866464 outside schedule 14:20:00-15:20:00
+2025-06-09 19:11:15,984 - DEBUG - Current schedule for student 6421600002: None, reason: Outside schedule time
+2025-06-09 19:11:15,987 - INFO - Processed frame: course_id=6, schedule_id=11, results=1
+2025-06-09 19:11:15,997 - INFO - 127.0.0.1 - - [09/Jun/2025 19:11:15] "POST /process_frame HTTP/1.1" 200 -
+2025-06-09 19:11:16,263 - INFO - Received request to /process_frame
+2025-06-09 19:11:16,295 - DEBUG - Request data keys: ['frame', 'course_id', 'schedule_id']
+2025-06-09 19:11:18,998 - INFO - Detected 1 faces
+2025-06-09 19:11:19,003 - WARNING - No schedule found: student_id=6421600001, course_id=6, schedule_id=11
+2025-06-09 19:11:19,004 - DEBUG - Current schedule for student 6421600001: None, reason: Not enrolled or invalid schedule
+2025-06-09 19:11:19,078 - INFO - Processed frame: course_id=6, schedule_id=11, results=1
+2025-06-09 19:11:19,271 - INFO - 127.0.0.1 - - [09/Jun/2025 19:11:19] "POST /process_frame HTTP/1.1" 200 -
+2025-06-09 19:38:42,311 - INFO - 127.0.0.1 - - [09/Jun/2025 19:38:42] "OPTIONS /process_frame HTTP/1.1" 200 -
+2025-06-09 19:38:42,703 - INFO - Received request to /process_frame
+2025-06-09 19:38:42,718 - DEBUG - Request data keys: ['frame', 'course_id', 'schedule_id']
+2025-06-09 19:38:43,532 - INFO - Detected 0 faces
+2025-06-09 19:38:43,533 - INFO - Processed frame: course_id=6, schedule_id=11, results=0
+2025-06-09 19:38:43,536 - INFO - 127.0.0.1 - - [09/Jun/2025 19:38:43] "POST /process_frame HTTP/1.1" 200 -
+2025-06-09 19:38:43,944 - INFO - Received request to /process_frame
+2025-06-09 19:38:44,003 - DEBUG - Request data keys: ['frame', 'course_id', 'schedule_id']
+2025-06-09 19:38:44,742 - INFO - Detected 0 faces
+2025-06-09 19:38:44,744 - INFO - Processed frame: course_id=6, schedule_id=11, results=0
+2025-06-09 19:38:44,746 - INFO - 127.0.0.1 - - [09/Jun/2025 19:38:44] "POST /process_frame HTTP/1.1" 200 -
+2025-06-09 19:38:44,957 - INFO - Received request to /process_frame
+2025-06-09 19:38:44,959 - DEBUG - Request data keys: ['frame', 'course_id', 'schedule_id']
+2025-06-09 19:38:46,984 - INFO - Detected 1 faces
+2025-06-09 19:38:46,992 - INFO - Found schedule: student_id=6421600002, course_id=6, schedule_id=11
+2025-06-09 19:38:47,042 - WARNING - Current time 2025-06-09 19:38:47.042457 outside schedule 14:20:00-15:20:00
+2025-06-09 19:38:47,051 - DEBUG - Current schedule for student 6421600002: None, reason: Outside schedule time
+2025-06-09 19:38:47,055 - INFO - Processed frame: course_id=6, schedule_id=11, results=1
+2025-06-09 19:38:47,057 - INFO - 127.0.0.1 - - [09/Jun/2025 19:38:47] "POST /process_frame HTTP/1.1" 200 -
+2025-06-09 19:38:47,319 - INFO - Received request to /process_frame
+2025-06-09 19:38:47,325 - DEBUG - Request data keys: ['frame', 'course_id', 'schedule_id']
+2025-06-09 19:38:49,450 - INFO - Detected 1 faces
+2025-06-09 19:38:49,454 - INFO - Found schedule: student_id=6421600002, course_id=6, schedule_id=11
+2025-06-09 19:38:49,469 - WARNING - Current time 2025-06-09 19:38:49.469508 outside schedule 14:20:00-15:20:00
+2025-06-09 19:38:49,471 - DEBUG - Current schedule for student 6421600002: None, reason: Outside schedule time
+2025-06-09 19:38:49,472 - INFO - Processed frame: course_id=6, schedule_id=11, results=1
+2025-06-09 19:38:49,475 - INFO - 127.0.0.1 - - [09/Jun/2025 19:38:49] "POST /process_frame HTTP/1.1" 200 -
+2025-06-09 19:38:49,749 - INFO - 127.0.0.1 - - [09/Jun/2025 19:38:49] "OPTIONS /process_frame HTTP/1.1" 200 -
+2025-06-09 19:38:49,783 - INFO - Received request to /process_frame
+2025-06-09 19:38:49,816 - DEBUG - Request data keys: ['frame', 'course_id', 'schedule_id']
+2025-06-09 19:38:50,415 - INFO - Detected 0 faces
+2025-06-09 19:38:50,416 - INFO - Processed frame: course_id=6, schedule_id=11, results=0
+2025-06-09 19:38:50,418 - INFO - 127.0.0.1 - - [09/Jun/2025 19:38:50] "POST /process_frame HTTP/1.1" 200 -
+2025-06-09 19:38:50,550 - INFO - Received request to /process_frame
+2025-06-09 19:38:50,552 - DEBUG - Request data keys: ['frame', 'course_id', 'schedule_id']
+2025-06-09 19:38:51,533 - INFO - Detected 0 faces
+2025-06-09 19:38:51,538 - INFO - Processed frame: course_id=6, schedule_id=11, results=0
+2025-06-09 19:38:51,556 - INFO - 127.0.0.1 - - [09/Jun/2025 19:38:51] "POST /process_frame HTTP/1.1" 200 -
+2025-06-09 19:38:51,718 - INFO - Received request to /process_frame
+2025-06-09 19:38:51,854 - DEBUG - Request data keys: ['frame', 'course_id', 'schedule_id']
+2025-06-09 19:38:52,681 - INFO - Detected 0 faces
+2025-06-09 19:38:52,684 - INFO - Processed frame: course_id=6, schedule_id=11, results=0
+2025-06-09 19:38:52,686 - INFO - 127.0.0.1 - - [09/Jun/2025 19:38:52] "POST /process_frame HTTP/1.1" 200 -
+2025-06-09 19:38:52,841 - INFO - Received request to /process_frame
+2025-06-09 19:38:52,844 - DEBUG - Request data keys: ['frame', 'course_id', 'schedule_id']
+2025-06-09 19:38:54,701 - INFO - Detected 1 faces
+2025-06-09 19:38:54,730 - WARNING - No schedule found: student_id=6421600001, course_id=6, schedule_id=11
+2025-06-09 19:38:54,755 - DEBUG - Current schedule for student 6421600001: None, reason: Not enrolled or invalid schedule
+2025-06-09 19:38:54,780 - INFO - Processed frame: course_id=6, schedule_id=11, results=1
+2025-06-09 19:38:54,828 - INFO - 127.0.0.1 - - [09/Jun/2025 19:38:54] "POST /process_frame HTTP/1.1" 200 -
+2025-06-09 19:38:55,354 - INFO - 127.0.0.1 - - [09/Jun/2025 19:38:55] "OPTIONS /process_frame HTTP/1.1" 200 -
+2025-06-09 19:38:55,407 - INFO - Received request to /process_frame
+2025-06-09 19:38:55,408 - DEBUG - Request data keys: ['frame', 'course_id', 'schedule_id']
+2025-06-09 19:38:56,038 - INFO - Detected 0 faces
+2025-06-09 19:38:56,039 - INFO - Processed frame: course_id=6, schedule_id=11, results=0
+2025-06-09 19:38:56,041 - INFO - 127.0.0.1 - - [09/Jun/2025 19:38:56] "POST /process_frame HTTP/1.1" 200 -
+2025-06-09 19:38:56,244 - INFO - Received request to /process_frame
+2025-06-09 19:38:56,339 - DEBUG - Request data keys: ['frame', 'course_id', 'schedule_id']
+2025-06-09 19:38:56,905 - INFO - Detected 0 faces
+2025-06-09 19:38:56,907 - INFO - Processed frame: course_id=6, schedule_id=11, results=0
+2025-06-09 19:38:56,910 - INFO - 127.0.0.1 - - [09/Jun/2025 19:38:56] "POST /process_frame HTTP/1.1" 200 -
+2025-06-09 19:38:57,071 - INFO - Received request to /process_frame
+2025-06-09 19:38:57,075 - DEBUG - Request data keys: ['frame', 'course_id', 'schedule_id']
+2025-06-09 19:38:57,718 - INFO - Detected 0 faces
+2025-06-09 19:38:57,741 - INFO - Processed frame: course_id=6, schedule_id=11, results=0
+2025-06-09 19:38:57,745 - INFO - 127.0.0.1 - - [09/Jun/2025 19:38:57] "POST /process_frame HTTP/1.1" 200 -
+2025-06-09 19:38:57,997 - INFO - Received request to /process_frame
+2025-06-09 19:38:58,057 - DEBUG - Request data keys: ['frame', 'course_id', 'schedule_id']
+2025-06-09 19:38:58,799 - INFO - Detected 0 faces
+2025-06-09 19:38:58,801 - INFO - Processed frame: course_id=6, schedule_id=11, results=0
+2025-06-09 19:38:58,804 - INFO - 127.0.0.1 - - [09/Jun/2025 19:38:58] "POST /process_frame HTTP/1.1" 200 -
+2025-06-09 19:38:59,107 - INFO - Received request to /process_frame
+2025-06-09 19:38:59,146 - DEBUG - Request data keys: ['frame', 'course_id', 'schedule_id']
+2025-06-09 19:38:59,761 - INFO - Detected 0 faces
+2025-06-09 19:38:59,798 - INFO - Processed frame: course_id=6, schedule_id=11, results=0
+2025-06-09 19:38:59,858 - INFO - 127.0.0.1 - - [09/Jun/2025 19:38:59] "POST /process_frame HTTP/1.1" 200 -
+2025-06-09 19:39:00,092 - INFO - Received request to /process_frame
+2025-06-09 19:39:00,115 - DEBUG - Request data keys: ['frame', 'course_id', 'schedule_id']
+2025-06-09 19:39:00,740 - INFO - Detected 0 faces
+2025-06-09 19:39:00,741 - INFO - Processed frame: course_id=6, schedule_id=11, results=0
+2025-06-09 19:39:00,743 - INFO - 127.0.0.1 - - [09/Jun/2025 19:39:00] "POST /process_frame HTTP/1.1" 200 -
+2025-06-09 19:39:00,949 - INFO - 127.0.0.1 - - [09/Jun/2025 19:39:00] "OPTIONS /process_frame HTTP/1.1" 200 -
+2025-06-09 19:39:01,378 - INFO - Received request to /process_frame
+2025-06-09 19:39:01,791 - DEBUG - Request data keys: ['frame', 'course_id', 'schedule_id']
+2025-06-09 19:39:04,210 - INFO - Detected 1 faces
+2025-06-09 19:39:04,282 - INFO - Found schedule: student_id=6421600002, course_id=6, schedule_id=11
+2025-06-09 19:39:04,562 - WARNING - Current time 2025-06-09 19:39:04.562162 outside schedule 14:20:00-15:20:00
+2025-06-09 19:39:04,572 - DEBUG - Current schedule for student 6421600002: None, reason: Outside schedule time
+2025-06-09 19:39:04,667 - INFO - Processed frame: course_id=6, schedule_id=11, results=1
+2025-06-09 19:39:04,713 - INFO - 127.0.0.1 - - [09/Jun/2025 19:39:04] "POST /process_frame HTTP/1.1" 200 -
+2025-06-09 19:39:05,098 - INFO - Received request to /process_frame
+2025-06-09 19:39:05,135 - DEBUG - Request data keys: ['frame', 'course_id', 'schedule_id']
+2025-06-09 19:39:09,586 - INFO - Detected 1 faces
+2025-06-09 19:39:09,841 - INFO - Found schedule: student_id=6421600002, course_id=6, schedule_id=11
+2025-06-09 19:39:10,068 - WARNING - Current time 2025-06-09 19:39:10.068556 outside schedule 14:20:00-15:20:00
+2025-06-09 19:39:10,086 - DEBUG - Current schedule for student 6421600002: None, reason: Outside schedule time
+2025-06-09 19:39:10,137 - INFO - Processed frame: course_id=6, schedule_id=11, results=1
+2025-06-09 19:39:10,199 - INFO - 127.0.0.1 - - [09/Jun/2025 19:39:10] "POST /process_frame HTTP/1.1" 200 -
+2025-06-09 19:39:10,672 - INFO - 127.0.0.1 - - [09/Jun/2025 19:39:10] "OPTIONS /process_frame HTTP/1.1" 200 -
+2025-06-09 19:39:10,732 - INFO - Received request to /process_frame
+2025-06-09 19:39:10,735 - DEBUG - Request data keys: ['frame', 'course_id', 'schedule_id']
+2025-06-09 19:39:12,979 - INFO - Detected 1 faces
+2025-06-09 19:39:13,042 - WARNING - No schedule found: student_id=6421600001, course_id=6, schedule_id=11
+2025-06-09 19:39:13,044 - DEBUG - Current schedule for student 6421600001: None, reason: Not enrolled or invalid schedule
+2025-06-09 19:39:13,045 - INFO - Processed frame: course_id=6, schedule_id=11, results=1
+2025-06-09 19:39:13,047 - INFO - 127.0.0.1 - - [09/Jun/2025 19:39:13] "POST /process_frame HTTP/1.1" 200 -
+2025-06-09 19:39:13,412 - INFO - Received request to /process_frame
+2025-06-09 19:39:13,442 - DEBUG - Request data keys: ['frame', 'course_id', 'schedule_id']
+2025-06-09 19:39:16,286 - INFO - Detected 1 faces
+2025-06-09 19:39:16,290 - WARNING - No schedule found: student_id=6421600001, course_id=6, schedule_id=11
+2025-06-09 19:39:16,305 - DEBUG - Current schedule for student 6421600001: None, reason: Not enrolled or invalid schedule
+2025-06-09 19:39:16,307 - INFO - Processed frame: course_id=6, schedule_id=11, results=1
+2025-06-09 19:39:16,319 - INFO - 127.0.0.1 - - [09/Jun/2025 19:39:16] "POST /process_frame HTTP/1.1" 200 -
+2025-06-09 19:39:16,838 - INFO - 127.0.0.1 - - [09/Jun/2025 19:39:16] "OPTIONS /process_frame HTTP/1.1" 200 -
+2025-06-09 19:39:16,954 - INFO - Received request to /process_frame
+2025-06-09 19:39:16,989 - DEBUG - Request data keys: ['frame', 'course_id', 'schedule_id']
+2025-06-09 19:39:19,129 - INFO - Detected 1 faces
+2025-06-09 19:39:19,142 - WARNING - No schedule found: student_id=6421600001, course_id=6, schedule_id=11
+2025-06-09 19:39:19,172 - DEBUG - Current schedule for student 6421600001: None, reason: Not enrolled or invalid schedule
+2025-06-09 19:39:19,182 - INFO - Processed frame: course_id=6, schedule_id=11, results=1
+2025-06-09 19:39:19,226 - INFO - 127.0.0.1 - - [09/Jun/2025 19:39:19] "POST /process_frame HTTP/1.1" 200 -
+2025-06-09 19:39:19,866 - INFO - Received request to /process_frame
+2025-06-09 19:39:19,905 - DEBUG - Request data keys: ['frame', 'course_id', 'schedule_id']
+2025-06-09 19:39:21,968 - INFO - Detected 1 faces
+2025-06-09 19:39:22,006 - INFO - Found schedule: student_id=6421600002, course_id=6, schedule_id=11
+2025-06-09 19:39:22,049 - WARNING - Current time 2025-06-09 19:39:22.049577 outside schedule 14:20:00-15:20:00
+2025-06-09 19:39:22,050 - DEBUG - Current schedule for student 6421600002: None, reason: Outside schedule time
+2025-06-09 19:39:22,067 - INFO - Processed frame: course_id=6, schedule_id=11, results=1
+2025-06-09 19:39:22,069 - INFO - 127.0.0.1 - - [09/Jun/2025 19:39:22] "POST /process_frame HTTP/1.1" 200 -
+2025-06-09 19:39:22,401 - INFO - 127.0.0.1 - - [09/Jun/2025 19:39:22] "OPTIONS /process_frame HTTP/1.1" 200 -
+2025-06-09 19:39:23,115 - INFO - Received request to /process_frame
+2025-06-09 19:39:23,173 - DEBUG - Request data keys: ['frame', 'course_id', 'schedule_id']
+2025-06-09 19:39:23,923 - INFO - Detected 0 faces
+2025-06-09 19:39:23,934 - INFO - Processed frame: course_id=6, schedule_id=11, results=0
+2025-06-09 19:39:23,960 - INFO - 127.0.0.1 - - [09/Jun/2025 19:39:23] "POST /process_frame HTTP/1.1" 200 -
+2025-06-09 19:39:24,315 - INFO - Received request to /process_frame
+2025-06-09 19:39:24,323 - DEBUG - Request data keys: ['frame', 'course_id', 'schedule_id']
+2025-06-09 19:39:25,557 - INFO - Detected 0 faces
+2025-06-09 19:39:25,559 - INFO - Processed frame: course_id=6, schedule_id=11, results=0
+2025-06-09 19:39:25,561 - INFO - 127.0.0.1 - - [09/Jun/2025 19:39:25] "POST /process_frame HTTP/1.1" 200 -
+2025-06-09 19:39:25,639 - INFO - Received request to /process_frame
+2025-06-09 19:39:25,852 - DEBUG - Request data keys: ['frame', 'course_id', 'schedule_id']
+2025-06-09 19:39:26,541 - INFO - Detected 0 faces
+2025-06-09 19:39:26,593 - INFO - Processed frame: course_id=6, schedule_id=11, results=0
+2025-06-09 19:39:26,657 - INFO - 127.0.0.1 - - [09/Jun/2025 19:39:26] "POST /process_frame HTTP/1.1" 200 -
+2025-06-09 19:39:26,853 - INFO - Received request to /process_frame
+2025-06-09 19:39:26,880 - DEBUG - Request data keys: ['frame', 'course_id', 'schedule_id']
+2025-06-09 19:39:27,968 - INFO - Detected 0 faces
+2025-06-09 19:39:27,980 - INFO - Processed frame: course_id=6, schedule_id=11, results=0
+2025-06-09 19:39:27,994 - INFO - 127.0.0.1 - - [09/Jun/2025 19:39:27] "POST /process_frame HTTP/1.1" 200 -
+2025-06-09 19:39:28,221 - INFO - 127.0.0.1 - - [09/Jun/2025 19:39:28] "OPTIONS /process_frame HTTP/1.1" 200 -
+2025-06-09 19:39:28,535 - INFO - Received request to /process_frame
+2025-06-09 19:39:28,620 - DEBUG - Request data keys: ['frame', 'course_id', 'schedule_id']
+2025-06-09 19:39:29,328 - INFO - Detected 0 faces
+2025-06-09 19:39:29,330 - INFO - Processed frame: course_id=6, schedule_id=11, results=0
+2025-06-09 19:39:29,332 - INFO - 127.0.0.1 - - [09/Jun/2025 19:39:29] "POST /process_frame HTTP/1.1" 200 -
+2025-06-09 19:39:29,486 - INFO - Received request to /process_frame
+2025-06-09 19:39:29,710 - DEBUG - Request data keys: ['frame', 'course_id', 'schedule_id']
+2025-06-09 19:39:30,691 - INFO - Detected 0 faces
+2025-06-09 19:39:30,728 - INFO - Processed frame: course_id=6, schedule_id=11, results=0
+2025-06-09 19:39:30,946 - INFO - 127.0.0.1 - - [09/Jun/2025 19:39:30] "POST /process_frame HTTP/1.1" 200 -
+2025-06-09 19:39:32,488 - INFO - Received request to /process_frame
+2025-06-09 19:39:33,176 - DEBUG - Request data keys: ['frame', 'course_id', 'schedule_id']
+2025-06-09 19:39:38,515 - INFO - Detected 1 faces
+2025-06-09 19:39:38,752 - WARNING - No schedule found: student_id=6421600001, course_id=6, schedule_id=11
+2025-06-09 19:39:39,141 - DEBUG - Current schedule for student 6421600001: None, reason: Not enrolled or invalid schedule
+2025-06-09 19:39:39,275 - INFO - Processed frame: course_id=6, schedule_id=11, results=1
+2025-06-09 19:39:39,460 - INFO - 127.0.0.1 - - [09/Jun/2025 19:39:39] "POST /process_frame HTTP/1.1" 200 -
+2025-06-09 19:52:18,488 - INFO - 127.0.0.1 - - [09/Jun/2025 19:52:18] "OPTIONS /start_scan HTTP/1.1" 200 -
+2025-06-09 19:52:18,611 - INFO - Received request to /start_scan
+2025-06-09 19:52:18,612 - INFO - Request data: {'course_id': 6, 'teacher_id': '5424000001', 'schedule_id': 11}
+2025-06-09 19:52:18,614 - INFO - Scanning started: course_id=6, teacher_id=5424000001, schedule_id=11
+2025-06-09 19:52:18,616 - INFO - 127.0.0.1 - - [09/Jun/2025 19:52:18] "POST /start_scan HTTP/1.1" 200 -
+2025-06-09 19:52:18,734 - INFO - 127.0.0.1 - - [09/Jun/2025 19:52:18] "OPTIONS /process_frame HTTP/1.1" 200 -
+2025-06-09 19:52:18,781 - INFO - Received request to /process_frame
+2025-06-09 19:52:18,800 - DEBUG - Request data keys: ['frame', 'course_id', 'schedule_id']
+2025-06-09 19:52:19,454 - INFO - Detected 0 faces
+2025-06-09 19:52:19,470 - INFO - Processed frame: course_id=6, schedule_id=11, results=0
+2025-06-09 19:52:19,502 - INFO - 127.0.0.1 - - [09/Jun/2025 19:52:19] "POST /process_frame HTTP/1.1" 200 -
+2025-06-09 19:52:19,606 - INFO - Received request to /process_frame
+2025-06-09 19:52:19,611 - DEBUG - Request data keys: ['frame', 'course_id', 'schedule_id']
+2025-06-09 19:52:20,239 - INFO - Detected 0 faces
+2025-06-09 19:52:20,243 - INFO - Processed frame: course_id=6, schedule_id=11, results=0
+2025-06-09 19:52:20,245 - INFO - 127.0.0.1 - - [09/Jun/2025 19:52:20] "POST /process_frame HTTP/1.1" 200 -
+2025-06-09 19:52:20,329 - INFO - Received request to /process_frame
+2025-06-09 19:52:20,334 - DEBUG - Request data keys: ['frame', 'course_id', 'schedule_id']
+2025-06-09 19:52:20,895 - INFO - Detected 0 faces
+2025-06-09 19:52:20,896 - INFO - Processed frame: course_id=6, schedule_id=11, results=0
+2025-06-09 19:52:20,898 - INFO - 127.0.0.1 - - [09/Jun/2025 19:52:20] "POST /process_frame HTTP/1.1" 200 -
+2025-06-09 19:52:20,950 - INFO - Received request to /process_frame
+2025-06-09 19:52:20,955 - DEBUG - Request data keys: ['frame', 'course_id', 'schedule_id']
+2025-06-09 19:52:21,595 - INFO - Detected 0 faces
+2025-06-09 19:52:21,599 - INFO - Processed frame: course_id=6, schedule_id=11, results=0
+2025-06-09 19:52:21,601 - INFO - 127.0.0.1 - - [09/Jun/2025 19:52:21] "POST /process_frame HTTP/1.1" 200 -
+2025-06-09 19:52:21,687 - INFO - Received request to /process_frame
+2025-06-09 19:52:21,689 - DEBUG - Request data keys: ['frame', 'course_id', 'schedule_id']
+2025-06-09 19:52:22,375 - INFO - Detected 0 faces
+2025-06-09 19:52:22,388 - INFO - Processed frame: course_id=6, schedule_id=11, results=0
+2025-06-09 19:52:22,391 - INFO - 127.0.0.1 - - [09/Jun/2025 19:52:22] "POST /process_frame HTTP/1.1" 200 -
+2025-06-09 19:52:22,470 - INFO - Received request to /process_frame
+2025-06-09 19:52:22,473 - DEBUG - Request data keys: ['frame', 'course_id', 'schedule_id']
+2025-06-09 19:52:23,094 - INFO - Detected 0 faces
+2025-06-09 19:52:23,097 - INFO - Processed frame: course_id=6, schedule_id=11, results=0
+2025-06-09 19:52:23,099 - INFO - 127.0.0.1 - - [09/Jun/2025 19:52:23] "POST /process_frame HTTP/1.1" 200 -
+2025-06-09 19:52:23,171 - INFO - Received request to /process_frame
+2025-06-09 19:52:23,173 - DEBUG - Request data keys: ['frame', 'course_id', 'schedule_id']
+2025-06-09 19:52:24,965 - INFO - Detected 1 faces
+2025-06-09 19:52:25,023 - INFO - Found schedule: student_id=6421600002, course_id=6, schedule_id=11
+2025-06-09 19:52:25,050 - WARNING - Current time 2025-06-09 19:52:25.050840 outside schedule 14:20:00-15:20:00
+2025-06-09 19:52:25,067 - DEBUG - Current schedule for student 6421600002: None, reason: Outside schedule time
+2025-06-09 19:52:25,068 - INFO - Processed frame: course_id=6, schedule_id=11, results=1
+2025-06-09 19:52:25,072 - INFO - 127.0.0.1 - - [09/Jun/2025 19:52:25] "POST /process_frame HTTP/1.1" 200 -
+2025-06-09 19:52:25,251 - INFO - 127.0.0.1 - - [09/Jun/2025 19:52:25] "OPTIONS /process_frame HTTP/1.1" 200 -
+2025-06-09 19:52:25,291 - INFO - Received request to /process_frame
+2025-06-09 19:52:25,295 - DEBUG - Request data keys: ['frame', 'course_id', 'schedule_id']
+2025-06-09 19:52:26,967 - INFO - Detected 1 faces
+2025-06-09 19:52:26,972 - INFO - Found schedule: student_id=6421600002, course_id=6, schedule_id=11
+2025-06-09 19:52:26,985 - WARNING - Current time 2025-06-09 19:52:26.985079 outside schedule 14:20:00-15:20:00
+2025-06-09 19:52:26,987 - DEBUG - Current schedule for student 6421600002: None, reason: Outside schedule time
+2025-06-09 19:52:26,988 - INFO - Processed frame: course_id=6, schedule_id=11, results=1
+2025-06-09 19:52:26,990 - INFO - 127.0.0.1 - - [09/Jun/2025 19:52:26] "POST /process_frame HTTP/1.1" 200 -
+2025-06-09 19:52:27,084 - INFO - Received request to /process_frame
+2025-06-09 19:52:27,086 - DEBUG - Request data keys: ['frame', 'course_id', 'schedule_id']
+2025-06-09 19:52:27,718 - INFO - Detected 0 faces
+2025-06-09 19:52:27,719 - INFO - Processed frame: course_id=6, schedule_id=11, results=0
+2025-06-09 19:52:27,722 - INFO - 127.0.0.1 - - [09/Jun/2025 19:52:27] "POST /process_frame HTTP/1.1" 200 -
+2025-06-09 19:52:27,789 - INFO - Received request to /process_frame
+2025-06-09 19:52:27,793 - DEBUG - Request data keys: ['frame', 'course_id', 'schedule_id']
+2025-06-09 19:52:29,576 - INFO - Detected 1 faces
+2025-06-09 19:52:29,589 - WARNING - No schedule found: student_id=6421600001, course_id=6, schedule_id=11
+2025-06-09 19:52:29,674 - DEBUG - Current schedule for student 6421600001: None, reason: Not enrolled or invalid schedule
+2025-06-09 19:52:29,690 - INFO - Processed frame: course_id=6, schedule_id=11, results=1
+2025-06-09 19:52:29,692 - INFO - 127.0.0.1 - - [09/Jun/2025 19:52:29] "POST /process_frame HTTP/1.1" 200 -
+2025-06-09 19:52:29,783 - INFO - Received request to /process_frame
+2025-06-09 19:52:29,786 - DEBUG - Request data keys: ['frame', 'course_id', 'schedule_id']
+2025-06-09 19:52:31,650 - INFO - Detected 1 faces
+2025-06-09 19:52:31,654 - INFO - Found schedule: student_id=6421600002, course_id=6, schedule_id=11
+2025-06-09 19:52:31,706 - WARNING - Current time 2025-06-09 19:52:31.706872 outside schedule 14:20:00-15:20:00
+2025-06-09 19:52:31,714 - DEBUG - Current schedule for student 6421600002: None, reason: Outside schedule time
+2025-06-09 19:52:31,720 - INFO - Processed frame: course_id=6, schedule_id=11, results=1
+2025-06-09 19:52:31,725 - INFO - 127.0.0.1 - - [09/Jun/2025 19:52:31] "POST /process_frame HTTP/1.1" 200 -
+2025-06-09 19:52:31,813 - INFO - 127.0.0.1 - - [09/Jun/2025 19:52:31] "OPTIONS /process_frame HTTP/1.1" 200 -
+2025-06-09 19:52:31,826 - INFO - Received request to /process_frame
+2025-06-09 19:52:31,841 - DEBUG - Request data keys: ['frame', 'course_id', 'schedule_id']
+2025-06-09 19:52:35,392 - INFO - Detected 1 faces
+2025-06-09 19:52:35,590 - INFO - Found schedule: student_id=6421600002, course_id=6, schedule_id=11
+2025-06-09 19:52:35,762 - WARNING - Current time 2025-06-09 19:52:35.762992 outside schedule 14:20:00-15:20:00
+2025-06-09 19:52:35,842 - DEBUG - Current schedule for student 6421600002: None, reason: Outside schedule time
+2025-06-09 19:52:35,895 - INFO - Processed frame: course_id=6, schedule_id=11, results=1
+2025-06-09 19:52:35,907 - INFO - 127.0.0.1 - - [09/Jun/2025 19:52:35] "POST /process_frame HTTP/1.1" 200 -

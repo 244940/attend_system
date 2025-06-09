@@ -1,7 +1,7 @@
 <?php
 session_start();
-ini_set('display_errors', 0);
-ini_set('display_startup_errors', 0);
+ini_set('display_errors', 1); // เปิด error reporting เพื่อ debug
+ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
 
 header('Content-Type: application/json; charset=UTF-8');
@@ -80,8 +80,8 @@ try {
         JOIN students s ON e.student_id = s.student_id
         JOIN courses c ON e.course_id = c.course_id
         LEFT JOIN attendance a ON s.student_id = a.student_id 
-            AND a.schedule_id " . (!empty($schedule_ids) ? "IN (" . implode(',', array_fill(0, count($schedule_ids), '?')) . ")" : "= 0") . "
             AND DATE(a.scan_time) = ?
+            " . (!empty($schedule_ids) ? "AND a.schedule_id IN (" . implode(',', array_fill(0, count($schedule_ids), '?')) . ")" : "") . "
         WHERE e.course_id = ?
         ORDER BY s.name";
 
@@ -91,17 +91,13 @@ try {
     }
 
     // Prepare parameters for binding
-    $bind_params = [];
-    $bind_types = '';
+    $bind_params = [$selected_date, $course_id];
+    $bind_types = 'si';
     if (!empty($schedule_ids)) {
         $bind_types .= str_repeat('i', count($schedule_ids));
         $bind_params = array_merge($bind_params, $schedule_ids);
     }
-    $bind_types .= 'si';
-    $bind_params[] = $selected_date;
-    $bind_params[] = $course_id;
 
-    // Bind parameters dynamically
     $stmt->bind_param($bind_types, ...$bind_params);
     if (!$stmt->execute()) {
         throw new Exception('Failed to execute attendance query: ' . $stmt->error);
