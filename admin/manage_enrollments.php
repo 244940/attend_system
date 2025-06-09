@@ -1,6 +1,19 @@
 <?php
 session_start();
-require 'database_connection.php';
+require '../database_connection.php';
+
+// PHP Spreadsheet
+
+require '../vendor/autoload.php';
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
+use PhpOffice\PhpSpreadsheet\Writer\Csv;
+
+// ตรวจสอบว่า font THSarabunNew มีอยู่
+$font_path = '../vendor/tecnickcom/tcpdf/fonts/thsarabunnew.php';
+if (!file_exists($font_path)) {
+    error_log("THSarabunNew font not found in $font_path. Please run convert_font.php.");
+}
 
 // Check if user is an admin
 function isAdmin() {
@@ -10,7 +23,7 @@ function isAdmin() {
 // Redirect non-admin users
 if (!isAdmin()) {
     error_log("Access denied: Not an admin. Session: " . print_r($_SESSION, true));
-    header("Location: login.php");
+    header("Location: ../login.php");
     exit();
 }
 
@@ -29,7 +42,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['select_course'])) {
             $course_id = array_shift($parts);
             $group_number = array_shift($parts);
             $course_code = array_pop($parts);
-            $course_name = implode('_', $parts); // Reconstruct course_name if it contains underscores
+            $course_name = implode('_', $parts);
             $selected_course_id = $course_id;
             $selected_group_number = $group_number;
             $selected_course_name = urldecode($course_name);
@@ -51,7 +64,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['select_course'])) {
     $selected_course_name = $_SESSION['selected_course_name'];
     $selected_course_code = $_SESSION['selected_course_code'];
 } else {
-    // Clear session if incomplete to avoid partial data
     unset($_SESSION['selected_course_id'], $_SESSION['selected_group_number'], $_SESSION['selected_course_name'], $_SESSION['selected_course_code']);
 }
 
@@ -66,6 +78,51 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_enrollment']))
     } else {
         error_log("Invalid deletion data: student_id=$student_id, course_id=$course_id, group_number=$group_number");
         $enrollmentMessage = "Invalid data provided for deletion.";
+    }
+}
+
+// Handle export CSV
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['export_csv'])) {
+    $course_id = $_POST['course_id'] ?? null;
+    $group_number = $_POST['group_number'] ?? null;
+    $course_name = $_POST['course_name'] ?? 'course';
+    $course_code = $_POST['course_code'] ?? 'code';
+
+    if ($course_id && $group_number) {
+        exportToCsv($conn, $course_id, $group_number, $course_name, $course_code);
+        exit();
+    } else {
+        $enrollmentMessage = "Invalid data for CSV export.";
+    }
+}
+
+// Handle export Excel
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['export_excel'])) {
+    $course_id = $_POST['course_id'] ?? null;
+    $group_number = $_POST['group_number'] ?? null;
+    $course_name = $_POST['course_name'] ?? 'course';
+    $course_code = $_POST['course_code'] ?? 'code';
+
+    if ($course_id && $group_number) {
+        exportToExcel($conn, $course_id, $group_number, $course_name, $course_code);
+        exit();
+    } else {
+        $enrollmentMessage = "Invalid data for Excel export.";
+    }
+}
+
+// Handle export PDF
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['export_pdf'])) {
+    $course_id = $_POST['course_id'] ?? null;
+    $group_number = $_POST['group_number'] ?? null;
+    $course_name = $_POST['course_name'] ?? 'course';
+    $course_code = $_POST['course_code'] ?? 'code';
+
+    if ($course_id && $group_number) {
+        exportToPdf($conn, $course_id, $group_number, $course_name, $course_code);
+        exit();
+    } else {
+        $enrollmentMessage = "Invalid data for PDF export.";
     }
 }
 
@@ -98,7 +155,7 @@ function deleteEnrollment($student_id, $course_id, $group_number, $conn) {
 }
 
 function getEnrolledStudents($conn, $course_id = null, $group_number = null) {
-    $query = "SELECT e.student_id, c.course_id, c.course_name, c.course_code, s.name AS student_name, e.group_number 
+    $query = "SELECT e.student_id, c.course_id, c.course_name, c.course_code, s.name AS student_name, s.email, e.group_number 
               FROM courses c 
               JOIN enrollments e ON c.course_id = e.course_id 
               JOIN students s ON e.student_id = s.student_id";
@@ -136,6 +193,7 @@ function getEnrolledStudents($conn, $course_id = null, $group_number = null) {
         $enrollments[$key]['students'][] = [
             'student_id' => $row['student_id'],
             'student_name' => $row['student_name'],
+            'email' => $row['email'],
             'course_id' => $row['course_id']
         ];
     }
@@ -154,6 +212,142 @@ function getCourses($conn) {
     }
     return $courses;
 }
+
+function exportToCsv($conn, $course_id, $group_number, $course_name, $course_code) {
+    $enrollments = getEnrolledStudents($conn, $course_id, $group_number);
+    $filename = "enrollments_{$course_code}_group{$group_number}.csv";
+    
+    header('Content-Type: text/csv; charset=utf-8');
+    header('Content-Disposition: attachment; filename="' . $filename . '"');
+    
+    $output = fopen('php://output', 'w');
+    fputs($output, "\xEF\xBB\xBF"); // UTF-8 BOM for Excel compatibility
+    
+    fputcsv($output, ['Group', 'Student ID', 'Student Name', 'Email']);
+    
+    if (!empty($enrollments)) {
+        foreach ($enrollments as $course_data) {
+            foreach ($course_data['students'] as $student) {
+                fputcsv($output, [
+                    $course_data['group_number'],
+                    $student['student_id'],
+                    $student['student_name'],
+                    $student['email']
+                ]);
+            }
+        }
+    }
+    
+    fclose($output);
+}
+
+function exportToExcel($conn, $course_id, $group_number, $course_name, $course_code) {
+    $enrollments = getEnrolledStudents($conn, $course_id, $group_number);
+    $filename = "enrollments_{$course_code}_group{$group_number}.xlsx";
+    
+    $spreadsheet = new Spreadsheet();
+    $sheet = $spreadsheet->getActiveSheet();
+    
+    // Set headers
+    $sheet->setCellValue('A1', 'Group');
+    $sheet->setCellValue('B1', 'Student ID');
+    $sheet->setCellValue('C1', 'Student Name');
+    $sheet->setCellValue('D1', 'Email');
+    
+    // Populate data
+    $row = 2;
+    if (!empty($enrollments)) {
+        foreach ($enrollments as $course_data) {
+            foreach ($course_data['students'] as $student) {
+                $sheet->setCellValue('A' . $row, $course_data['group_number']);
+                $sheet->setCellValue('B' . $row, $student['student_id']);
+                $sheet->setCellValue('C' . $row, $student['student_name']);
+                $sheet->setCellValue('D' . $row, $student['email']);
+                $row++;
+            }
+        }
+    }
+    
+    // Auto-size columns
+    foreach (range('A', 'D') as $col) {
+        $sheet->getColumnDimension($col)->setAutoSize(true);
+    }
+    
+    // Set headers for Excel download
+    header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    header('Content-Disposition: attachment;filename="' . $filename . '"');
+    header('Cache-Control: max-age=0');
+    
+    $writer = new Xlsx($spreadsheet);
+    $writer->save('php://output');
+}
+
+function exportToPdf($conn, $course_id, $group_number, $course_name, $course_code) {
+    $enrollments = getEnrolledStudents($conn, $course_id, $group_number);
+    $filename = "enrollments_{$course_code}_group{$group_number}.pdf";
+    
+    // ตรวจสอบว่า font มีอยู่
+    $font_path = '../vendor/tecnickcom/tcpdf/fonts/thsarabunnew.php';
+    if (!file_exists($font_path)) {
+        error_log("THSarabunNew font not found in $font_path. Falling back to freeserif.");
+        $font = 'freeserif'; // ใช้ font สำรอง
+    } else {
+        $font = 'thsarabunnew';
+    }
+
+    // สร้าง PDF ด้วย TCPDF
+    $pdf = new TCPDF(PDF_PAGE_ORIENTATION, PDF_UNIT, PDF_PAGE_FORMAT, true, 'UTF-8', false);
+    
+    // ตั้งค่าเอกสาร
+    $pdf->SetCreator(PDF_CREATOR);
+    $pdf->SetAuthor('University Admin System');
+    $pdf->SetTitle("Enrollment List - {$course_name} ({$course_code}) Group {$group_number}");
+    $pdf->SetSubject('Enrollment List');
+    
+    // ตั้งค่า font
+    $pdf->SetFont($font, '', 14);
+    
+    // เพิ่มหน้า
+    $pdf->AddPage();
+    
+    // เขียนหัวข้อ
+    $pdf->Write(0, "Enrollment List: {$course_name} ({$course_code}) Group {$group_number}\n\n", '', 0, 'C', true);
+    
+    // สร้างตาราง HTML
+    $html = '<table border="1" cellpadding="5">
+                <thead>
+                    <tr style="background-color:#3498db;color:white;">
+                        <th>Group</th>
+                        <th>Student ID</th>
+                        <th>Student Name</th>
+                        <th>Email</th>
+                    </tr>
+                </thead>
+                <tbody>';
+    
+    if (!empty($enrollments)) {
+        foreach ($enrollments as $course_data) {
+            foreach ($course_data['students'] as $student) {
+                $html .= '<tr>';
+                $html .= '<td>' . htmlspecialchars($course_data['group_number']) . '</td>';
+                $html .= '<td>' . htmlspecialchars($student['student_id']) . '</td>';
+                $html .= '<td>' . htmlspecialchars($student['student_name']) . '</td>';
+                $html .= '<td>' . htmlspecialchars($student['email']) . '</td>';
+                $html .= '</tr>';
+            }
+        }
+    } else {
+        $html .= '<tr><td colspan="4">No enrollments found.</td></tr>';
+    }
+    
+    $html .= '</tbody></table>';
+    
+    // เขียน HTML ลงใน PDF
+    $pdf->writeHTML($html, true, false, true, false, '');
+    
+    // ส่งออก PDF
+    $pdf->Output($filename, 'D');
+}
 ?>
 
 <!DOCTYPE html>
@@ -163,7 +357,7 @@ function getCourses($conn) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Manage Enrollments</title>
     <style>
-        body, html { margin: 0; padding: 0; font-family: Arial, sans-serif; height: 100%; display: flex; flex-direction: column; background-image: url('/attend_system/admin/assets/bb.jpg'); background-size: cover; background-position: center; }
+        body, html { margin: 0; padding: 0; font-family: Arial, sans-serif; height: 100%; display: flex; flex-direction: column; background-image: url('assets/bb.jpg'); background-size: cover; background-position: center; }
         .top-bar { width: 100%; background-color: #2980b9; color: white; padding: 15px 20px; text-align: left; box-shadow: 0 2px 4px rgba(0,0,0,0.2); display: flex; justify-content: space-between; align-items: center; }
         .top-bar h1 { margin: 0; font-size: 24px; }
         .admin-container { display: flex; flex: 1; width: 100%; height: calc(100vh - 70px); background: rgba(255, 255, 255, 0.9); }
@@ -184,14 +378,29 @@ function getCourses($conn) {
         h2, h3 { color: #2980b9; }
         .course-item { margin-bottom: 20px; }
         .course-name { font-weight: bold; font-size: 1.2em; }
-        .student-list { list-style: none; padding-left: 20px; }
-        .student-item { margin: 5px 0; display: flex; align-items: center; }
-        .delete-button { background: #e74c3c; color: white; padding: 5px 10px; border: none; border-radius: 4px; cursor: pointer; margin-left: 10px; font-size: 0.9em; }
+        .enrollment-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        .enrollment-table th, .enrollment-table td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        .enrollment-table th { background-color: #3498db; color: white; }
+        .enrollment-table tr:nth-child(even) { background-color: #f9f9f9; }
+        .enrollment-table tr:hover { background-color: #f1f1f1; }
+        .delete-button { background: #e74c3c; color: white; padding: 5px 10px; border: none; border-radius: 4px; cursor: pointer; font-size: 0.9em; }
         .delete-button:hover { background: #c0392b; }
+        .export-button { background: #2ecc71; color: white; padding: 5px 10px; border: none; border-radius: 4px; cursor: pointer; font-size: 0.9em; margin-right: 5px; }
+        .export-button:hover { background: #27ae60; }
+        .export-button.excel { background: #f1c40f; }
+        .export-button.excel:hover { background: #e1b307; }
+        .export-button.pdf { background: #e74c3c; }
+        .export-button.pdf:hover { background: #c0392b; }
         .enrollment-message { padding: 10px; margin-bottom: 20px; border-radius: 5px; width: 100%; max-width: 800px; }
         .enrollment-message.success { background: #dff0d8; color: #3c763d; }
         .enrollment-message.error { background: #f2dede; color: #a94442; }
         footer { text-align: center; padding: 10px; background-color: #34495e; color: white; width: 100%; }
+        @media (max-width: 600px) {
+            .course-grid { grid-template-columns: repeat(2, 1fr); }
+            .enrollment-table { font-size: 0.8em; }
+            .enrollment-table th, .enrollment-table td { padding: 5px; }
+            .export-button { margin-bottom: 5px; }
+        }
     </style>
 </head>
 <body>
@@ -211,8 +420,7 @@ function getCourses($conn) {
                 <li><a href="add_course.php">Add Course</a></li>
                 <li><a href="manage_enrollments.php">Manage Enrollments</a></li>
                 <li><a href="enroll_student.php">Enroll Student</a></li>
-                
-                <li><a href="logout.php">Logout</a></li>
+                <li><a href="../logout.php">Logout</a></li>
             </ul>
         </aside>
         <div class="main-content">
@@ -270,19 +478,58 @@ function getCourses($conn) {
                     ?>
                         <div class="course-item">
                             <p class="course-name"><?php echo htmlspecialchars($course_data['course_name']) . ' (' . htmlspecialchars($course_data['course_code']) . ', Group ' . htmlspecialchars($course_data['group_number']) . ')'; ?></p>
-                            <ul class="student-list">
-                                <?php foreach ($course_data['students'] as $student): ?>
-                                    <li class="student-item">
-                                        <?php echo htmlspecialchars($student['student_name']); ?>
-                                        <form method="POST" action="" style="display:inline;" onsubmit="return confirm('Are you sure you want to delete this enrollment for <?php echo htmlspecialchars($student['student_name']); ?>?');">
-                                            <input type="hidden" name="student_id" value="<?php echo $student['student_id']; ?>">
-                                            <input type="hidden" name="course_id" value="<?php echo $student['course_id']; ?>">
-                                            <input type="hidden" name="group_number" value="<?php echo $course_data['group_number']; ?>">
-                                            <button type="submit" name="delete_enrollment" class="delete-button">Delete</button>
-                                        </form>
-                                    </li>
-                                <?php endforeach; ?>
-                            </ul>
+                            <div style="margin-bottom: 10px;">
+                                <form method="POST" action="" style="display:inline;">
+                                    <input type="hidden" name="course_id" value="<?php echo $course_data['students'][0]['course_id']; ?>">
+                                    <input type="hidden" name="group_number" value="<?php echo $course_data['group_number']; ?>">
+                                    <input type="hidden" name="course_name" value="<?php echo htmlspecialchars($course_data['course_name']); ?>">
+                                    <input type="hidden" name="course_code" value="<?php echo htmlspecialchars($course_data['course_code']); ?>">
+                                    <button type="submit" name="export_csv" class="export-button">Export to CSV</button>
+                                </form>
+                                <form method="POST" action="" style="display:inline;">
+                                    <input type="hidden" name="course_id" value="<?php echo $course_data['students'][0]['course_id']; ?>">
+                                    <input type="hidden" name="group_number" value="<?php echo $course_data['group_number']; ?>">
+                                    <input type="hidden" name="course_name" value="<?php echo htmlspecialchars($course_data['course_name']); ?>">
+                                    <input type="hidden" name="course_code" value="<?php echo htmlspecialchars($course_data['course_code']); ?>">
+                                    <button type="submit" name="export_excel" class="export-button excel">Export to Excel</button>
+                                </form>
+                                <form method="POST" action="" style="display:inline;">
+                                    <input type="hidden" name="course_id" value="<?php echo $course_data['students'][0]['course_id']; ?>">
+                                    <input type="hidden" name="group_number" value="<?php echo $course_data['group_number']; ?>">
+                                    <input type="hidden" name="course_name" value="<?php echo htmlspecialchars($course_data['course_name']); ?>">
+                                    <input type="hidden" name="course_code" value="<?php echo htmlspecialchars($course_data['course_code']); ?>">
+                                    <button type="submit" name="export_pdf" class="export-button pdf">Export to PDF</button>
+                                </form>
+                            </div>
+                            <table class="enrollment-table">
+                                <thead>
+                                    <tr>
+                                        <th>Group</th>
+                                        <th>Student ID</th>
+                                        <th>Student Name</th>
+                                        <th>Email</th>
+                                        <th>Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php foreach ($course_data['students'] as $student): ?>
+                                        <tr>
+                                            <td><?php echo htmlspecialchars($course_data['group_number']); ?></td>
+                                            <td><?php echo htmlspecialchars($student['student_id']); ?></td>
+                                            <td><?php echo htmlspecialchars($student['student_name']); ?></td>
+                                            <td><?php echo htmlspecialchars($student['email']); ?></td>
+                                            <td>
+                                                <form method="POST" action="" style="display:inline;" onsubmit="return confirm('Are you sure you want to delete this enrollment for <?php echo htmlspecialchars($student['student_name']); ?>?');">
+                                                    <input type="hidden" name="student_id" value="<?php echo $student['student_id']; ?>">
+                                                    <input type="hidden" name="course_id" value="<?php echo $student['course_id']; ?>">
+                                                    <input type="hidden" name="group_number" value="<?php echo $course_data['group_number']; ?>">
+                                                    <button type="submit" name="delete_enrollment" class="delete-button">Delete</button>
+                                                </form>
+                                            </td>
+                                        </tr>
+                                    <?php endforeach; ?>
+                                </tbody>
+                            </table>
                         </div>
                     <?php
                         endforeach;
