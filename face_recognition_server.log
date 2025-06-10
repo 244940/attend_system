@@ -1,0 +1,16 @@
+2025-06-10 13:24:32,452 - INFO - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5001
+ * Running on http://192.168.148.225:5001
+2025-06-10 13:24:32,465 - INFO - [33mPress CTRL+C to quit[0m
+2025-06-10 13:24:32,478 - INFO -  * Restarting with stat
+2025-06-10 13:24:36,745 - WARNING -  * Debugger is active!
+2025-06-10 13:24:36,872 - INFO -  * Debugger PIN: 757-742-842
+2025-06-10 13:36:22,453 - INFO -  * Detected change in 'C:\\xampp\\htdocs\\attend_system\\database_manager.py', reloading
+2025-06-10 13:36:22,927 - INFO -  * Restarting with stat
+2025-06-10 13:36:28,825 - WARNING -  * Debugger is active!
+2025-06-10 13:36:28,987 - INFO -  * Debugger PIN: 757-742-842
+2025-06-10 14:10:50,772 - INFO -  * Detected change in 'C:\\xampp\\htdocs\\attend_system\\face_recognition_server.py', reloading
+2025-06-10 14:10:51,953 - INFO -  * Restarting with stat
+2025-06-10 14:11:02,544 - WARNING -  * Debugger is active!
+2025-06-10 14:11:02,778 - INFO -  * Debugger PIN: 757-742-842

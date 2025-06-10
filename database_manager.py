@@ -28,6 +28,30 @@ class DatabaseManager:
             logging.error(f"Database connection error: {err}, Code: {err.errno}, SQLSTATE: {err.sqlstate}")
             raise
 
+    def get_student_info(self, student_id):
+        try:
+            self.cursor.execute("SELECT email, name FROM students WHERE student_id = %s", (student_id,))
+            return self.cursor.fetchone()
+        except Exception as e:
+            logging.error(f"Error fetching student info for {student_id}: {e}")
+            return None
+
+    def get_course_schedule_info(self, course_id, schedule_id):
+        try:
+            self.cursor.execute(
+                """
+                SELECT c.course_code, s.day_of_week, s.start_time, s.end_time
+                FROM courses c
+                JOIN schedules s ON c.course_id = s.course_id
+                WHERE c.course_id = %s AND s.schedule_id = %s
+                """,
+                (course_id, schedule_id)
+            )
+            return self.cursor.fetchone()
+        except Exception as e:
+            logging.error(f"Error fetching course/schedule info: {e}")
+            return None
+
     def load_known_faces(self):
         known_face_encodings = []
         known_face_names = []
@@ -89,7 +113,7 @@ class DatabaseManager:
             logging.error(f"Error in get_current_schedule: {err}")
             return None, str(err)
 
-    def log_attendance(self, student_id, schedule_id):
+    def log_attendance(self, student_id, schedule_id, status=None):
         try:
             last_log_time = self.get_last_log_time(student_id, schedule_id)
             if last_log_time and (datetime.now() - last_log_time).total_seconds() < 1800:
@@ -117,18 +141,21 @@ class DatabaseManager:
                 minutes, seconds = divmod(remainder, 60)
                 end_time = time(hours, minutes, seconds)
             start_dt = datetime.combine(today, start_time)
-            late_dt = start_dt + timedelta(minutes=15)
+            early_dt = start_dt - timedelta(minutes=10)  # 10-minute early
+            late_dt = start_dt + timedelta(minutes=5)
             end_dt = datetime.combine(today, end_time)
 
-            if now > end_dt:
-                logging.warning(f"Class ended: student_id={student_id}, schedule_id={schedule_id}")
-                return "Class ended"
-
-            status = "absent"
-            if now <= start_dt:
-                status = "present"
-            elif now <= late_dt:
-                status = "late"
+            # Determine status if not explicitly provided
+            if status is None:
+                if now > end_dt:
+                    status = "absent"
+                    logging.info(f"Class ended, marking absent: student_id={student_id}, schedule_id={schedule_id}")
+                elif early_dt <= now <= late_dt:
+                    status = "present"
+                    logging.info(f"Marked present (early or on-time): student_id={student_id}, schedule_id={schedule_id}")
+                else:
+                    status = "absent"
+                    logging.info(f"Marked absent (outside time window): student_id={student_id}, schedule_id={schedule_id}")
 
             query = """
             INSERT INTO attendance (student_id, schedule_id, scan_time, status)

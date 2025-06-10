@@ -11,12 +11,17 @@ from PIL import Image
 import logging
 import sys
 import traceback
+from logging.handlers import RotatingFileHandler
+import requests
+
+if sys.stdout.encoding != 'utf-8':
+    sys.stdout = open(sys.stdout.fileno(), mode='w', encoding='utf-8', buffering=1)
 
 logging.basicConfig(
     level=logging.DEBUG,
     format='%(asctime)s - %(levelname)s - %(message)s',
     handlers=[
-        logging.FileHandler('face_recognition_server.log'),
+        RotatingFileHandler('face_recognition_server.log', maxBytes=10*1024*1024, backupCount=5, encoding='utf-8'),
         logging.StreamHandler(sys.stdout)
     ]
 )
@@ -183,6 +188,7 @@ def process_frame():
                 logger.warning("No known faces available")
 
             attendance_text = "No attendance record"
+            reason = None
             if student_id is not None:
                 try:
                     current_schedule, reason = db_manager.get_current_schedule(student_id, course_id, schedule_id)
@@ -190,33 +196,38 @@ def process_frame():
                     if current_schedule:
                         schedule_id_db, start_time, end_time, course_name = current_schedule
                         if str(schedule_id_db) == str(schedule_id):
-                            status = db_manager.log_attendance(student_id, schedule_id)
+                            status = db_manager.log_attendance(student_id, schedule_id, status='present')
                             logger.debug(f"Attendance status for student {student_id}: {status}")
                             if status == "Too soon to log again":
                                 attendance_text = f"ลงชื่อซ้ำเร็วเกินไปสำหรับ {course_name}"
                             elif status == "Error":
-                                attendance_text = "บันทึกการเข้างานล้มเหลว"
+                                attendance_text = f"บันทึกการเข้างานล้มเหลว: {reason or 'เกิดข้อผิดพลาดในฐานข้อมูล'}"
                             elif status == "Class ended":
-                                attendance_text = "คลาสสิ้นสุดแล้ว"
+                                attendance_text = f"คลาสสิ้นสุดแล้ว: {course_name}"
                             else:
                                 attendance_text = f"บันทึกการเข้างานสำหรับ {course_name} สถานะ: {status}"
                         else:
-                            attendance_text = "รหัสตารางไม่ตรงกัน"
+                            attendance_text = f"รหัสตารางไม่ตรงกัน: {reason or 'ตารางไม่สอดคล้อง'}"
                     else:
-                        if reason == "Not enrolled or invalid schedule":
+                        if reason == "Outside schedule time":
+                            # Log absent status for late scans
+                            status = db_manager.log_attendance(student_id, schedule_id, status='absent')
+                            attendance_text = f"ขาด: ไม่อยู่ในช่วงเวลาคลาส"
+                            logger.debug(f"Logged absent status for student {student_id} due to late scan")
+                        elif reason == "Not enrolled or invalid schedule":
                             attendance_text = "ไม่อยู่ในรายชื่อการลงทะเบียนเรียน"
-                        elif reason == "Outside schedule time":
-                            attendance_text = "ไม่อยู่ในช่วงเวลาคลาส"
                         else:
-                            attendance_text = f"ข้อผิดพลาด: {reason}"
+                            attendance_text = f"ข้อผิดพลาด: {reason or 'ไม่พบข้อมูลตาราง'}"
                 except Exception as e:
+                    reason = str(e)
                     logger.error(f"Attendance logging error for student {student_id}: {str(e)}\n{traceback.format_exc()}")
-                    attendance_text = "บันทึกการเข้างานล้มเหลว"
+                    attendance_text = f"บันทึกการเข้างานล้มเหลว: {reason}"
 
             results.append({
                 "name": name,
                 "attendance_text": attendance_text,
-                "box": {"top": top, "right": right, "bottom": bottom, "left": left}
+                "box": {"top": top, "right": right, "bottom": bottom, "left": left},
+                "reason": reason
             })
 
         logger.info(f"Processed frame: course_id={course_id}, schedule_id={schedule_id}, results={len(results)}")
@@ -247,7 +258,7 @@ def reload_faces():
 if __name__ == "__main__":
     try:
         logger.info("Starting Flask server...")
-        app.run(host="0.0.0.1", port=5000, debug=True)
+        app.run(host="0.0.0.0", port=5000, debug=True)
     except Exception as e:
         logger.error(f"Failed to start Flask server: {str(e)}\n{traceback.format_exc()}")
     finally:

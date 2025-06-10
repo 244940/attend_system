@@ -69,7 +69,7 @@ function processEnrollmentFile($file, $file_ext, $conn) {
         $conn->begin_transaction();
         
         $validCourses = [];
-        $courseQuery = "SELECT course_id, course_name, course_code, group_number 
+        $courseQuery = "SELECT course_id, course_name, course_code, group_number, semester, c_year 
                        FROM courses";
         $result = $conn->query($courseQuery);
         while ($row = $result->fetch_assoc()) {
@@ -77,7 +77,9 @@ function processEnrollmentFile($file, $file_ext, $conn) {
             $validCourses[$group_key] = [
                 'course_id' => $row['course_id'],
                 'course_code' => $row['course_code'],
-                'group_number' => $row['group_number']
+                'group_number' => $row['group_number'],
+                'semester' => $row['semester'],
+                'c_year' => $row['c_year']
             ];
         }
         
@@ -154,20 +156,23 @@ function processEnrollmentFile($file, $file_ext, $conn) {
 }
 
 function getStudentId($student_code, $student_name, $conn) {
-    $query = "SELECT student_id FROM students WHERE citizen_id = ? OR name = ?";
+    $query = "SELECT student_id, name, email FROM students WHERE citizen_id = ? OR name = ?";
     $stmt = $conn->prepare($query);
     $stmt->bind_param("ss", $student_code, $student_name);
     $stmt->execute();
     $result = $stmt->get_result();
     $row = $result->fetch_assoc();
     $stmt->close();
-    return $row ? $row['student_id'] : null;
+    return $row ? ['student_id' => $row['student_id'], 'name' => $row['name'], 'email' => $row['email']] : null;
 }
 
 function enrollStudent($student_id, $course_id, $group_number, $conn) {
     $conn->begin_transaction();
     try {
-        $course_verify_query = "SELECT course_id FROM courses WHERE course_id = ? AND group_number = ?";
+        // Verify course
+        $course_verify_query = "SELECT course_id, course_name, course_code, semester, c_year 
+                               FROM courses 
+                               WHERE course_id = ? AND group_number = ?";
         $course_verify_stmt = $conn->prepare($course_verify_query);
         $course_verify_stmt->bind_param("ii", $course_id, $group_number);
         $course_verify_stmt->execute();
@@ -178,8 +183,30 @@ function enrollStudent($student_id, $course_id, $group_number, $conn) {
             $conn->rollback();
             return "Invalid course ID $course_id or group number $group_number.";
         }
+        $course_info = $course_verify_result->fetch_assoc();
+        $course_name = $course_info['course_name'];
+        $course_code = $course_info['course_code'];
+        $semester = $course_info['semester'];
+        $c_year = $course_info['c_year'];
         $course_verify_stmt->close();
 
+        // Fetch student email and name
+        $student_query = "SELECT email, name FROM students WHERE student_id = ?";
+        $student_stmt = $conn->prepare($student_query);
+        $student_stmt->bind_param("i", $student_id);
+        $student_stmt->execute();
+        $student_result = $student_stmt->get_result();
+        if ($student_result->num_rows === 0) {
+            $student_stmt->close();
+            $conn->rollback();
+            return "Student ID $student_id not found.";
+        }
+        $student_info = $student_result->fetch_assoc();
+        $student_email = $student_info['email'];
+        $student_name = $student_info['name'];
+        $student_stmt->close();
+
+        // Fetch schedules
         $schedule_query = "SELECT day_of_week, start_time, end_time 
                           FROM schedules 
                           WHERE course_id = ?";
@@ -210,6 +237,7 @@ function enrollStudent($student_id, $course_id, $group_number, $conn) {
         }
         $schedule_stmt->close();
 
+        // Check for existing enrollment
         $check_query = "SELECT * FROM enrollments WHERE student_id = ? AND course_id = ? AND group_number = ?";
         $check_stmt = $conn->prepare($check_query);
         $check_stmt->bind_param("iii", $student_id, $course_id, $group_number);
@@ -223,6 +251,7 @@ function enrollStudent($student_id, $course_id, $group_number, $conn) {
         }
         $check_stmt->close();
 
+        // Check for schedule conflicts
         foreach ($course_schedules as $schedule) {
             $conflict_query = "
                 SELECT COUNT(*) as conflict_count 
@@ -256,6 +285,7 @@ function enrollStudent($student_id, $course_id, $group_number, $conn) {
             $conflict_stmt->close();
         }
 
+        // Insert enrollment
         $enroll_query = "INSERT INTO enrollments (student_id, course_id, group_number) VALUES (?, ?, ?)";
         $enroll_stmt = $conn->prepare($enroll_query);
         $enroll_stmt->bind_param("iii", $student_id, $course_id, $group_number);
@@ -265,6 +295,7 @@ function enrollStudent($student_id, $course_id, $group_number, $conn) {
         }
         $enroll_stmt->close();
 
+        // Insert student schedules
         foreach ($course_schedules as $schedule) {
             $student_schedule_query = "INSERT INTO student_schedules (student_id, course_id, day_of_week, start_time, end_time) 
                                       VALUES (?, ?, ?, ?, ?)";
@@ -283,6 +314,51 @@ function enrollStudent($student_id, $course_id, $group_number, $conn) {
             $student_schedule_stmt->close();
         }
 
+        // Send email via Flask API
+        $flask_api_url = 'http://127.0.0.1:5000/api/send-email';
+        $email_subject = "แจ้งเตือนการลงทะเบียนเรียน: " . htmlspecialchars($course_name);
+        $schedule_text = empty($course_schedules) ? 'ยังไม่กำหนดตาราง' : implode(', ', array_map(function($sched) {
+            return getDayNameThai($sched['day_of_week']) . ' ' . substr($sched['start_time'], 0, 5) . '-' . substr($sched['end_time'], 0, 5);
+        }, $course_schedules));
+        $email_body_template = "เรียน $student_name\n\n" .
+                              "คุณได้ลงทะเบียนเรียนวิชา " . htmlspecialchars($course_name) . " (" . htmlspecialchars($course_code) . ")\n" .
+                              "กลุ่ม: $group_number\n" .
+                              "ภาคการศึกษา: " . getSemesterThai($semester) . "/" . $c_year . "\n" .
+                              "ตารางเรียน: $schedule_text\n" .
+                              "กรุณาตรวจสอบตารางเรียนและเตรียมตัวให้พร้อม";
+
+        $post_fields = json_encode([
+            'to' => $student_email,
+            'subject' => $email_subject,
+            'body_template' => $email_body_template,
+            'course_name' => $course_name
+        ]);
+
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, $flask_api_url);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $post_fields);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 10);
+
+        $flask_response = curl_exec($ch);
+        $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $curl_error = curl_error($ch);
+        curl_close($ch);
+
+        if ($flask_response === false) {
+            error_log("cURL error when sending enrollment email: $curl_error");
+            // Continue with commit despite email failure
+        } else {
+            $flask_result = json_decode($flask_response, true);
+            if ($http_code >= 200 && $http_code < 300) {
+                error_log("Enrollment email sent via Flask: " . ($flask_result['message'] ?? 'No message'));
+            } else {
+                error_log("Flask API error (HTTP $http_code): " . ($flask_result['error'] ?? $flask_response));
+            }
+        }
+
         $conn->commit();
         return "Student enrolled successfully.";
     } catch (Exception $e) {
@@ -290,41 +366,171 @@ function enrollStudent($student_id, $course_id, $group_number, $conn) {
         return "Failed to enroll student: " . $e->getMessage();
     }
 }
+
+function getDayNameThai($day) {
+    $dayMapping = [
+        'Monday' => 'วันจันทร์',
+        'Tuesday' => 'วันอังคาร',
+        'Wednesday' => 'วันพุธ',
+        'Thursday' => 'วันพฤหัสบดี',
+        'Friday' => 'วันศุกร์',
+        'Saturday' => 'วันเสาร์',
+        'Sunday' => 'วันอาทิตย์'
+    ];
+    return $dayMapping[$day] ?? $day;
+}
+
+function getSemesterThai($semester) {
+    $semesterMap = ['first' => '1', 'second' => '2', 'summer' => 'ฤดูร้อน'];
+    return $semesterMap[$semester] ?? $semester;
+}
 ?>
 
 <!DOCTYPE html>
-<html lang="en">
+<html lang="th">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Enroll Student</title>
+    <title>ลงทะเบียนนิสิต</title>
     <style>
-        body, html { margin: 0; padding: 0; font-family: Arial, sans-serif; height: 100%; display: flex; flex-direction: column; background-image: url('/attend_system/admin/assets/bb.jpg'); background-size: cover; background-position: center; }
-        .top-bar { width: 100%; background-color: #2980b9; color: white; padding: 15px 20px; text-align: left; box-shadow: 0 2px 4px rgba(0,0,0,0.2); display: flex; justify-content: space-between; align-items: center; }
-        .top-bar h1 { margin: 0; font-size: 24px; }
-        .admin-container { display: flex; flex: 1; width: 100%; height: calc(100vh - 70px); background: rgba(255, 255, 255, 0.9); }
-        .sidebar { width: 250px; background-color: #2c3e50; color: white; padding: 20px; display: flex; flex-direction: column; align-items: center; height: 100%; }
-        .sidebar ul { list-style: none; padding: 0; width: 100%; }
-        .sidebar ul li { margin: 15px 0; text-align: center; }
-        .sidebar ul li a { color: white; text-decoration: none; display: block; padding: 10px; transition: background 0.3s; }
-        .sidebar ul li a:hover { background-color: #34495e; border-radius: 5px; }
-        .main-content { flex: 1; padding: 20px; display: flex; flex-direction: column; align-items: center; background-color: #ecf0f1; height: 100%; overflow-y: auto; }
-        .form-container { background: white; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); padding: 20px; margin-bottom: 20px; width: 100%; max-width: 600px; }
-        h2, h3 { color: #2980b9; }
-        label { display: block; margin-bottom: 5px; font-weight: bold; }
-        input[type="file"], input[type="text"], select { width: calc(100% - 22px); padding: 10px; margin-bottom: 15px; border-radius: 4px; border: 1px solid #ccc; }
-        button { background: #3498db; color: white; padding: 10px 15px; border: none; border-radius: 4px; cursor: pointer; margin-right: 10px; }
-        button:hover { background: #2980b9; }
-        .file-details { font-size: 12px; color: #666; }
-        .enrollment-message { padding: 10px; margin-bottom: 20px; border-radius: 5px; }
-        .enrollment-message.success { background: #dff0d8; color: #3c763d; }
-        .enrollment-message.error { background: #f2dede; color: #a94442; }
-        footer { text-align: center; padding: 10px; background-color: #34495e; color: white; width: 100%; }
+        body, html { 
+            margin: 0; 
+            padding: 0; 
+            font-family: 'Sarabun', Arial, sans-serif; 
+            height: 100%; 
+            display: flex; 
+            flex-direction: column; 
+            background-image: url('/attend_system/admin/assets/bb.jpg'); 
+            background-size: cover; 
+            background-position: center; 
+        }
+        .top-bar { 
+            width: 100%; 
+            background-color: #2980b9; 
+            color: white; 
+            padding: 15px 20px; 
+            text-align: left; 
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2); 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+        }
+        .top-bar h1 { 
+            margin: 0; 
+            font-size: 24px; 
+        }
+        .admin-container { 
+            display: flex; 
+            flex: 1; 
+            width: 100%; 
+            height: calc(100vh - 70px); 
+            background: rgba(255, 255, 255, 0.9); 
+        }
+        .sidebar { 
+            width: 250px; 
+            background-color: #2c3e50; 
+            color: white; 
+            padding: 20px; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            height: 100%; 
+        }
+        .sidebar ul { 
+            list-style: none; 
+            padding: 0; 
+            width: 100%; 
+        }
+        .sidebar ul li { 
+            margin: 15px 0; 
+            text-align: center; 
+        }
+        .sidebar ul li a { 
+            color: white; 
+            text-decoration: none; 
+            display: block; 
+            padding: 10px; 
+            transition: background 0.3s; 
+        }
+        .sidebar ul li a:hover { 
+            background-color: #34495e; 
+            border-radius: 5px; 
+        }
+        .main-content { 
+            flex: 1; 
+            padding: 20px; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            background-color: #ecf0f1; 
+            height: 100%; 
+            overflow-y: auto; 
+        }
+        .form-container { 
+            background: white; 
+            border-radius: 8px; 
+            box-shadow: 0 0 10px rgba(0,0,0,0.1); 
+            padding: 20px; 
+            margin-bottom: 20px; 
+            width: 100%; 
+            max-width: 600px; 
+        }
+        h2, h3 { 
+            color: #2980b9; 
+        }
+        label { 
+            display: block; 
+            margin-bottom: 5px; 
+            font-weight: bold; 
+        }
+        input[type="file"], input[type="text"], select { 
+            width: calc(100% - 22px); 
+            padding: 10px; 
+            margin-bottom: 15px; 
+            border-radius: 4px; 
+            border: 1px solid #ccc; 
+        }
+        button { 
+            background: #3498db; 
+            color: white; 
+            padding: 10px 15px; 
+            border: none; 
+            border-radius: 4px; 
+            cursor: pointer; 
+            margin-right: 10px; 
+        }
+        button:hover { 
+            background: #2980b9; 
+        }
+        .file-details { 
+            font-size: 12px; 
+            color: #666; 
+        }
+        .enrollment-message { 
+            padding: 10px; 
+            margin-bottom: 20px; 
+            border-radius: 5px; 
+        }
+        .enrollment-message.success { 
+            background: #dff0d8; 
+            color: #3c763d; 
+        }
+        .enrollment-message.error { 
+            background: #f2dede; 
+            color: #a94442; 
+        }
+        footer { 
+            text-align: center; 
+            padding: 10px; 
+            background-color: #34495e; 
+            color: white; 
+            width: 100%; 
+        }
     </style>
 </head>
 <body>
     <div class="top-bar">
-        <h1>Enroll Student</h1>
+        <h1>ลงทะเบียนนิสิต</h1>
         <div class="user-info">
             <span><?php echo htmlspecialchars($_SESSION['user_name']); ?></span>
         </div>
@@ -332,40 +538,39 @@ function enrollStudent($student_id, $course_id, $group_number, $conn) {
     <div class="admin-container">
         <aside class="sidebar">
             <ul>
-                <li><a href="admin_dashboard.php">Dashboard</a></li>
-                <li><a href="manage_users.php">Manage Users</a></li>
-                <li><a href="add_users.php">Add User</a></li>
-                <li><a href="manage_course.php">Manage Courses</a></li>
-                <li><a href="add_course.php">Add Course</a></li>
-                <li><a href="manage_enrollments.php">Manage Enrollments</a></li>
-                <li><a href="enroll_student.php">Enroll Student</a></li>
-                
-                <li><a href="logout.php">Logout</a></li>
+                <li><a href="admin_dashboard.php">แดชบอร์ด</a></li>
+                <li><a href="manage_users.php">จัดการผู้ใช้</a></li>
+                <li><a href="add_users.php">เพิ่มผู้ใช้</a></li>
+                <li><a href="manage_course.php">จัดการวิชา</a></li>
+                <li><a href="add_course.php">เพิ่มวิชา</a></li>
+                <li><a href="manage_enrollments.php">จัดการการลงทะเบียน</a></li>
+                <li><a href="enroll_student.php">ลงทะเบียนนิสิต</a></li>
+                <li><a href="logout.php">ออกจากระบบ</a></li>
             </ul>
         </aside>
         <div class="main-content">
             <section class="dashboard-section">
-                <h2>Enroll Student in a Course</h2>
+                <h2>ลงทะเบียนนิสิตในวิชา</h2>
                 <?php if ($enrollmentMessage): ?>
                     <p class="enrollment-message <?php echo strpos($enrollmentMessage, 'successfully') !== false || strpos($enrollmentMessage, 'complete') !== false ? 'success' : 'error'; ?>">
                         <?php echo nl2br(htmlspecialchars($enrollmentMessage)); ?>
                     </p>
                 <?php endif; ?>
                 <div class="form-container">
-                    <h3>Upload Enrollment File</h3>
+                    <h3>อัปโหลดไฟล์การลงทะเบียน</h3>
                     <form method="POST" action="" enctype="multipart/form-data">
                         <input type="file" name="enrollment_file" accept=".csv,.xlsx" required>
-                        <button type="submit" name="upload_file">Upload and Enroll</button>
-                        <a href="?download_template=1"><button type="button">Download CSV Template</button></a>
-                        <label class="file-details">File should contain: student_code, name, course_code, course_name, group</label>
+                        <button type="submit" name="upload_file">อัปโหลดและลงทะเบียน</button>
+                        <a href="?download_template=1"><button type="button">ดาวน์โหลดเทมเพลต CSV</button></a>
+                        <label class="file-details">ไฟล์ต้องประกอบด้วย: student_code, name, course_code, course_name, group</label>
                     </form>
                 </div>
                 <div class="form-container">
-                    <h3>Enroll Individual Student</h3>
+                    <h3>ลงทะเบียนนิสิตรายบุคคล</h3>
                     <form method="POST" action="">
-                        <label for="student_id">Select Student:</label>
+                        <label for="student_id">เลือกนิสิต:</label>
                         <select name="student_id" id="student_id" required>
-                            <option value="">Select a Student</option>
+                            <option value="">เลือกนิสิต</option>
                             <?php
                             $students_query = "SELECT student_id, name FROM students ORDER BY name";
                             $result = $conn->query($students_query);
@@ -374,31 +579,31 @@ function enrollStudent($student_id, $course_id, $group_number, $conn) {
                                     echo '<option value="' . htmlspecialchars($row['student_id']) . '">' . htmlspecialchars($row['name']) . '</option>';
                                 }
                             } else {
-                                echo '<option value="">No students available</option>';
+                                echo '<option value="">ไม่มีนิสิต</option>';
                             }
                             ?>
                         </select>
-                        <label for="course_id">Select Course:</label>
+                        <label for="course_id">เลือกวิชา:</label>
                         <select name="course_id" id="course_id" required>
-                            <option value="">Select a Course</option>
+                            <option value="">เลือกวิชา</option>
                             <?php
                             $courses_query = "SELECT course_id, course_name, group_number FROM courses ORDER BY course_name, group_number";
                             $result = $conn->query($courses_query);
                             while ($course = $result->fetch_assoc()) {
-                                echo "<option value='{$course['course_id']}'>" . htmlspecialchars($course['course_name']) . " (Group {$course['group_number']})</option>";
+                                echo "<option value='{$course['course_id']}'>" . htmlspecialchars($course['course_name']) . " (กลุ่ม {$course['group_number']})</option>";
                             }
                             ?>
                         </select>
-                        <label for="group_number">Enter Group Number:</label>
-                        <input type="text" name="group_number" id="group_number" required placeholder="Enter group number" pattern="\d+" title="Group number must be numeric">
-                        <button type="submit" name="enroll_student">Enroll Student</button>
+                        <label for="group_number">ระบุหมายเลขกลุ่ม:</label>
+                        <input type="text" name="group_number" id="group_number" required placeholder="ระบุหมายเลขกลุ่ม" pattern="\d+" title="หมายเลขกลุ่มต้องเป็นตัวเลข">
+                        <button type="submit" name="enroll_student">ลงทะเบียนนิสิต</button>
                     </form>
                 </div>
             </section>
         </div>
     </div>
     <footer>
-        <p>© <?php echo date("Y"); ?> University Admin System. All rights reserved.</p>
+        <p>© <?php echo date("Y"); ?> ระบบบริหารมหาวิทยาลัย. สงวนลิขสิทธิ์.</p>
     </footer>
 </body>
 </html>
