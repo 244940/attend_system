@@ -1,0 +1,208 @@
+/* Google Fonts - Kanit */
+@import url('https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;600&display=swap');
+
+body {
+    font-family: 'Kanit', sans-serif;
+    background-color: #e9ecef;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start; /* Align to top instead of center */
+    min-height: 100vh;
+    margin: 0;
+    padding: 30px 0; /* Add padding top/bottom */
+    box-sizing: border-box;
+}
+
+.container {
+    background-color: #ffffff;
+    padding: 30px;
+    border-radius: 12px;
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+    width: 100%;
+    max-width: 650px; /* Wider container */
+    box-sizing: border-box;
+    margin-top: 20px; /* Ensure some space from top */
+}
+
+header {
+    text-align: center;
+    margin-bottom: 30px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid #dee2e6;
+}
+
+header h1 {
+    color: #2c3e50;
+    margin-bottom: 10px;
+    font-weight: 600;
+    font-size: 2.2em;
+}
+
+header p {
+    color: #6c757d;
+    font-size: 1.1em;
+}
+
+.card {
+    background-color: #f8f9fa;
+    border: 1px solid #e0e0e0;
+    border-radius: 10px;
+    padding: 25px;
+    margin-bottom: 25px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+}
+
+.card h2 {
+    color: #34495e;
+    margin-top: 0;
+    margin-bottom: 20px;
+    font-size: 1.6em;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+}
+
+/* Simple icon styling */
+.card h2 i {
+    display: inline-block;
+    width: 28px;
+    height: 28px;
+    background-color: #007bff; /* Default icon color */
+    border-radius: 50%;
+    margin-right: 12px;
+    position: relative;
+    color: white;
+    font-style: normal; /* Remove italic for <i> */
+    text-align: center;
+    line-height: 28px;
+    font-size: 0.8em;
+}
+
+.icon-mail::before { content: '✉'; } /* Unicode for envelope */
+.icon-check::before { content: '✔'; } /* Unicode for checkmark */
+
+/* Specific icon colors */
+.card:nth-of-type(1) h2 i { background-color: #007bff; } /* Email sender */
+.card:nth-of-type(2) h2 i { background-color: #28a745; } /* Check-in */
+
+/* เพิ่มไอคอนใหม่ในส่วนของ unicode characters */
+.icon-user-check::before { content: '🧑‍🎓'; font-size: 1.2em; line-height: 24px; } /* นักเรียน/นักศึกษา */
+
+/* เพิ่มสีปุ่มใหม่ */
+.btn-info {
+    background-color: #17a2b8; /* สีฟ้า-เขียว */
+    color: white;
+}
+
+.btn-info:hover {
+    background-color: #138496;
+    transform: translateY(-1px);
+}
+
+/* กำหนดสีไอคอนสำหรับ Section 3 (ใหม่) */
+.card:nth-of-type(3) h2 i { background-color: #17a2b8; }
+
+.form-group {
+    margin-bottom: 18px;
+}
+
+label {
+    display: block;
+    margin-bottom: 8px;
+    color: #495057;
+    font-weight: 500;
+    font-size: 0.95em;
+}
+
+input[type="email"],
+input[type="text"],
+textarea {
+    width: 100%;
+    padding: 12px 15px;
+    border: 1px solid #ced4da;
+    border-radius: 8px;
+    box-sizing: border-box;
+    font-size: 1em;
+    color: #495057;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+input[type="email"]:focus,
+input[type="text"]:focus,
+textarea:focus {
+    border-color: #80bdff;
+    outline: 0;
+    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+}
+
+textarea {
+    resize: vertical;
+    min-height: 100px;
+}
+
+.checkbox-group {
+    display: flex;
+    align-items: center;
+    margin-top: -5px; /* Adjust spacing */
+}
+
+.checkbox-group input[type="checkbox"] {
+    margin-right: 10px;
+    transform: scale(1.2); /* Make checkbox slightly larger */
+}
+
+
+.btn {
+    padding: 12px 25px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 1.1em;
+    font-weight: 500;
+    width: 100%;
+    transition: background-color 0.3s ease, transform 0.1s ease;
+    margin-top: 10px;
+}
+
+.btn-primary {
+    background-color: #007bff;
+    color: white;
+}
+
+.btn-primary:hover {
+    background-color: #0056b3;
+    transform: translateY(-1px);
+}
+
+.btn-success {
+    background-color: #28a745;
+    color: white;
+}
+
+.btn-success:hover {
+    background-color: #218838;
+    transform: translateY(-1px);
+}
+
+
+.status-message {
+    padding: 12px 20px;
+    margin-bottom: 25px;
+    border-radius: 8px;
+    text-align: center;
+    font-weight: 600;
+    display: none; /* Hidden by default */
+    font-size: 0.95em;
+}
+
+.status-message.success {
+    background-color: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+}
+
+.status-message.error {
+    background-color: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+}

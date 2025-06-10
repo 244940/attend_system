@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Email Automation System</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;600&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>ระบบส่งอีเมลอัตโนมัติ</h1>
+        </header>
+
+        <div id="status-message-display" class="status-message" style="display: none;"></div>
+
+        <section class="card">
+            <h2><i class="icon-user-check"></i> ยืนยันการเข้าเรียนของฉัน</h2>
+            <p>กรุณากรอกอีเมลของคุณเพื่อรับการยืนยันการเข้าเรียน</p>
+            <div class="form-group">
+                <label for="studentEmail">อีเมลนิสิต:</label>
+                <input type="email" id="studentEmail" placeholder="ตัวอย่าง: your_student_id@ku.th" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="courseSelect">เลือกวิชา:</label>
+                <select id="courseSelect" required>
+                    <option value="">-- เลือกวิชา --</option>
+                    <option value="CS101 - Introduction to Programming">CS101 - Introduction to Programming</option>
+                    <option value="MA201 - Calculus I">MA201 - Calculus I</option>
+                    <option value="PH101 - General Physics">PH101 - General Physics</option>
+                    </select>
+            </div>
+
+            <div class="form-group">
+                <label for="defaultStudentSubject">หัวข้ออีเมล (Default):</label>
+                <input type="text" id="defaultStudentSubject"
+                        value="แจ้งเตือนการเข้าเรียนของนิสิตมหาวิทยาลัยเกษตรศาสตร์" required>
+            </div>
+            <div class="form-group">
+                <label for="defaultStudentBody">เนื้อหาอีเมล (Default):</label>
+                <textarea id="defaultStudentBody" rows="6" required>
+เรียน (ชื่อนิสิต)
+
+ระบบได้บันทึกว่าคุณได้เข้าเรียน (วัน/เดือน/ปี) เวลา...
+ขอบคุณที่มาเข้าเรียนตรงเวลา
+                </textarea>
+            </div>
+            <button id="confirmStudentCheckInBtn" class="btn btn-info">ยืนยันการเข้าเรียน</button>
+        </section>
+
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
