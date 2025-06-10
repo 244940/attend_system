@@ -1,187 +1,113 @@
 <?php
-session_start(); // เริ่มต้นเซสชัน (จำเป็นสำหรับการตรวจสอบสิทธิ์)
-ini_set('display_errors', 1); // เปิดการแสดงข้อผิดพลาด
+session_start(); // เริ่มต้นเซสชัน
+ini_set('display_errors', 1); // เปิด error reporting เพื่อ debug
 ini_set('display_startup_errors', 1);
-error_reporting(E_ALL); // รายงานข้อผิดพลาดทั้งหมด
+error_reporting(E_ALL);
 
 header('Content-Type: application/json; charset=UTF-8'); // กำหนด Header ให้เป็น JSON
 
-require 'database_connection.php'; // เรียกไฟล์เชื่อมต่อฐานข้อมูล
+require 'database_connection.php'; // ตรวจสอบเส้นทางไฟล์นี้ให้ถูกต้อง
 
 try {
-    // --- ตรวจสอบพารามิเตอร์ที่จำเป็น ---
-    if (!isset($_GET['course_id'])) {
-        throw new Exception('Missing course_id parameter'); // โยน Exception ถ้าไม่มี course_id
-    }
-    // หมายเหตุ: เดิมโค้ดมี 'date' แต่ใน student_dashboard.php ส่ง 'dates' (JSON array)
-    // ดังนั้นโค้ดนี้ควรปรับให้รับ 'dates' และวนลูปตรวจสอบแต่ละวันที่
-    // แต่จากโค้ดที่ให้มามันรับแค่ 'date' ตัวเดียว ซึ่งขัดแย้งกัน
-    // ตรงนี้จะอธิบายตามโค้ดที่มีอยู่ แต่มีหมายเหตุถึงความไม่เข้ากันนี้
-    if (!isset($_GET['date'])) { // <-- ตรงนี้อาจจะต้องเปลี่ยนเป็น 'dates' และ parse JSON
-        throw new Exception('Missing date parameter'); // โยน Exception ถ้าไม่มี date
-    }
-
-    $course_id = intval($_GET['course_id']); // แปลง course_id เป็น integer
-    $selected_date = $_GET['date']; // รับวันที่ที่เลือก
-
-    // --- ตรวจสอบรูปแบบวันที่ ---
-    if (!DateTime::createFromFormat('Y-m-d', $selected_date)) {
-        http_response_code(400); // ตั้งค่า HTTP Status Code เป็น 400 Bad Request
-        echo json_encode(['error' => 'Invalid date format'], JSON_UNESCAPED_UNICODE);
+    // --- 1. ตรวจสอบพารามิเตอร์ที่จำเป็นและสิทธิ์ผู้ใช้ ---
+    // ตรวจสอบว่า student_id ใน session มีอยู่และบทบาทเป็น 'student'
+    if (!isset($_SESSION['student_id']) || $_SESSION['user_role'] !== 'student') {
+        http_response_code(403); // Forbidden
+        echo json_encode(['error' => 'Access denied: You are not logged in as a student.'], JSON_UNESCAPED_UNICODE);
         exit();
     }
 
-    // --- ตรวจสอบสิทธิ์ผู้ใช้ (เฉพาะอาจารย์) ---
-    // หมายเหตุ: โค้ดนี้ถูกเขียนมาเพื่อตรวจสอบสิทธิ์ของ 'teacher' ซึ่งดูเหมือนว่าจะขัดแย้งกับการใช้งานใน student_dashboard.php
-    // เพราะ student_dashboard.php ส่งคำขอมา ซึ่งควรเป็น student_id
-    // หากไฟล์นี้ถูกเรียกโดยนักเรียน ควรเปลี่ยนเป็น $_SESSION['student_id'] และ 'student'
-    if (!isset($_SESSION['teacher_id']) || $_SESSION['user_role'] !== 'teacher') {
-        http_response_code(403); // ตั้งค่า HTTP Status Code เป็น 403 Forbidden
-        throw new Exception('Unauthorized'); // โยน Exception หากไม่ได้รับอนุญาต
+    // ตรวจสอบว่าได้รับ course_id และ dates จาก AJAX call
+    if (!isset($_GET['course_id']) || !isset($_GET['dates'])) {
+        http_response_code(400); // Bad Request
+        echo json_encode(['error' => 'Missing required parameters (course_id or dates).'], JSON_UNESCAPED_UNICODE);
+        exit();
     }
 
-    // --- ตรวจสอบความเป็นเจ้าของวิชาและวันเวลาเรียน ---
-    $course_check = $conn->prepare("
-        SELECT 
-            c.course_id, 
-            c.course_code,
-            GROUP_CONCAT(sch.day_of_week) as days_of_week,
-            GROUP_CONCAT(sch.schedule_id) as schedule_ids
-        FROM courses c
-        LEFT JOIN schedules sch ON c.course_id = sch.course_id
-        WHERE c.course_id = ? AND c.teacher_id = ?
-        GROUP BY c.course_id, c.course_code
-    ");
-    if (!$course_check) {
-        throw new Exception('Failed to prepare course check query: ' . $conn->error);
-    }
-    $course_check->bind_param("ii", $course_id, $_SESSION['teacher_id']); // ผูก course_id และ teacher_id
-    $course_check->execute();
-    $course_result = $course_check->get_result();
-    if ($course_result->num_rows === 0) {
-        http_response_code(403); // ถ้าไม่พบวิชาหรืออาจารย์ไม่ใช่เจ้าของ
-        throw new Exception('Course not found or not authorized');
-    }
-    $course_data = $course_result->fetch_assoc();
-    $course_check->close();
+    $student_id = $_SESSION['student_id'];
+    $course_id = intval($_GET['course_id']);
+    
+    // ถอดรหัส JSON string ของวันที่ที่ส่งมาจาก JavaScript
+    $requested_dates_json = $_GET['dates'];
+    $requested_dates_array = json_decode($requested_dates_json, true);
 
-    // ตรวจสอบว่าวันที่เลือกเป็นวันที่มีเรียนหรือไม่
-    $day_of_week = date('l', strtotime($selected_date)); // ได้ชื่อวัน เช่น "Monday"
-    $scheduled_days = !empty($course_data['days_of_week']) ? explode(',', $course_data['days_of_week']) : [];
-    $schedule_ids = !empty($course_data['schedule_ids']) ? explode(',', $course_data['schedule_ids']) : [];
-    $is_scheduled_day = in_array($day_of_week, $scheduled_days);
+    // ตรวจสอบว่า dates ที่ส่งมาเป็น array และไม่ว่างเปล่า
+    if (!is_array($requested_dates_array) || empty($requested_dates_array)) {
+        http_response_code(400); // Bad Request
+        echo json_encode(['error' => 'Invalid or empty dates array provided.'], JSON_UNESCAPED_UNICODE);
+        exit();
+    }
 
-    // --- ดึงข้อมูลนักเรียนและบันทึกการเข้าเรียน ---
+    // ตรวจสอบว่านักเรียนคนนี้ลงทะเบียนวิชานี้จริงหรือไม่
+    $enrollment_check_stmt = $conn->prepare("SELECT COUNT(*) FROM enrollments WHERE student_id = ? AND course_id = ?");
+    $enrollment_check_stmt->bind_param("ii", $student_id, $course_id);
+    $enrollment_check_stmt->execute();
+    $enrollment_result = $enrollment_check_stmt->get_result()->fetch_row()[0];
+    $enrollment_check_stmt->close();
+
+    if ($enrollment_result === 0) {
+        http_response_code(403); // Forbidden
+        echo json_encode(['error' => 'Unauthorized: Student not enrolled in this course.'], JSON_UNESCAPED_UNICODE);
+        exit();
+    }
+
+    // --- 2. ดึงข้อมูลการเข้าเรียนสำหรับวันที่ที่ร้องขอ ---
+    // สร้าง string สำหรับเงื่อนไข WHERE IN (...) สำหรับวันที่
+    $placeholders = implode(',', array_fill(0, count($requested_dates_array), '?'));
+    $types = str_repeat('s', count($requested_dates_array)); // 's' สำหรับ string (วันที่)
+
     $attendance_query = "
         SELECT 
-            s.student_id,
-            s.name,
-            c.course_code,
-            a.scan_time,
-            COALESCE(a.status, 'Absent') as status, 
-            CASE
-                WHEN a.scan_time IS NULL THEN 'ไม่มีการสแกน'
-                ELSE TIME_FORMAT(a.scan_time, '%H:%i:%s')
-            END as scan_time_display
-        FROM enrollments e
-        JOIN students s ON e.student_id = s.student_id
-        JOIN courses c ON e.course_id = c.course_id
-        LEFT JOIN attendance a ON s.student_id = a.student_id 
-            AND DATE(a.scan_time) = ? "; // JOIN กับ attendance แบบ LEFT JOIN
-    
-    // เพิ่มเงื่อนไข schedule_id หากมี
-    if (!empty($schedule_ids)) {
-        $attendance_query .= "AND a.schedule_id IN (" . implode(',', array_fill(0, count($schedule_ids), '?')) . ")";
-    }
-    
-    $attendance_query .= " WHERE e.course_id = ? ORDER BY s.name";
+            DATE(a.scan_time) AS attendance_date,
+            a.status
+        FROM attendance a
+        JOIN schedules sch ON a.schedule_id = sch.schedule_id
+        WHERE a.student_id = ? 
+        AND sch.course_id = ?
+        AND DATE(a.scan_time) IN ($placeholders)
+        ORDER BY attendance_date ASC;
+    ";
 
     $stmt = $conn->prepare($attendance_query);
     if (!$stmt) {
         throw new Exception('Failed to prepare attendance query: ' . $conn->error);
     }
 
-    // --- เตรียมพารามิเตอร์สำหรับผูก (bind) ---
-    $bind_params = [$selected_date]; // พารามิเตอร์ตัวแรกคือวันที่
-    $bind_types = 's'; // ประเภทของพารามิเตอร์ตัวแรกคือ string (สำหรับวันที่)
+    // ผูกพารามิเตอร์: student_id (int), course_id (int), และวันที่ทั้งหมด (string array)
+    $bind_params = array_merge([$student_id, $course_id], $requested_dates_array);
+    $bind_types = "ii" . $types; // 'ii' สำหรับ student_id และ course_id
 
-    // เพิ่ม schedule_ids เข้าไปในพารามิเตอร์และประเภท
-    if (!empty($schedule_ids)) {
-        $bind_types .= str_repeat('i', count($schedule_ids)); // เพิ่ม 'i' ตามจำนวน schedule_ids
-        $bind_params = array_merge($bind_params, $schedule_ids); // รวม array ของพารามิเตอร์
-    }
-    // เพิ่ม course_id เข้าไปในพารามิเตอร์สุดท้าย
-    $bind_types .= 'i'; // ประเภทของ course_id คือ integer
-    $bind_params[] = $course_id;
-
-    // ผูกพารามิเตอร์
-    // ใช้ `...$bind_params` เพื่อ unpack array ให้เป็น arguments ของ bind_param
-    $stmt->bind_param($bind_types, ...$bind_params); 
+    // ใช้ call_user_func_array เพื่อ bind_param ด้วย array
+    $stmt->bind_param($bind_types, ...$bind_params);
 
     if (!$stmt->execute()) {
         throw new Exception('Failed to execute attendance query: ' . $stmt->error);
     }
 
-    $result = $stmt->get_result(); // รับผลลัพธ์
-
-    // --- ประมวลผลผลลัพธ์ ---
-    $students = [];
-    $statistics = [ // สถิติการเข้าเรียน
-        'present' => 0, 'late' => 0, 'absent' => 0, 'total' => 0
-    ];
-    $has_logs = false; // แฟล็กตรวจสอบว่ามีบันทึกการเข้าเรียนจริงๆ หรือไม่
-
+    $result = $stmt->get_result();
+    
+    // จัดรูปแบบข้อมูลการเข้าเรียนให้อยู่ในรูป array โดยมีวันที่เป็น key
+    $attendance_data = [];
     while ($row = $result->fetch_assoc()) {
-        $student = [
-            'student_id' => $row['student_id'],
-            'name' => $row['name'],
-            'course_code' => $row['course_code'],
-            'scan_time' => $row['scan_time_display'],
-            'status' => $row['status']
-        ];
-
-        // นับสถิติ
-        switch (strtolower($row['status'])) {
-            case 'present': $statistics['present']++; $has_logs = true; break;
-            case 'late': $statistics['late']++; $has_logs = true; break;
-            case 'absent': $statistics['absent']++; break;
-        }
-
-        $students[] = $student; // เพิ่มข้อมูลนักเรียนเข้า array
-        $statistics['total']++; // นับจำนวนนักเรียนทั้งหมด
+        $attendance_data[$row['attendance_date']] = $row['status'];
     }
+    $stmt->close();
 
-    $stmt->close(); // ปิด prepared statement
-
-    // --- สร้าง Response JSON ---
-    $response = [
-        'date' => $selected_date,
-        'students' => $students,
-        'statistics' => $statistics,
-        'is_scheduled_day' => $is_scheduled_day // บอกว่าเป็นวันที่มีการเรียนการสอนตามตารางหรือไม่
-    ];
-
-    if (!$has_logs && $statistics['total'] === 0) {
-        $response['message'] = 'No students enrolled or no attendance logs for this date';
-    } elseif (!$is_scheduled_day) {
-        $response['warning'] = 'This course is not scheduled on ' . $day_of_week . '. Displaying available data.';
-    }
-
-    echo json_encode($response, JSON_UNESCAPED_UNICODE); // ส่ง JSON กลับไป
+    // --- 3. ส่งข้อมูลกลับไปยัง Frontend ---
+    // Response นี้จะส่งคืนข้อมูลการเข้าเรียนในรูปแบบ { "YYYY-MM-DD": "Present", "YYYY-MM-DD": "Absent", ... }
+    echo json_encode($attendance_data, JSON_UNESCAPED_UNICODE);
 
 } catch (Exception $e) {
-    // --- การจัดการข้อผิดพลาด ---
     error_log("Error in get_attendance.php: " . htmlspecialchars($e->getMessage()));
-    http_response_code(500); // ตั้งค่า HTTP Status Code เป็น 500 Internal Server Error
+    http_response_code(500); // Internal Server Error
     echo json_encode([
         'error' => "Server error: " . htmlspecialchars($e->getMessage()),
-        'file' => __FILE__, // ไฟล์ที่เกิด error
-        'line' => $e->getLine() // บรรทัดที่เกิด error
+        'file' => basename(__FILE__), // ชื่อไฟล์
+        'line' => $e->getLine()       // บรรทัดที่เกิดข้อผิดพลาด
     ], JSON_UNESCAPED_UNICODE);
 } finally {
-    // --- ปิดการเชื่อมต่อฐานข้อมูลและ Statement เสมอ ---
-    if (isset($stmt)) $stmt->close();
-    if (isset($course_check)) $course_check->close();
-    if (isset($conn)) $conn->close();
+    if (isset($conn) && $conn instanceof mysqli) {
+        $conn->close();
+    }
 }
 ?>
