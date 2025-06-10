@@ -74,11 +74,12 @@ try {
                            "ขอบคุณที่มาเข้าเรียนตรงเวลา";
 
     $post_fields = json_encode([
-        'to' => $student_email,
-        'subject' => $email_subject,
-        'body_template' => $email_body_template, // ส่งเป็น template ให้ Flask จัดการแทนที่ (ชื่อนิสิต)
-        'course_name' => $course_name // ส่งชื่อวิชาไปเผื่อ Flask ต้องการใช้
-    ]);
+    'to' => $student_email,
+    'subject' => $email_subject,
+    'body_template' => $email_body_template,
+    'course_name' => $course_name,
+    'student_name' => $student_name // เพิ่มตัวแปรนี้
+]);
 
     $ch = curl_init();
     curl_setopt($ch, CURLOPT_URL, $flask_api_url);
