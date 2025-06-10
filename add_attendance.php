@@ -1,154 +1,113 @@
 <?php
-session_start();
-header('Content-Type: application/json; charset=UTF-8');
-require 'database_connection.php';
+session_start(); // เริ่มต้นเซสชัน
+ini_set('display_errors', 1); // เปิด error reporting เพื่อ debug
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
+
+header('Content-Type: application/json; charset=UTF-8'); // กำหนด Header ให้เป็น JSON
+
+require 'database_connection.php'; // ตรวจสอบเส้นทางไฟล์นี้ให้ถูกต้อง
 
 try {
-    // Check session
-    if (!isset($_SESSION['teacher_id']) || !isset($_SESSION['user_role']) || $_SESSION['user_role'] !== 'teacher') {
-        http_response_code(403);
-        throw new Exception('Unauthorized: Please log in as a teacher');
+    // --- 1. ตรวจสอบพารามิเตอร์ที่จำเป็นและสิทธิ์ผู้ใช้ ---
+    // ตรวจสอบว่า student_id ใน session มีอยู่และบทบาทเป็น 'student'
+    if (!isset($_SESSION['student_id']) || $_SESSION['user_role'] !== 'student') {
+        http_response_code(403); // Forbidden
+        echo json_encode(['error' => 'Access denied: You are not logged in as a student.'], JSON_UNESCAPED_UNICODE);
+        exit();
     }
 
-    // Parse JSON input
-    $data = json_decode(file_get_contents('php://input'), true);
-    if (!isset($data['student_id']) || !isset($data['schedule_id']) || !isset($data['scan_time']) || !isset($data['status'])) {
-        throw new Exception('Missing required fields');
+    // ตรวจสอบว่าได้รับ course_id และ dates จาก AJAX call
+    if (!isset($_GET['course_id']) || !isset($_GET['dates'])) {
+        http_response_code(400); // Bad Request
+        echo json_encode(['error' => 'Missing required parameters (course_id or dates).'], JSON_UNESCAPED_UNICODE);
+        exit();
     }
 
-    $student_id = $data['student_id'];
-    $schedule_id = $data['schedule_id'];
-    $scan_time = $data['scan_time'];
-    $status = $data['status'];
+    $student_id = $_SESSION['student_id'];
+    $course_id = intval($_GET['course_id']);
+    
+    // ถอดรหัส JSON string ของวันที่ที่ส่งมาจาก JavaScript
+    $requested_dates_json = $_GET['dates'];
+    $requested_dates_array = json_decode($requested_dates_json, true);
 
-    // Validate schedule_id and teacher authorization
-    $stmt = $conn->prepare("
-        SELECT c.course_id, c.course_name, c.course_code, s.day_of_week, s.start_time, s.end_time 
-        FROM schedules s 
-        JOIN courses c ON s.course_id = c.course_id 
-        WHERE s.schedule_id = ? AND c.teacher_id = ?
-    ");
+    // ตรวจสอบว่า dates ที่ส่งมาเป็น array และไม่ว่างเปล่า
+    if (!is_array($requested_dates_array) || empty($requested_dates_array)) {
+        http_response_code(400); // Bad Request
+        echo json_encode(['error' => 'Invalid or empty dates array provided.'], JSON_UNESCAPED_UNICODE);
+        exit();
+    }
+
+    // ตรวจสอบว่านักเรียนคนนี้ลงทะเบียนวิชานี้จริงหรือไม่
+    $enrollment_check_stmt = $conn->prepare("SELECT COUNT(*) FROM enrollments WHERE student_id = ? AND course_id = ?");
+    $enrollment_check_stmt->bind_param("ii", $student_id, $course_id);
+    $enrollment_check_stmt->execute();
+    $enrollment_result = $enrollment_check_stmt->get_result()->fetch_row()[0];
+    $enrollment_check_stmt->close();
+
+    if ($enrollment_result === 0) {
+        http_response_code(403); // Forbidden
+        echo json_encode(['error' => 'Unauthorized: Student not enrolled in this course.'], JSON_UNESCAPED_UNICODE);
+        exit();
+    }
+
+    // --- 2. ดึงข้อมูลการเข้าเรียนสำหรับวันที่ที่ร้องขอ ---
+    // สร้าง string สำหรับเงื่อนไข WHERE IN (...) สำหรับวันที่
+    $placeholders = implode(',', array_fill(0, count($requested_dates_array), '?'));
+    $types = str_repeat('s', count($requested_dates_array)); // 's' สำหรับ string (วันที่)
+
+    $attendance_query = "
+        SELECT 
+            DATE(a.scan_time) AS attendance_date,
+            a.status
+        FROM attendance a
+        JOIN schedules sch ON a.schedule_id = sch.schedule_id
+        WHERE a.student_id = ? 
+        AND sch.course_id = ?
+        AND DATE(a.scan_time) IN ($placeholders)
+        ORDER BY attendance_date ASC;
+    ";
+
+    $stmt = $conn->prepare($attendance_query);
     if (!$stmt) {
-        throw new Exception('Failed to prepare schedule check query: ' . $conn->error);
+        throw new Exception('Failed to prepare attendance query: ' . $conn->error);
     }
-    $stmt->bind_param('ii', $schedule_id, $_SESSION['teacher_id']);
-    $stmt->execute();
-    $result = $stmt->get_result();
-    if ($result->num_rows === 0) {
-        throw new Exception('Unauthorized or invalid schedule');
-    }
-    $schedule_info = $result->fetch_assoc();
-    $course_name = $schedule_info['course_name'];
-    $course_code = $schedule_info['course_code'];
-    $class_day = getDayNameThai($schedule_info['day_of_week']);
-    $class_start_time = substr($schedule_info['start_time'], 0, 5);
-    $class_end_time = substr($schedule_info['end_time'], 0, 5);
-    $stmt->close();
 
-    // Validate student_id
-    $stmt = $conn->prepare("SELECT email, name FROM students WHERE student_id = ?");
-    if (!$stmt) {
-        throw new Exception('Failed to prepare student check query: ' . $conn->error);
-    }
-    $stmt->bind_param('s', $student_id);
-    $stmt->execute();
-    $student_result = $stmt->get_result();
-    if ($student_result->num_rows === 0) {
-        throw new Exception('Student not found');
-    }
-    $student_info = $student_result->fetch_assoc();
-    $student_email = $student_info['email'];
-    $student_name = $student_info['name'];
-    $stmt->close();
+    // ผูกพารามิเตอร์: student_id (int), course_id (int), และวันที่ทั้งหมด (string array)
+    $bind_params = array_merge([$student_id, $course_id], $requested_dates_array);
+    $bind_types = "ii" . $types; // 'ii' สำหรับ student_id และ course_id
 
-    // Insert or update attendance
-    $stmt = $conn->prepare("
-        INSERT INTO attendance (student_id, schedule_id, scan_time, status) 
-        VALUES (?, ?, ?, ?) 
-        ON DUPLICATE KEY UPDATE scan_time = VALUES(scan_time), status = VALUES(status)
-    ");
-    if (!$stmt) {
-        throw new Exception('Failed to prepare attendance insert query: ' . $conn->error);
-    }
-    $stmt->bind_param('siss', $student_id, $schedule_id, $scan_time, $status);
+    // ใช้ call_user_func_array เพื่อ bind_param ด้วย array
+    $stmt->bind_param($bind_types, ...$bind_params);
+
     if (!$stmt->execute()) {
-        throw new Exception('Failed to save attendance: ' . $stmt->error);
+        throw new Exception('Failed to execute attendance query: ' . $stmt->error);
+    }
+
+    $result = $stmt->get_result();
+    
+    // จัดรูปแบบข้อมูลการเข้าเรียนให้อยู่ในรูป array โดยมีวันที่เป็น key
+    $attendance_data = [];
+    while ($row = $result->fetch_assoc()) {
+        $attendance_data[$row['attendance_date']] = $row['status'];
     }
     $stmt->close();
 
-    // Send email via Flask API
-    $flask_api_url = 'http://127.0.0.1:5000/api/send-email';
-    $email_subject = "แจ้งเตือนการเข้าเรียน: " . htmlspecialchars($course_name);
-    $status_thai = translateStatus($status);
-    $email_body_template = "เรียน $student_name\n\n" .
-                           "ระบบได้บันทึกว่าคุณได้เข้าเรียนวิชา " . htmlspecialchars($course_name) . " (" . htmlspecialchars($course_code) . ")\n" .
-                           "วันที่: " . (new DateTime($scan_time))->format('d/m/Y') . "\n" .
-                           "เวลา: " . (new DateTime($scan_time))->format('H:i') . " น.\n" .
-                           "สถานะ: $status_thai\n" .
-                           "ตารางเรียน: $class_day $class_start_time-$class_end_time";
-
-    $post_fields = json_encode([
-        'to' => $student_email,
-        'subject' => $email_subject,
-        'body_template' => $email_body_template,
-        'course_name' => $course_name
-    ]);
-
-    $ch = curl_init();
-    curl_setopt($ch, CURLOPT_URL, $flask_api_url);
-    curl_setopt($ch, CURLOPT_POST, true);
-    curl_setopt($ch, CURLOPT_POSTFIELDS, $post_fields);
-    curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_TIMEOUT, 10);
-
-    $flask_response = curl_exec($ch);
-    $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    $curl_error = curl_error($ch);
-    curl_close($ch);
-
-    if ($flask_response === false) {
-        error_log("cURL error when sending attendance email: $curl_error");
-        echo json_encode(['message' => 'บันทึกการเข้าเรียนสำเร็จ แต่อีเมลแจ้งเตือนอาจมีปัญหา (cURL error)']);
-    } else {
-        $flask_result = json_decode($flask_response, true);
-        if ($http_code >= 200 && $http_code < 300) {
-            error_log("Attendance email sent via Flask: " . ($flask_result['message'] ?? 'No message'));
-            echo json_encode(['message' => 'บันทึกการเข้าเรียนและส่งอีเมลสำเร็จ']);
-        } else {
-            error_log("Flask API error (HTTP $http_code): " . ($flask_result['error'] ?? $flask_response));
-            echo json_encode(['message' => 'บันทึกการเข้าเรียนสำเร็จ แต่อีเมลแจ้งเตือนมีปัญหา: ' . ($flask_result['error'] ?? 'Unknown Flask error')]);
-        }
-    }
+    // --- 3. ส่งข้อมูลกลับไปยัง Frontend ---
+    // Response นี้จะส่งคืนข้อมูลการเข้าเรียนในรูปแบบ { "YYYY-MM-DD": "Present", "YYYY-MM-DD": "Absent", ... }
+    echo json_encode($attendance_data, JSON_UNESCAPED_UNICODE);
 
 } catch (Exception $e) {
-    error_log("Error in add_attendance.php: " . $e->getMessage());
-    http_response_code(500);
-    echo json_encode(['error' => $e->getMessage()]);
+    error_log("Error in get_attendance.php: " . htmlspecialchars($e->getMessage()));
+    http_response_code(500); // Internal Server Error
+    echo json_encode([
+        'error' => "Server error: " . htmlspecialchars($e->getMessage()),
+        'file' => basename(__FILE__), // ชื่อไฟล์
+        'line' => $e->getLine()       // บรรทัดที่เกิดข้อผิดพลาด
+    ], JSON_UNESCAPED_UNICODE);
 } finally {
-    if (isset($stmt) && $stmt instanceof mysqli_stmt) $stmt->close();
-    if (isset($conn) && $conn instanceof mysqli) $conn->close();
-}
-
-function getDayNameThai($day) {
-    $dayMapping = [
-        'Monday' => 'วันจันทร์',
-        'Tuesday' => 'วันอังคาร',
-        'Wednesday' => 'วันพุธ',
-        'Thursday' => 'วันพฤหัสบดี',
-        'Friday' => 'วันศุกร์',
-        'Saturday' => 'วันเสาร์',
-        'Sunday' => 'วันอาทิตย์'
-    ];
-    return $dayMapping[$day] ?? $day;
-}
-
-function translateStatus($status) {
-    $statusMap = [
-        'present' => 'มาเรียน',
-        'late' => 'สาย',
-        'absent' => 'ขาดเรียน'
-    ];
-    return $statusMap[strtolower($status)] ?? $status;
+    if (isset($conn) && $conn instanceof mysqli) {
+        $conn->close();
+    }
 }
 ?>

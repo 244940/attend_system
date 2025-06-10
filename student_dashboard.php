@@ -111,10 +111,17 @@ function getClassDates($dayOfWeek, $startDate, $endDate) {
             <h2 class="text-xl font-bold mb-4">รายวิชาที่ลงทะเบียน</h2>
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 <?php foreach ($courses as $course): ?>
-                    <button onclick="showAttendance('<?php echo htmlspecialchars($course['course_id']); ?>', '<?php echo htmlspecialchars($course['day_of_week']); ?>', '<?php echo htmlspecialchars($course['semester']); ?>', '<?php echo htmlspecialchars($course['c_year']); ?>')" class="course-button bg-green-500 text-white p-4 rounded-lg shadow hover:bg-green-600 transition duration-200">
-                        <div class="font-bold"><?php echo htmlspecialchars($course['course_code']); ?></div>
-                        <div><?php echo htmlspecialchars($course['course_name']); ?></div>
-                        <div>Semester: <?php echo htmlspecialchars($course['semester']); ?> | Year: <?php echo htmlspecialchars($course['c_year']); ?></div>
+                <?php
+                    // ตรวจสอบว่าค่าทั้งหมดมีอยู่และถูกต้อง
+                    $course_id = isset($course['course_id']) ? $course['course_id'] : '';
+                    $day_of_week = isset($course['day_of_week']) ? $course['day_of_week'] : '';
+                    $semester = isset($course['semester']) ? $course['semester'] : '';
+                    $c_year = isset($course['c_year']) ? $course['c_year'] : '';
+                    ?>
+                    <button onclick="showAttendance(<?php echo json_encode($course_id); ?>, <?php echo json_encode($day_of_week); ?>, <?php echo json_encode($semester); ?>, <?php echo json_encode($c_year); ?>)" class="course-button bg-green-500 text-white p-4 rounded-lg shadow hover:bg-green-600 transition duration-200">
+                        <div class="font-bold"><?php echo htmlspecialchars($course['course_code'] ?? 'N/A'); ?></div>
+                        <div><?php echo htmlspecialchars($course['course_name'] ?? 'N/A'); ?></div>
+                        <div>Semester: <?php echo htmlspecialchars($semester); ?> | Year: <?php echo htmlspecialchars($c_year); ?></div>
                     </button>
                 <?php endforeach; ?>
             </div>
@@ -138,31 +145,53 @@ function getClassDates($dayOfWeek, $startDate, $endDate) {
     <script>
         // ฟังก์ชันเมื่อคลิกปุ่มวิชา เพื่อแสดงข้อมูลการเข้าเรียน
         function showAttendance(courseId, dayOfWeek, semester, year) {
+            console.log('showAttendance params:', { courseId, dayOfWeek, semester, year });
             const attendanceTableBody = document.getElementById('attendanceTableBody');
-            attendanceTableBody.innerHTML = '<tr><td colspan="2" class="text-center">Loading...</td></tr>'; // แสดงสถานะกำลังโหลด
+            attendanceTableBody.innerHTML = '<tr><td colspan="2" class="text-center">Loading...</td></tr>';
 
-            // รับช่วงวันที่ของภาคเรียนจากฟังก์ชัน JavaScript
+            // ตรวจสอบค่าพารามิเตอร์
+            if (!dayOfWeek || !semester || !year) {
+                console.error('Invalid parameters:', { dayOfWeek, semester, year });
+                attendanceTableBody.innerHTML = '<tr><td colspan="2" class="text-center text-red-500">Error: Invalid course data</td></tr>';
+                return;
+            }
+
             const { start, end } = getSemesterDateRange(semester, year);
-            // คำนวณวันที่เรียนทั้งหมดในภาคเรียนนั้นๆ
-            const validClassDates = getClassDates(dayOfWeek, start, end);
+            if (!start || !end) {
+                console.error('Invalid semester date range:', { semester, year });
+                attendanceTableBody.innerHTML = '<tr><td colspan="2" class="text-center text-red-500">Error: Invalid semester dates</td></tr>';
+                return;
+            }
 
-            // ส่งคำขอ Fetch (AJAX) ไปยัง get_attendance.php
+            const validClassDates = getClassDates(dayOfWeek, start, end);
+            if (validClassDates.length === 0) {
+                console.warn('No valid class dates found for:', { dayOfWeek, start, end });
+                attendanceTableBody.innerHTML = '<tr><td colspan="2" class="text-center text-gray-500">No class dates available</td></tr>';
+                return;
+            }
+
             fetch(`get_attendance.php?course_id=${courseId}&dates=${JSON.stringify(validClassDates)}`)
-                .then(response => response.json()) // แปลงการตอบกลับเป็น JSON
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    return response.json();
+                })
                 .then(data => {
-                    attendanceTableBody.innerHTML = ''; // ล้างข้อมูลเก่าในตาราง
-                    // วนลูปผ่านวันที่เรียนทั้งหมด
+                    if (data.error) {
+                        throw new Error(data.error);
+                    }
+                    attendanceTableBody.innerHTML = '';
                     validClassDates.forEach(date => {
-                        // กำหนดสถานะ ถ้ามีข้อมูลจาก server ใช้ข้อมูลนั้น ถ้าไม่มีใช้ 'None'
                         const status = data[date] !== undefined ? data[date] : 'None';
-                        const row = attendanceTableBody.insertRow(); // สร้างแถวใหม่ในตาราง
-                        row.innerHTML = `<td class="border px-4 py-2">${date}</td><td class="border px-4 py-2">${status}</td>`; // ใส่ข้อมูลวันที่และสถานะ
+                        const row = attendanceTableBody.insertRow();
+                        row.innerHTML = `<td class="border px-4 py-2">${date}</td><td class="border px-4 py-2">${status}</td>`;
                     });
-                    document.getElementById('attendanceSection').style.display = 'block'; // แสดงส่วนตารางการเข้าเรียน
+                    document.getElementById('attendanceSection').style.display = 'block';
                 })
                 .catch(error => {
-                    console.error("Error:", error); // แสดงข้อผิดพลาดใน console
-                    attendanceTableBody.innerHTML = `<tr><td colspan="2" class="text-center text-red-500">Error loading data</td></tr>`; // แสดงข้อความผิดพลาดในตาราง
+                    console.error("Error fetching attendance:", error);
+                    attendanceTableBody.innerHTML = `<tr><td colspan="2" class="text-center text-red-500">Error: ${error.message}</td></tr>`;
                 });
         }
 
@@ -173,37 +202,45 @@ function getClassDates($dayOfWeek, $startDate, $endDate) {
 
         // ฟังก์ชัน JavaScript สำหรับกำหนดช่วงวันที่ของแต่ละภาคเรียน (เหมือนกับ PHP)
         function getSemesterDateRange(semester, year) {
+            console.log('getSemesterDateRange:', { semester, year });
             if (semester == 1) {
-                return { start: "2024-06-01", end: "2024-10-31" };
+                return { start: `${year}-06-01`, end: `${year}-10-31` };
             } else if (semester == 2) {
-                return { start: "2024-11-25", end: "2025-03-31" };
+                return { start: `${year}-11-25`, end: `${parseInt(year) + 1}-03-31` };
             } else if (semester == 3) {
-                return { start: "2025-04-01", end: "2025-06-30" };
+                return { start: `${year}-04-01`, end: `${year}-06-30` };
             }
             return { start: null, end: null };
         }
 
-        // ฟังก์ชัน JavaScript สำหรับคำนวณวันที่เรียนทั้งหมดในแต่ละสัปดาห์ (เหมือนกับ PHP)
         function getClassDates(dayOfWeek, startDate, endDate) {
+            console.log('getClassDates:', { dayOfWeek, startDate, endDate });
+            if (!dayOfWeek || !startDate || !endDate) {
+                console.error('Invalid inputs for getClassDates:', { dayOfWeek, startDate, endDate });
+                return [];
+            }
+
             const dates = [];
             const currentDate = new Date(startDate);
             const endDateObj = new Date(endDate);
-
-            // แผนที่ชื่อวันเป็นตัวเลข (0=อาทิตย์, 1=จันทร์, ...)
             const dayMapping = {
                 'Monday': 1, 'Tuesday': 2, 'Wednesday': 3, 'Thursday': 4,
                 'Friday': 5, 'Saturday': 6, 'Sunday': 0
             };
 
             const targetDayIndex = dayMapping[dayOfWeek];
-
-            // วนลูปจากวันที่เริ่มต้นจนถึงวันที่สิ้นสุด
-            while (currentDate <= endDateObj) {
-                if (currentDate.getDay() === targetDayIndex) { // ตรวจสอบว่าเป็นวันเป้าหมายหรือไม่
-                    dates.push(currentDate.toISOString().split('T')[0]); // เพิ่มวันที่เข้าสู่ array (format YYYY-MM-DD)
-                }
-                currentDate.setDate(currentDate.getDate() + 1); // เพิ่มไป 1 วัน
+            if (targetDayIndex === undefined) {
+                console.error('Invalid dayOfWeek:', dayOfWeek);
+                return [];
             }
+
+            while (currentDate <= endDateObj) {
+                if (currentDate.getDay() === targetDayIndex) {
+                    dates.push(currentDate.toISOString().split('T')[0]);
+                }
+                currentDate.setDate(currentDate.getDate() + 1);
+            }
+            console.log('Valid class dates:', dates);
             return dates;
         }
     </script>

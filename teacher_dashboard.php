@@ -418,12 +418,12 @@ $conn->close();
 
     function showAttendance(courseId) {
         console.log('showAttendance called with courseId:', courseId);
-        console.log('Available courses:', window.courses);
         if (!window.courses || !Array.isArray(window.courses) || window.courses.length === 0) {
             console.error('No courses available:', window.courses);
             document.getElementById('scanResult').innerText = 'ไม่พบข้อมูลรายวิชาทั้งหมด';
             document.getElementById('scanResult').style.color = 'red';
             document.getElementById('startScanBtn').disabled = true;
+            document.getElementById('attendanceTableBody').innerHTML = '<tr><td colspan="6" class="text-center text-red-500">Error: No courses available</td></tr>';
             return;
         }
 
@@ -440,7 +440,6 @@ $conn->close();
 
         document.getElementById('faceScanSection').style.display = 'block';
         window.currentCourseId = courseId;
-        console.log('Set window.currentCourseId:', window.currentCourseId);
 
         const course = window.courses.find(c => c.course_id == courseId);
         if (!course) {
@@ -457,13 +456,10 @@ $conn->close();
         if (course.schedules && course.schedules.length > 0) {
             const matchingSchedule = course.schedules.find(sched => sched.day_of_week === selectedDay);
             scheduleId = matchingSchedule ? matchingSchedule.schedule_id : course.schedules[0]?.schedule_id;
-            console.log('Selected scheduleId:', scheduleId, 'for day:', selectedDay);
         }
 
         window.currentScheduleId = scheduleId;
-        console.log('Set window.currentScheduleId:', window.currentScheduleId);
         document.getElementById('startScanBtn').disabled = !scheduleId;
-
         document.getElementById('scanningCourseInfo').innerHTML = `
             วิชา: ${course.course_code} ${course.course_name} |
             กลุ่ม ${course.group_number} |
@@ -480,8 +476,54 @@ $conn->close();
         }
 
         document.getElementById('attendanceSection').style.display = 'block';
-        document.getElementById('attendanceTableBody').innerHTML = '<tr><td colspan="6" class="text-center">ยังไม่มีการสแกน</td></tr>';
+        document.getElementById('attendanceTableBody').innerHTML = '<tr><td colspan="6" class="text-center">กำลังโหลด...</td></tr>';
+
+        const validDates = teachingSchedule[courseId] || [];
+        if (validDates.length === 0) {
+            console.warn('No valid dates for course:', courseId);
+            document.getElementById('attendanceTableBody').innerHTML = '<tr><td colspan="6" class="text-center text-gray-500">No class dates available</td></tr>';
+            return;
+        }
+
+        fetch(`get_attendance.php?course_id=${encodeURIComponent(courseId)}&dates=${encodeURIComponent(JSON.stringify(validDates))}`)
+        .then(response => {
+            return response.text().then(text => {
+                return { status: response.status, text };
+            });
+        })
+        .then(({ status, text }) => {
+            console.log('Raw response from get_attendance.php:', text);
+            try {
+                const data = JSON.parse(text);
+                if (data.error) {
+                    throw new Error(data.error);
+                }
+                const students = Object.keys(data).map(date => ({
+                    student_id: null, // ปรับตามโครงสร้างข้อมูลจริง
+                    name: 'N/A',
+                    scan_time: date,
+                    status: data[date] || 'None'
+                }));
+                updateAttendanceTable(students);
+                const stats = { present: 0, late: 0, absent: 0, total: students.length };
+                students.forEach(s => {
+                    if (s.status.toLowerCase() === 'present') stats.present++;
+                    else if (s.status.toLowerCase() === 'late') stats.late++;
+                    else if (s.status.toLowerCase() === 'absent') stats.absent++;
+                });
+                updateAttendanceChart(stats);
+                document.getElementById('attendanceSection').style.display = 'block';
+            } catch (e) {
+                console.error('JSON parse error:', e);
+                document.getElementById('attendanceTableBody').innerHTML = `<tr><td colspan="6" class="text-center text-red-500">Error parsing response: ${e.message}</td></tr>`;
+            }
+        })
+        .catch(error => {
+            console.error('Error fetching attendance:', error);
+            document.getElementById('attendanceTableBody').innerHTML = `<tr><td colspan="6" class="text-center text-red-500">Error: ${error.message}</td></tr>`;
+        });
     }
+
 
     function getDayNameThai(day) {
         const dayMapping = {
