@@ -14,6 +14,7 @@ async function fetchWithRetry(url, options, retries = 3, delay = 1000) {
             console.error(`Retrying ${url}... (${retries - i} attempts left): ${error.message}`);
             if (i === retries) throw error;
             await new Promise(resolve => setTimeout(resolve, delay));
+            
         }
     }
 }

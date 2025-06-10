@@ -1156,3 +1156,15 @@ TypeError: combine() argument 2 must be datetime.time, not datetime.timedelta
 2025-06-09 19:52:35,842 - DEBUG - Current schedule for student 6421600002: None, reason: Outside schedule time
 2025-06-09 19:52:35,895 - INFO - Processed frame: course_id=6, schedule_id=11, results=1
 2025-06-09 19:52:35,907 - INFO - 127.0.0.1 - - [09/Jun/2025 19:52:35] "POST /process_frame HTTP/1.1" 200 -
+2025-06-10 10:36:12,685 - INFO - Connected to attend_data database
+2025-06-10 10:36:12,696 - INFO - Database manager initialized
+2025-06-10 10:36:12,702 - INFO - Loaded 7 known faces
+2025-06-10 10:36:12,751 - INFO - Starting Flask server...
+2025-06-10 10:36:13,158 - INFO - Closing database connection...
+2025-06-10 10:36:13,163 - INFO - Database connection closed
+2025-06-10 10:45:16,332 - INFO - Connected to attend_data database
+2025-06-10 10:45:16,351 - INFO - Database manager initialized
+2025-06-10 10:45:16,356 - INFO - Loaded 7 known faces
+2025-06-10 10:45:16,382 - INFO - Starting Flask server...
+2025-06-10 10:45:16,600 - INFO - Closing database connection...
+2025-06-10 10:45:16,602 - INFO - Database connection closed
