@@ -258,6 +258,9 @@ $conn->close();
                     </div>
                     <input type="hidden" name="submit_login" value="1">
                     <button type="submit">Log in</button>
+                    <div class="forget">
+                        <a href="change_password.php">Change Password?</a>
+                    </div>
                 </form>
             </div>
         </div>
