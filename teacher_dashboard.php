@@ -1,18 +1,15 @@
 <?php
 session_start();
 
-// Enable error reporting for debugging
 error_reporting(E_ALL);
-ini_set('display_errors', 0); // ปิด display_errors ใน production
+ini_set('display_errors', 0);
 ini_set('log_errors', 1);
 ini_set('error_log', 'C:\xampp\logs\php_error_log');
 
 require 'database_connection.php';
 
-// Debug session
 error_log("Session at teacher_dashboard.php: " . print_r($_SESSION, true));
 
-// Check if user is logged in and is a teacher
 if (!isset($_SESSION['teacher_id']) || !isset($_SESSION['user_role']) || $_SESSION['user_role'] !== 'teacher') {
     error_log("Redirecting to login.php: teacher_id or user_role not set correctly");
     $_SESSION['error_message'] = "กรุณาเข้าสู่ระบบในฐานะอาจารย์";
@@ -20,12 +17,10 @@ if (!isset($_SESSION['teacher_id']) || !isset($_SESSION['user_role']) || $_SESSI
     exit();
 }
 
-// Get the teacher's information
 $teacher_id = $_SESSION['teacher_id'];
 $teacher_name = $_SESSION['teacher_name'] ?? 'อาจารย์';
 error_log("Teacher ID: " . var_export($teacher_id, true));
 
-// Query courses ONCE
 $get_courses_stmt = $conn->prepare("
     SELECT 
         c.course_id,
@@ -39,26 +34,22 @@ $get_courses_stmt = $conn->prepare("
 ");
 if (!$get_courses_stmt) {
     error_log("Prepare failed for courses query: " . $conn->error);
-    $_SESSION['error_message'] = "เกิดข้อผิดพลาดในการดึงข้อมูลวิชา: " . $conn->error;
+    $_SESSION['error_message'] = "เกิดข้อผิดพลาดในการดึงข้อมูลวิชา";
     header("Location: teacher_dashboard.php");
     exit();
 }
-$get_courses_stmt->bind_param("s", $teacher_id);
+$get_courses_stmt->bind_param("i", $teacher_id);
 if (!$get_courses_stmt->execute()) {
     error_log("Execute failed for courses query: " . $get_courses_stmt->error);
-    $_SESSION['error_message'] = "เกิดข้อผิดพลาดในการดึงข้อมูลวิชา: " . $get_courses_stmt->error;
+    $_SESSION['error_message'] = "เกิดข้อผิดพลาดในการดึงข้อมูลวิชา";
     header("Location: teacher_dashboard.php");
     exit();
 }
 $courses_result = $get_courses_stmt->get_result();
 $courses = $courses_result->fetch_all(MYSQLI_ASSOC);
 error_log("Courses fetched: " . print_r($courses, true));
-if (empty($courses)) {
-    error_log("No courses found for teacher_id: " . $teacher_id);
-}
 $get_courses_stmt->close();
 
-// Fetch schedules for all courses
 foreach ($courses as &$course) {
     $sched_stmt = $conn->prepare("
         SELECT schedule_id, day_of_week, start_time, end_time
@@ -82,7 +73,6 @@ foreach ($courses as &$course) {
 }
 unset($course);
 
-// Get distinct days where teacher has courses
 $days_query = "
     SELECT DISTINCT s.day_of_week 
     FROM schedules s
@@ -90,46 +80,36 @@ $days_query = "
     WHERE c.teacher_id = ?
     ORDER BY FIELD(s.day_of_week, 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday')";
 $days_stmt = $conn->prepare($days_query);
-if (!$days_stmt) {
-    error_log("Prepare failed for days_query: " . $conn->error);
-    $_SESSION['error_message'] = "เกิดข้อผิดพลาดในการดึงข้อมูลวันสอน: " . $conn->error;
-} else {
-    $days_stmt->bind_param("s", $teacher_id);
+if ($days_stmt) {
+    $days_stmt->bind_param("i", $teacher_id);
     $days_stmt->execute();
     $days_result = $days_stmt->get_result();
     $teaching_days = $days_result->fetch_all(MYSQLI_ASSOC);
     $days_stmt->close();
 }
 
-// Function to map semester enum to integer
 function mapSemesterToInt($semester) {
     $semesterMap = ['first' => 1, 'second' => 2, 'summer' => 3];
-    return $semesterMap[$semester] ?? 1;
+    return $semesterMap[strtolower($semester)] ?? 1;
 }
 
-// Function to get semester date range
 function getFirstAndLastDateOfSemester($semester, $year) {
     $semester = mapSemesterToInt($semester);
     if ($semester == 1) {
-        $startMonth = 6;
-        $endMonth = 10;
+        return [date('Y-m-d', strtotime("$year-06-24")), date('Y-m-d', strtotime("$year-11-04"))];
     } elseif ($semester == 2) {
-        $startMonth = 11;
-        $endMonth = 3;
-        $year = ($endMonth < $startMonth) ? $year + 1 : $year;
+        return [date('Y-m-d', strtotime("$year-11-25")), date('Y-m-d', strtotime(($year+1)."-03-31"))];
     } else {
-        $startMonth = 4;
-        $endMonth = 6;
+        return [date('Y-m-d', strtotime("$year-04-21")), date('Y-m-d', strtotime("$year-06-04"))];
     }
-    $startDate = date('Y-m-d', strtotime("$year-$startMonth-1"));
-    $endDate = date('Y-m-t', strtotime("$year-$endMonth-1"));
-    return [$startDate, $endDate];
 }
 
-// Function to get all teaching dates for a course
 function getAllTeachingDates($course, $startDate, $endDate) {
     $dates = [];
-    if (empty($course['schedules'])) return $dates;
+    if (empty($course['schedules'])) {
+        error_log("No schedules for course_id: {$course['course_id']}");
+        return $dates;
+    }
 
     foreach ($course['schedules'] as $schedule) {
         $current = strtotime($startDate);
@@ -143,17 +123,16 @@ function getAllTeachingDates($course, $startDate, $endDate) {
     }
     $dates = array_unique($dates);
     sort($dates);
+    error_log("Teaching dates for course_id {$course['course_id']}: " . json_encode($dates));
     return $dates;
 }
 
-// Determine current semester and year
 $current_semester = 'first';
 $current_year = date('Y');
 if (!empty($courses)) {
     usort($courses, function($a, $b) {
         if ($a['c_year'] === $b['c_year']) {
-            $semesterOrder = ['first' => 1, 'second' => 2, 'summer' => 3];
-            return $semesterOrder[$b['semester']] - $semesterOrder[$a['semester']];
+            return mapSemesterToInt($b['semester']) - mapSemesterToInt($a['semester']);
         }
         return $b['c_year'] - $a['c_year'];
     });
@@ -161,17 +140,14 @@ if (!empty($courses)) {
     $current_year = $courses[0]['c_year'];
 }
 
-// Get semester date range
 list($semester_start, $semester_end) = getFirstAndLastDateOfSemester($current_semester, $current_year);
 
-// Get all teaching dates for each course
 $teaching_schedule = [];
 foreach ($courses as $course) {
     $dates = getAllTeachingDates($course, $semester_start, $semester_end);
     $teaching_schedule[$course['course_id']] = $dates;
 }
 
-// Fetch overall attendance statistics
 $attendance_stats = ['present' => 0, 'late' => 0, 'absent' => 0, 'total' => 0];
 foreach ($courses as $course) {
     $course_id = $course['course_id'];
@@ -195,27 +171,18 @@ foreach ($courses as $course) {
     $result = $stmt->get_result();
     while ($row = $result->fetch_assoc()) {
         $status = strtolower($row['status']);
-        if ($status === 'present') {
-            $attendance_stats['present'] += $row['count'];
-        } elseif ($status === 'late') {
-            $attendance_stats['late'] += $row['count'];
-        } elseif ($status === 'absent') {
-            $attendance_stats['absent'] += $row['count'];
-        }
+        if ($status === 'present') $attendance_stats['present'] += $row['count'];
+        elseif ($status === 'late') $attendance_stats['late'] += $row['count'];
+        elseif ($status === 'absent') $attendance_stats['absent'] += $row['count'];
     }
     $attendance_stats['total'] = $attendance_stats['present'] + $attendance_stats['late'] + $attendance_stats['absent'];
     $stmt->close();
 }
 
-// Helper functions
 function getDayNameThai($englishDay) {
     $dayMapping = [
-        'Monday' => 'วันจันทร์',
-        'Tuesday' => 'วันอังคาร',
-        'Wednesday' => 'วันพุธ',
-        'Thursday' => 'วันพฤหัสบดี',
-        'Friday' => 'วันศุกร์',
-        'Saturday' => 'วันเสาร์',
+        'Monday' => 'วันจันทร์', 'Tuesday' => 'วันอังคาร', 'Wednesday' => 'วันพุธ',
+        'Thursday' => 'วันพฤหัสบดี', 'Friday' => 'วันศุกร์', 'Saturday' => 'วันเสาร์',
         'Sunday' => 'วันอาทิตย์'
     ];
     return $dayMapping[$englishDay] ?? $englishDay;
@@ -223,7 +190,7 @@ function getDayNameThai($englishDay) {
 
 function getSemesterThai($semester) {
     $semesterMap = ['first' => '1', 'second' => '2', 'summer' => 'ฤดูร้อน'];
-    return $semesterMap[$semester] ?? $semester;
+    return $semesterMap[strtolower($semester)] ?? $semester;
 }
 
 $conn->close();
@@ -244,14 +211,6 @@ $conn->close();
         .course-button { background-color: #4CAF50; color: white; padding: 0.75rem 1.5rem; border-radius: 0.5rem; transition: all 0.3s; border: none; cursor: pointer; margin: 0.5rem; width: 100%; max-width: 300px; text-align: left; }
         .course-button:hover { background-color: #45a049; transform: translateY(-2px); }
         .course-button.selected { background-color: #2E7D32; }
-        .day-button { transition: all 0.3s; }
-        .day-button:hover { background-color: #45a049; color: white; }
-        .calendar { display: grid; grid-template-columns: repeat(7, 1fr); }
-        .day { border: 1px solid #ccc; padding: 10px; }
-        .highlighted { background-color: yellow; }
-        .status-present { background-color: rgba(76, 175, 80, 0.1); color: #2e7d32; }
-        .status-late { background-color: rgba(240, 173, 78, 0.1); color: #f57c00; }
-        .status-absent { background-color: rgba(217, 83, 79, 0.1); color: #c62828; }
         .attendance-table { width: 100%; border-collapse: collapse; margin: 1rem 0; background-color: white; box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
         .attendance-table th, .attendance-table td { padding: 0.75rem; text-align: left; border: 1px solid #e2e8f0; }
         .attendance-table th { background-color: #f9e69e; font-weight: 600; position: sticky; top: 0; z-index: 10; }
@@ -263,6 +222,9 @@ $conn->close();
         .edit-button:hover { background-color: #0056b3; }
         .add-button { background-color: #28a745; color: white; padding: 0.75rem 1.5rem; border-radius: 0.5rem; margin: 1rem 0; }
         .add-button:hover { background-color: #218838; }
+        .status-present { background-color: rgba(76, 175, 80, 0.1); color: #2e7d32; }
+        .status-late { background-color: rgba(240, 173, 78, 0.1); color: #f57c00; }
+        .status-absent { background-color: rgba(217, 83, 79, 0.1); color: #c62828; }
     </style>
 </head>
 <body class="bg-gray-100">
@@ -276,575 +238,589 @@ $conn->close();
         </div>
         <button onclick="logout()" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded">ออกจากระบบ</button>
     </div>
-<div class="container mx-auto px-4 py-8">
-    <?php if (isset($_SESSION['error_message'])): ?>
-        <div class="error-message"><?php echo htmlspecialchars($_SESSION['error_message']); ?></div>
-        <?php unset($_SESSION['error_message']); ?>
-    <?php endif; ?>
 
-    <div class="bg-white rounded-lg shadow-md p-6 mb-6">
-        <h2 class="text-xl font-bold mb-4">รายวิชาที่สอน</h2>
-        <?php if (empty($courses)): ?>
-            <p class="text-center text-gray-500">ไม่มีรายวิชาที่สอนในขณะนี้</p>
-        <?php else: ?>
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                <?php foreach ($courses as $course): ?>
-                    <button onclick="showAttendance(<?php echo htmlspecialchars($course['course_id']); ?>)" class="course-button" data-course-id="<?php echo htmlspecialchars($course['course_id']); ?>">
-                        <div class="font-bold"><?php echo htmlspecialchars($course['course_code']); ?></div>
-                        <div class="text-sm"><?php echo htmlspecialchars($course['course_name']); ?></div>
-                        <div class="text-sm">
-                            กลุ่ม <?php echo htmlspecialchars($course['group_number']); ?> |
-                            <?php
-                            if (!empty($course['schedules'])) {
-                                $schedule_texts = [];
-                                foreach ($course['schedules'] as $sched) {
-                                    $schedule_texts[] = htmlspecialchars(getDayNameThai($sched['day_of_week'])) . ' ' .
-                                                       substr($sched['start_time'], 0, 5) . ' - ' .
-                                                       substr($sched['end_time'], 0, 5);
-                                }
-                                echo implode(' | ', $schedule_texts);
-                            } else {
-                                echo 'ไม่มีตาราง';
-                            }
-                            ?>
-                        </div>
-                    </button>
-                <?php endforeach; ?>
-            </div>
+    <div class="container mx-auto px-4 py-8">
+        <?php if (isset($_SESSION['error_message'])): ?>
+            <div class="error-message"><?php echo htmlspecialchars($_SESSION['error_message']); unset($_SESSION['error_message']); ?></div>
         <?php endif; ?>
-    </div>
 
-    <div class="bg-white rounded-lg shadow-md p-6 mb-6">
-        <div class="flex items-center justify-between mb-4">
-            <h2 class="text-xl font-bold">เลือกวันที่</h2>
-            <input type="date" id="selectedDate" class="border border-gray-300 rounded px-4 py-2" value="<?php echo date('Y-m-d'); ?>" onchange="selectDate(this.value)">
+        <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+            <h2 class="text-xl font-bold mb-4">รายวิชาที่สอน</h2>
+            <?php if (empty($courses)): ?>
+                <p class="text-center text-gray-500">ไม่มีรายวิชาที่สอนในขณะนี้</p>
+            <?php else: ?>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <?php foreach ($courses as $course): ?>
+                        <button class="course-button" data-course-id="<?php echo htmlspecialchars($course['course_id']); ?>">
+                            <div class="font-bold"><?php echo htmlspecialchars($course['course_code']); ?></div>
+                            <div class="text-sm"><?php echo htmlspecialchars($course['course_name']); ?></div>
+                            <div class="text-sm">
+                                กลุ่ม <?php echo htmlspecialchars($course['group_number']); ?> |
+                                <?php
+                                if (!empty($course['schedules'])) {
+                                    $schedule_texts = array_map(function($sched) {
+                                        return htmlspecialchars(getDayNameThai($sched['day_of_week'])) . ' ' .
+                                               substr($sched['start_time'], 0, 5) . '-' .
+                                               substr($sched['end_time'], 0, 5);
+                                    }, $course['schedules']);
+                                    echo implode(' | ', $schedule_texts);
+                                } else {
+                                    echo 'ไม่มีตาราง';
+                                }
+                                ?>
+                            </div>
+                        </button>
+                    <?php endforeach; ?>
+                </div>
+            <?php endif; ?>
         </div>
-    </div>
 
-    <div id="faceScanSection" class="bg-white rounded-lg shadow-md p-6 mb-6" style="display: none;">
-        <h2 class="text-xl font-bold mb-4">สแกนใบหน้าเพื่อเช็คชื่อ</h2>
-        <div class="flex items-center justify-between mb-4">
-            <div><span id="scanningCourseInfo"></span></div>
-            <div>
-                <button id="startScanBtn" class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded">เริ่มสแกน</button>
-                <button id="stopScanBtn" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded" style="display: none;">หยุดสแกน</button>
+        <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="text-xl font-bold">เลือกวันที่</h2>
+                <input type="date" id="selectedDate" class="border border-gray-300 rounded px-4 py-2" value="<?php echo date('Y-m-d'); ?>" onchange="selectDate(this.value)">
             </div>
         </div>
-        <div class="relative">
-            <video id="videoFeed" autoplay playsinline></video>
-            <canvas id="overlayCanvas" style="display: none;"></canvas>
+
+        <div id="faceScanSection" class="bg-white rounded-lg shadow-md p-6 mb-6" style="display: none;">
+            <h2 class="text-xl font-bold mb-4">สแกนใบหน้าเพื่อเช็คชื่อ</h2>
+            <div class="flex items-center justify-between mb-4">
+                <div><span id="scanningCourseInfo"></span></div>
+                <div>
+                    <button id="startScanBtn" class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded">เริ่มสแกน</button>
+                    <button id="stopScanBtn" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded" style="display: none;">หยุดสแกน</button>
+                </div>
+            </div>
+            <div class="relative">
+                <video id="videoFeed" autoplay playsinline></video>
+                <canvas id="overlayCanvas" style="display: none;"></canvas>
+            </div>
+            <div id="scanResult" class="text-center mt-4 font-medium"></div>
         </div>
-        <div id="scanResult" class="text-center mt-4 font-medium"></div>
+
+        <button onclick="exportAttendance()" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded">ดาวน์โหลดข้อมูลการเข้าเรียน</button>
+
+        <div id="attendanceSection" class="bg-white rounded-lg shadow-md p-6" style="display: none;">
+            <div id="courseInfo" class="mb-4"></div>
+            <button onclick="showAddAttendanceForm()" class="add-button">เพิ่มการเข้าเรียนด้วยตนเอง</button>
+            <div id="addAttendanceForm" class="mb-4" style="display: none;">
+                <h3 class="text-lg font-bold mb-2">เพิ่ม/แก้ไขการเข้าเรียน</h3>
+                <form id="manualAttendanceForm">
+                    <div class="mb-2">
+                        <label class="block text-sm font-medium">รหัสนิสิต</label>
+                        <input type="text" id="studentId" class="border border-gray-300 rounded px-4 py-2 w-full" required>
+                    </div>
+                    <div class="mb-2">
+                        <label class="block text-sm font-medium">สถานะ</label>
+                        <select id="attendanceStatus" class="border border-gray-300 rounded px-4 py-2 w-full" required>
+                            <option value="Present">มาเรียน</option>
+                            <option value="Late">สาย</option>
+                            <option value="Absent">ขาดเรียน</option>
+                            <option value="Leave">ลา</option>
+                        </select>
+                    </div>
+                    <div class="mb-2">
+                        <label class="block text-sm font-medium">เวลา (YYYY-MM-DD HH:MM:SS)</label>
+                        <input type="datetime-local" id="scanTime" class="border border-gray-300 rounded px-4 py-2 w-full" required>
+                    </div>
+                    <button type="submit" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded">บันทึก</button>
+                    <button type="button" onclick="hideAddAttendanceForm()" class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded">ยกเลิก</button>
+                </form>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="attendance-table">
+                    <thead>
+                        <tr>
+                            <th>ลำดับ</th>
+                            <th>รหัสนิสิต</th>
+                            <th>ชื่อ-นามสกุล</th>
+                            <th>วันที่</th>
+                            <th>สถานะ</th>
+                            <th>การจัดการ</th>
+                        </tr>
+                    </thead>
+                    <tbody id="attendanceTableBody">
+                        <tr><td colspan="6" class="text-center text-gray-500">กรุณาเลือกวิชาเพื่อดูข้อมูล</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="chart-container">
+                <canvas id="attendanceChart" style="width: 100%; height: 300px;"></canvas>
+            </div>
+        </div>
     </div>
 
-    <button onclick="exportAttendance()" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded">ดาวน์โหลดข้อมูลการเข้าเรียน</button>
+    <script src="faceScan.js"></script>
+    <script>
+        let currentChart = null;
+        const courses = <?php echo json_encode($courses, JSON_UNESCAPED_UNICODE | JSON_PARTIAL_OUTPUT_ON_ERROR) ?: '[]'; ?>;
+        window.courses = courses;
+        console.log('window.courses initialized:', window.courses);
+        const teachingSchedule = <?php echo json_encode($teaching_schedule, JSON_UNESCAPED_UNICODE); ?>;
+        const teacherId = <?php echo json_encode($teacher_id, JSON_UNESCAPED_UNICODE); ?>;
 
-    <div id="attendanceSection" class="bg-white rounded-lg shadow-md p-6" style="display: none;">
-        <div id="courseInfo" class="mb-4"></div>
-        <button onclick="showAddAttendanceForm()" class="add-button">เพิ่มการเข้าเรียนด้วยตนเอง</button>
-        <div id="addAttendanceForm" class="mb-4" style="display: none;">
-            <h3 class="text-lg font-bold mb-2">เพิ่ม/แก้ไขการเข้าเรียน</h3>
-            <form id="manualAttendanceForm">
-                <div class="mb-2">
-                    <label class="block text-sm font-medium">รหัสนิสิต</label>
-                    <input type="text" id="studentId" class="border border-gray-300 rounded px-4 py-2 w-full" required>
-                </div>
-                <div class="mb-2">
-                    <label class="block text-sm font-medium">สถานะ</label>
-                    <select id="attendanceStatus" class="border border-gray-300 rounded px-4 py-2 w-full" required>
-                        <option value="Present">มาเรียน</option>
-                        <option value="Late">สาย</option>
-                        <option value="Absent">ขาดเรียน</option>
-                        <option value="Leave">ลา</option>
-                    </select>
-                </div>
-                <div class="mb-2">
-                    <label class="block text-sm font-medium">เวลา (YYYY-MM-DD HH:MM:SS)</label>
-                    <input type="datetime-local" id="scanTime" class="border border-gray-300 rounded px-4 py-2 w-full" required>
-                </div>
-                <button type="submit" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded">บันทึก</button>
-                <button type="button" onclick="hideAddAttendanceForm()" class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded">ยกเลิก</button>
-            </form>
-        </div>
-        <div class="overflow-x-auto">
-            <table class="attendance-table">
-                <thead>
-                    <tr>
-                        <th>ลำดับ</th>
-                        <th>รหัสนิสิต</th>
-                        <th>ชื่อ-นามสกุล</th>
-                        <th>เวลาสแกน</th>
-                        <th>สถานะ</th>
-                        <th>การจัดการ</th>
-                    </tr>
-                </thead>
-                <tbody id="attendanceTableBody">
-                    <tr><td colspan="6" class="text-center text-gray-500">กรุณาเลือกวิชาเพื่อดูข้อมูล</td></tr>
-                </tbody>
-            </table>
-        </div>
-        <div class="chart-container">
-            <canvas id="attendanceChart" style="width: 100%; height: 300px;"></canvas>
-        </div>
-    </div>
-</div>
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('DOM fully loaded');
+            const initialStats = <?php echo json_encode($attendance_stats, JSON_UNESCAPED_UNICODE); ?>;
+            console.log('Initial attendance stats:', initialStats);
+            updateAttendanceChart(initialStats);
+            window.initializeVideo?.();
+            startAutoRefresh();
 
-<script src="faceScan.js"></script>
-<script>
-    let currentChart = null;
-    const courses = <?php echo json_encode($courses, JSON_UNESCAPED_UNICODE | JSON_PARTIAL_OUTPUT_ON_ERROR) ?: '[]'; ?>;
-    window.courses = courses; // Explicitly set window.courses
-    console.log('window.courses initialized:', window.courses);
-    if (!courses || !Array.isArray(courses)) {
-        console.error('window.courses is invalid:', window.courses);
-    }
-    const teachingSchedule = <?php echo json_encode($teaching_schedule, JSON_UNESCAPED_UNICODE); ?>;
-    const teacherId = <?php echo json_encode($teacher_id, JSON_UNESCAPED_UNICODE); ?>;
-
-    document.addEventListener('DOMContentLoaded', function() {
-        const initialStats = <?php echo json_encode($attendance_stats, JSON_UNESCAPED_UNICODE); ?>;
-        console.log('Initial attendance stats:', initialStats);
-        updateAttendanceChart(initialStats);
-        window.initializeVideo?.();
-        startAutoRefresh();
-    });
-
-    function selectDate(date) {
-        const selectedCourseId = document.querySelector('.course-button.selected')?.dataset.courseId;
-        if (selectedCourseId) {
-            showAttendance(selectedCourseId);
-        }
-    }
-
-    function showAttendance(courseId) {
-        console.log('showAttendance called with courseId:', courseId);
-        if (!window.courses || !Array.isArray(window.courses) || window.courses.length === 0) {
-            console.error('No courses available:', window.courses);
-            document.getElementById('scanResult').innerText = 'ไม่พบข้อมูลรายวิชาทั้งหมด';
-            document.getElementById('scanResult').style.color = 'red';
-            document.getElementById('startScanBtn').disabled = true;
-            document.getElementById('attendanceTableBody').innerHTML = '<tr><td colspan="6" class="text-center text-red-500">Error: No courses available</td></tr>';
-            return;
-        }
-
-        updateDatePicker(courseId);
-        document.querySelectorAll('.course-button').forEach(button => {
-            button.classList.remove('selected');
-            button.style.backgroundColor = '#4CAF50';
-        });
-        const selectedButton = document.querySelector(`[data-course-id="${courseId}"]`);
-        if (selectedButton) {
-            selectedButton.classList.add('selected');
-            selectedButton.style.backgroundColor = '#2E7D32';
-        }
-
-        document.getElementById('faceScanSection').style.display = 'block';
-        window.currentCourseId = courseId;
-
-        const course = window.courses.find(c => c.course_id == courseId);
-        if (!course) {
-            console.error('Course not found:', courseId);
-            document.getElementById('scanResult').innerText = `ไม่พบข้อมูลวิชา (ID: ${courseId})`;
-            document.getElementById('scanResult').style.color = 'red';
-            document.getElementById('startScanBtn').disabled = true;
-            return;
-        }
-
-        let scheduleId = null;
-        const selectedDate = document.getElementById('selectedDate').value;
-        const selectedDay = new Date(selectedDate).toLocaleString('en-US', { weekday: 'long' });
-        if (course.schedules && course.schedules.length > 0) {
-            const matchingSchedule = course.schedules.find(sched => sched.day_of_week === selectedDay);
-            scheduleId = matchingSchedule ? matchingSchedule.schedule_id : course.schedules[0]?.schedule_id;
-        }
-
-        window.currentScheduleId = scheduleId;
-        document.getElementById('startScanBtn').disabled = !scheduleId;
-        document.getElementById('scanningCourseInfo').innerHTML = `
-            วิชา: ${course.course_code} ${course.course_name} |
-            กลุ่ม ${course.group_number} |
-            ${course.schedules.map(sched => `${getDayNameThai(sched.day_of_week)} ${sched.start_time.slice(0, 5)} - ${sched.end_time.slice(0, 5)}`).join(' | ') || 'ไม่มีตาราง'}
-        `;
-        updateCourseInfo(course);
-
-        if (!scheduleId) {
-            document.getElementById('scanResult').innerText = `ไม่มีตารางเรียนสำหรับวันนี้ (${getDayNameThai(selectedDay)})`;
-            document.getElementById('scanResult').style.color = 'red';
-        } else {
-            document.getElementById('scanResult').innerText = 'พร้อมสแกนใบหน้า';
-            document.getElementById('scanResult').style.color = 'green';
-        }
-
-        document.getElementById('attendanceSection').style.display = 'block';
-        document.getElementById('attendanceTableBody').innerHTML = '<tr><td colspan="6" class="text-center">กำลังโหลด...</td></tr>';
-
-        const validDates = teachingSchedule[courseId] || [];
-        if (validDates.length === 0) {
-            console.warn('No valid dates for course:', courseId);
-            document.getElementById('attendanceTableBody').innerHTML = '<tr><td colspan="6" class="text-center text-gray-500">No class dates available</td></tr>';
-            return;
-        }
-
-        fetch(`get_attendance.php?course_id=${encodeURIComponent(courseId)}&dates=${encodeURIComponent(JSON.stringify(validDates))}`)
-        .then(response => {
-            return response.text().then(text => {
-                return { status: response.status, text };
-            });
-        })
-        .then(({ status, text }) => {
-            console.log('Raw response from get_attendance.php:', text);
-            try {
-                const data = JSON.parse(text);
-                if (data.error) {
-                    throw new Error(data.error);
-                }
-                const students = Object.keys(data).map(date => ({
-                    student_id: null, // ปรับตามโครงสร้างข้อมูลจริง
-                    name: 'N/A',
-                    scan_time: date,
-                    status: data[date] || 'None'
-                }));
-                updateAttendanceTable(students);
-                const stats = { present: 0, late: 0, absent: 0, total: students.length };
-                students.forEach(s => {
-                    if (s.status.toLowerCase() === 'present') stats.present++;
-                    else if (s.status.toLowerCase() === 'late') stats.late++;
-                    else if (s.status.toLowerCase() === 'absent') stats.absent++;
+            // เพิ่ม event listeners สำหรับ course buttons
+            document.querySelectorAll('.course-button').forEach(button => {
+                button.addEventListener('click', function() {
+                    const courseId = this.dataset.courseId;
+                    showAttendance(courseId);
                 });
-                updateAttendanceChart(stats);
-                document.getElementById('attendanceSection').style.display = 'block';
-            } catch (e) {
-                console.error('JSON parse error:', e);
-                document.getElementById('attendanceTableBody').innerHTML = `<tr><td colspan="6" class="text-center text-red-500">Error parsing response: ${e.message}</td></tr>`;
-            }
-        })
-        .catch(error => {
-            console.error('Error fetching attendance:', error);
-            document.getElementById('attendanceTableBody').innerHTML = `<tr><td colspan="6" class="text-center text-red-500">Error: ${error.message}</td></tr>`;
-        });
-    }
-
-
-    function getDayNameThai(day) {
-        const dayMapping = {
-            'Monday': 'วันจันทร์',
-            'Tuesday': 'วันอังคาร',
-            'Wednesday': 'วันพุธ',
-            'Thursday': 'วันพฤหัสบดี',
-            'Friday': 'วันศุกร์',
-            'Saturday': 'วันเสาร์',
-            'Sunday': 'วันอาทิตย์'
-        };
-        return dayMapping[day] || day;
-    }
-
-    const SEMESTER_RANGES = {
-        'first': { startMonth: 6, startDay: 24, endMonth: 11, endDay: 4 },
-        'second': { startMonth: 11, startDay: 25, endMonth: 3, endDay: 31 },
-        'summer': { startMonth: 4, startDay: 21, endMonth: 6, endDay: 4 }
-    };
-
-    function getValidDatesForCourse(course) {
-        if (!course.schedules || course.schedules.length === 0) return [];
-
-        const semester = course.semester;
-        const year = parseInt(course.c_year);
-        const range = SEMESTER_RANGES[semester];
-        if (!range) return [];
-
-        let startDate, endDate;
-        if (semester === 'second' && range.endMonth < range.startMonth) {
-            startDate = new Date(year, range.startMonth - 1, range.startDay);
-            endDate = new Date(year + 1, range.endMonth - 1, range.endDay);
-        } else {
-            startDate = new Date(year, range.startMonth - 1, range.startDay);
-            endDate = new Date(year, range.endMonth - 1, range.endDay);
-        }
-
-        const dayMapping = {
-            'Monday': 1, 'Tuesday': 2, 'Wednesday': 3, 'Thursday': 4,
-            'Friday': 5, 'Saturday': 6, 'Sunday': 0
-        };
-
-        let validDates = [];
-        course.schedules.forEach(sched => {
-            const targetDay = dayMapping[sched.day_of_week];
-            let current = new Date(startDate);
-            while (current <= endDate) {
-                if (current.getDay() === targetDay) {
-                    validDates.push(current.toISOString().split('T')[0]);
-                }
-                current.setDate(current.getDate() + 1);
-            }
+            });
         });
 
-        validDates = [...new Set(validDates)].sort();
-        return validDates;
-    }
-
-    function updateDatePicker(courseId) {
-        const datePicker = document.getElementById('selectedDate');
-        const course = window.courses.find(c => c.course_id == courseId);
-
-        if (!course || !teachingSchedule[courseId]) {
-            console.error('Course or schedule not found for courseId:', courseId);
-            datePicker.disabled = true;
-            return;
+        function selectDate(date) {
+            const selectedCourseId = document.querySelector('.course-button.selected')?.dataset.courseId;
+            if (selectedCourseId) {
+                showAttendance(selectedCourseId);
+            }
         }
 
-        const validDates = teachingSchedule[courseId];
-        if (validDates.length > 0) {
-            datePicker.disabled = false;
-            datePicker.min = validDates[0];
-            datePicker.max = validDates[validDates.length - 1];
-            const today = new Date().toISOString().split('T')[0];
-            const futureValidDate = validDates.find(date => date >= today) || validDates[validDates.length - 1];
-            datePicker.value = futureValidDate;
-        } else {
-            datePicker.disabled = true;
-        }
-
-        datePicker.onchange = function() {
-            const selectedDate = this.value;
-            if (!validDates.includes(selectedDate)) {
-                console.log('Invalid date selected:', selectedDate);
-                document.getElementById('scanResult').innerText = 'กรุณาเลือกวันที่มีการเรียนการสอนเท่านั้น';
+        function showAttendance(courseId) {
+            console.log('showAttendance called with courseId:', courseId);
+            if (!window.courses || !Array.isArray(window.courses) || window.courses.length === 0) {
+                console.error('No courses available:', window.courses);
+                document.getElementById('scanResult').textContent = 'ไม่พบข้อมูลรายวิชาทั้งหมด';
                 document.getElementById('scanResult').style.color = 'red';
-                const nearestDate = validDates.reduce((nearest, date) => {
-                    return !nearest || Math.abs(new Date(date) - new Date(selectedDate)) < Math.abs(new Date(nearest) - new Date(selectedDate)) ? date : nearest;
-                }, null);
-                this.value = nearestDate;
+                document.getElementById('startScanBtn').disabled = true;
+                document.getElementById('attendanceTableBody').innerHTML = '<tr><td colspan="6" class="text-center text-red-500">Error: No courses available</td></tr>';
+                return;
             }
-            showAttendance(courseId);
-        };
-    }
 
-    function updateCourseInfo(course) {
-        let scheduleInfo = 'ไม่มีตาราง';
-        if (course.schedules && course.schedules.length > 0) {
-            scheduleInfo = course.schedules.map(sched =>
-                `${getDayNameThai(sched.day_of_week)} ${sched.start_time.slice(0, 5)} - ${sched.end_time.slice(0, 5)}`
-            ).join(' | ');
-        }
-        document.getElementById('courseInfo').innerHTML = `
-            <h3 class="text-lg font-bold">${course.course_code} ${course.course_name}</h3>
-            <p class="text-sm text-gray-600">
+            updateDatePicker(courseId);
+            document.querySelectorAll('.course-button').forEach(button => {
+                button.classList.remove('selected');
+                button.style.backgroundColor = '#4CAF50';
+            });
+            const selectedButton = document.querySelector(`[data-course-id="${courseId}"]`);
+            if (selectedButton) {
+                selectedButton.classList.add('selected');
+                selectedButton.style.backgroundColor = '#2E7D32';
+            }
+
+            document.getElementById('faceScanSection').style.display = 'block';
+            window.currentCourseId = courseId;
+
+            const course = window.courses.find(c => c.course_id == courseId);
+            if (!course) {
+                console.error('Course not found:', courseId);
+                document.getElementById('scanResult').textContent = `ไม่พบข้อมูลวิชา (ID: ${courseId})`;
+                document.getElementById('scanResult').style.color = 'red';
+                document.getElementById('startScanBtn').disabled = true;
+                return;
+            }
+
+            let scheduleId = null;
+            const selectedDate = document.getElementById('selectedDate').value;
+            const selectedDay = new Date(selectedDate).toLocaleString('en-US', { weekday: 'long' });
+            if (course.schedules && course.schedules.length > 0) {
+                const matchingSchedule = course.schedules.find(sched => sched.day_of_week === selectedDay);
+                scheduleId = matchingSchedule ? matchingSchedule.schedule_id : course.schedules[0]?.schedule_id;
+            }
+
+            window.currentScheduleId = scheduleId;
+            document.getElementById('startScanBtn').disabled = !scheduleId;
+            document.getElementById('scanningCourseInfo').innerHTML = `
+                วิชา: ${course.course_code} ${course.course_name} |
                 กลุ่ม ${course.group_number} |
-                ${scheduleInfo} |
-                ภาคการศึกษาที่ <?php echo getSemesterThai($current_semester); ?>/${course.c_year}
-            </p>
-        `;
-    }
-
-    function updateAttendanceTable(students) {
-        const tbody = document.getElementById('attendanceTableBody');
-        tbody.innerHTML = '';
-
-        if (!students || students.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="6" class="text-center text-gray-500">ไม่มีข้อมูลการเข้าเรียน</td></tr>';
-            return;
-        }
-
-        students.forEach((student, index) => {
-            const row = document.createElement('tr');
-            row.className = `status-${student.status.toLowerCase()}`;
-            row.innerHTML = `
-                <td>${index + 1}</td>
-                <td>${student.student_id || 'N/A'}</td>
-                <td>${student.name || 'N/A'}</td>
-                <td>${student.scan_time || 'ไม่มีการสแกน'}</td>
-                <td class="font-medium">${translateStatus(student.status)}</td>
-                <td><button class="edit-button" onclick="editAttendance('${student.student_id}', '${student.scan_time || ''}', '${student.status}')">แก้ไข</button></td>
+                ${course.schedules?.map(sched => `${getDayNameThai(sched.day_of_week)} ${sched.start_time.slice(0, 5)} - ${sched.end_time.slice(0, 5)}`).join(' | ') || 'ไม่มีตาราง'}
             `;
-            tbody.appendChild(row);
-        });
-    }
+            updateCourseInfo(course);
 
-    function translateStatus(status) {
-        const statusMap = {
-            'present': 'มาเรียน',
-            'late': 'สาย',
-            'absent': 'ขาดเรียน',
-            'leave': 'ลา'
-        };
-        return statusMap[status.toLowerCase()] || status;
-    }
+            if (!scheduleId) {
+                document.getElementById('scanResult').textContent = `ไม่มีตารางเรียนสำหรับวันนี้ (${getDayNameThai(selectedDay)})`;
+                document.getElementById('scanResult').style.color = 'red';
+            } else {
+                document.getElementById('scanResult').textContent = 'พร้อมสแกนใบหน้า';
+                document.getElementById('scanResult').style.color = 'green';
+            }
 
-    function showAddAttendanceForm(studentId = '', scanTime = '', status = 'Present') {
-        const form = document.getElementById('addAttendanceForm');
-        form.style.display = 'block';
-        document.getElementById('studentId').value = studentId;
-        document.getElementById('attendanceStatus').value = status;
-        document.getElementById('scanTime').value = scanTime ? new Date(scanTime).toISOString().slice(0, 16) : '';
-    }
+            document.getElementById('attendanceSection').style.display = 'block';
+            document.getElementById('attendanceTableBody').innerHTML = '<tr><td colspan="6" class="text-center">กำลังโหลด...</td></tr>';
 
-    function hideAddAttendanceForm() {
-        document.getElementById('addAttendanceForm').style.display = 'none';
-        document.getElementById('manualAttendanceForm').reset();
-    }
+            const validDates = teachingSchedule[courseId] || [];
+            console.log('validDates:', validDates);
+            if (validDates.length === 0) {
+                console.warn('No valid dates for course:', courseId);
+                document.getElementById('attendanceTableBody').innerHTML = '<tr><td colspan="6" class="text-center text-gray-500">No class dates available</td></tr>';
+                return;
+            }
 
-    function editAttendance(studentId, scanTime, status) {
-        showAddAttendanceForm(studentId, scanTime, status);
-    }
-
-    document.getElementById('manualAttendanceForm').addEventListener('submit', function(e) {
-        e.preventDefault();
-        const studentId = document.getElementById('studentId').value;
-        const status = document.getElementById('attendanceStatus').value;
-        const scanTime = document.getElementById('scanTime').value;
-        const courseId = window.currentCourseId;
-        const scheduleId = window.currentScheduleId;
-
-        if (!courseId || !scheduleId) {
-            console.log('No course or schedule selected for manual attendance');
-            document.getElementById('scanResult').innerText = 'กรุณาเลือกวิชาก่อน';
-            document.getElementById('scanResult').style.color = 'red';
-            return;
+            fetch(`get_attendance.php?course_id=${encodeURIComponent(courseId)}&dates=${encodeURIComponent(JSON.stringify(validDates))}`)
+                .then(response => {
+                    return response.text().then(text => {
+                        return { status: response.status, text };
+                    });
+                })
+                .then(({ status, text }) => {
+                    console.log('Raw response from get_attendance.php:', text);
+                    try {
+                        const data = JSON.parse(text);
+                        if (data.error) {
+                            throw new Error(data.error);
+                        }
+                        const { attendance, students } = data;
+                        const studentRecords = [];
+                        Object.keys(students).forEach(student_id => {
+                            validDates.forEach(date => {
+                                studentRecords.push({
+                                    student_id,
+                                    name: students[student_id] || `Student ID ${student_id}`,
+                                    date,
+                                    status: attendance[date]?.[student_id] || 'None'
+                                });
+                            });
+                        });
+                        console.log('Processed student records:', studentRecords);
+                        updateAttendanceTable(studentRecords);
+                        const stats = { present: 0, late: 0, absent: 0, total: studentRecords.length };
+                        studentRecords.forEach(record => {
+                            if (record.status.toLowerCase() === 'present') stats.present++;
+                            else if (record.status.toLowerCase() === 'late') stats.late++;
+                            else if (record.status.toLowerCase() === 'absent') stats.absent++;
+                        });
+                        updateAttendanceChart(stats);
+                    } catch (e) {
+                        console.error('JSON parse error:', e.message);
+                        document.getElementById('attendanceTableBody').innerHTML = `
+                            <tr><td colspan="6" class="text-center text-red-500">
+                                ไม่สามารถดึงข้อมูลการเข้าเรียนได้: ${e.message}
+                            </td></tr>`;
+                    }
+                })
+                .catch(error => {
+                    console.error('Error fetching attendance:', error);
+                    document.getElementById('attendanceTableBody').innerHTML = `
+                        <tr><td colspan="6" class="text-center text-red-500">
+                            เกิดข้อผิดพลาดในการเชื่อมต่อ: ${error.message}
+                        </td></tr>`;
+                });
         }
 
-        fetch('add_attendance.php', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                student_id: studentId,
-                schedule_id: scheduleId,
-                scan_time: new Date(scanTime).toISOString().slice(0, 19).replace('T', ' '),
-                status: status
+
+        function getDayNameThai(day) {
+            const dayMapping = {
+                'Monday': 'วันจันทร์',
+                'Tuesday': 'วันอังคาร',
+                'Wednesday': 'วันพุธ',
+                'Thursday': 'วันพฤหัสบดี',
+                'Friday': 'วันศุกร์',
+                'Saturday': 'วันเสาร์',
+                'Sunday': 'วันอาทิตย์'
+            };
+            return dayMapping[day] || day;
+        }
+
+        function getValidDatesForCourse(course) {
+            if (!course || !course.schedules || course.schedules.length === 0) return [];
+
+            const semester = course.semester.toLowerCase();
+            const year = parseInt(course.c_year);
+            const range = {
+                'first': { startMonth: 6, startDay: 24, endMonth: 11, endDay: 4 },
+                'second': { startMonth: 11, startDay: 25, endMonth: 3, endDay: 31 },
+                'summer': { startMonth: 4, startDay: 21, endMonth: 6, endDay: 4 }
+            }[semester] || {};
+
+            let startDate = new Date(year, range.startMonth - 1, range.startDay || 1);
+            let endDate = new Date(year, range.endMonth - 1, range.endDay || 1);
+            if (semester === 'second' && range.endMonth < range.startMonth) {
+                endDate = new Date(year + 1, range.endMonth - 1, range.endDay || 1);
+            }
+
+            const dayMapping = {
+                'Monday': 1, 'Tuesday': 2, 'Wednesday': 3, 'Thursday': 4,
+                'Friday': 5, 'Saturday': 6, 'Sunday': 0
+            };
+
+            let validDates = [];
+            course.schedules.forEach(sched => {
+                const targetDay = dayMapping[sched.day_of_week];
+                let current = new Date(startDate);
+                while (current <= endDate) {
+                    if (current.getDay() === targetDay) {
+                        validDates.push(current.toISOString().split('T')[0]);
+                    }
+                    current.setDate(current.getDate() + 1);
+                }
+            });
+
+            validDates = [...new Set(validDates)].sort();
+            console.log('Valid dates for course:', course.course_id, validDates);
+            return validDates;
+        }
+
+        function updateDatePicker(courseId) {
+            const datePicker = document.getElementById('selectedDate');
+            const course = window.courses.find(c => c.course_id == courseId);
+            if (!course || !teachingSchedule[courseId]) {
+                console.error('Course or schedule not found for courseId:', courseId);
+                datePicker.disabled = true;
+                return;
+            }
+
+            const validDates = teachingSchedule[courseId];
+            if (validDates.length > 0) {
+                datePicker.disabled = false;
+                datePicker.min = validDates[0];
+                datePicker.max = validDates[validDates.length - 1];
+                const today = new Date().toISOString().split('T')[0];
+                const futureValidDate = validDates.find(date => date >= today) || validDates[validDates.length - 1];
+                datePicker.value = futureValidDate;
+            } else {
+                datePicker.disabled = true;
+            }
+
+            datePicker.onchange = function() {
+                const selectedDate = this.value;
+                if (!validDates.includes(selectedDate)) {
+                    console.log('Invalid date selected:', selectedDate);
+                    document.getElementById('scanResult').textContent = 'กรุณาเลือกวันที่มีการเรียนการสอนเท่านั้น';
+                    document.getElementById('scanResult').style.color = 'red';
+                    const nearestDate = validDates.reduce((nearest, date) => {
+                        return !nearest || Math.abs(new Date(date) - new Date(selectedDate)) < Math.abs(new Date(nearest) - new Date(selectedDate)) ? date : nearest;
+                    }, null);
+                    this.value = nearestDate;
+                }
+                showAttendance(courseId);
+            };
+        }
+
+        function updateCourseInfo(course) {
+            let scheduleInfo = 'ไม่มีตาราง';
+            if (course.schedules && course.schedules.length > 0) {
+                scheduleInfo = course.schedules.map(sched => 
+                    `${getDayNameThai(sched.day_of_week)} ${sched.start_time.slice(0, 5)} - ${sched.end_time.slice(0, 5)}`
+                ).join(' | ');
+            }
+            document.getElementById('courseInfo').innerHTML = `
+                <h3 class="text-lg font-bold">${course.course_code} ${course.course_name}</h3>
+                <p class="text-sm text-gray-600">
+                    กลุ่ม ${course.group_number} |
+                    ${scheduleInfo} |
+                    ภาคการศึกษาที่ <?php echo getSemesterThai($current_semester); ?>/${course.c_year}
+                </p>
+            `;
+        }
+
+        function updateAttendanceTable(records) {
+            const tbody = document.getElementById('attendanceTableBody');
+            tbody.innerHTML = '';
+
+            if (!records || records.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" class="text-center text-gray-500">ไม่มีข้อมูลการเข้าเรียน</td></tr>';
+                return;
+            }
+
+            records.forEach((record, index) => {
+                const row = document.createElement('tr');
+                row.className = `status-${record.status.toLowerCase()}`;
+                row.innerHTML = `
+                    <td>${index + 1}</td>
+                    <td>${record.student_id || 'N/A'}</td>
+                    <td>${record.name || 'Unknown'}</td>
+                    <td>${record.date}</td>
+                    <td class="font-medium">${translateStatus(record.status)}</td>
+                    <td><button class="edit-button" onclick="editAttendance('${record.student_id}', '${record.date}', '${record.status}')">แก้ไข</button></td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        function translateStatus(status) {
+            const statusMap = {
+                'present': 'มาเรียน',
+                'late': 'สาย',
+                'absent': 'ขาดเรียน',
+                'leave': 'ลา'
+            };
+            return statusMap[status.toLowerCase()] || status;
+        }
+
+        function showAddAttendanceForm(studentId = '', date = '', status = 'Present') {
+            const form = document.getElementById('addAttendanceForm');
+            form.style.display = 'block';
+            document.getElementById('studentId').value = studentId;
+            document.getElementById('attendanceStatus').value = status;
+            document.getElementById('scanTime').value = date ? new Date(date).toISOString().slice(0, 16) : '';
+        }
+
+        function hideAddAttendanceForm() {
+            document.getElementById('addAttendanceForm').style.display = 'none';
+            document.getElementById('manualAttendanceForm').reset();
+        }
+
+        function editAttendance(studentId, date, status) {
+            showAddAttendanceForm(studentId, date, status);
+        }
+
+        document.getElementById('manualAttendanceForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const studentId = document.getElementById('studentId').value;
+            const status = document.getElementById('attendanceStatus').value;
+            const scanTime = document.getElementById('scanTime').value;
+            const courseId = window.currentCourseId;
+            const scheduleId = window.currentScheduleId;
+
+            if (!courseId || !scheduleId) {
+                console.error('No course or schedule selected');
+                document.getElementById('scanResult').textContent = 'กรุณาเลือกวิชาก่อน';
+                document.getElementById('scanResult').style.color = 'red';
+                return;
+            }
+
+            fetch('add_attendance.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    student_id: studentId,
+                    schedule_id: scheduleId,
+                    scan_time: new Date(scanTime).toISOString().slice(0, 19).replace('T', ' '),
+                    status
+                })
             })
-        })
             .then(response => response.json())
             .then(data => {
                 if (data.error) throw new Error(data.error);
-                document.getElementById('scanResult').innerText = data.message || 'บันทึกการเข้าเรียนสำเร็จ';
+                document.getElementById('scanResult').textContent = data.message || 'บันทึกการเข้าเรียนสำเร็จ';
                 document.getElementById('scanResult').style.color = 'green';
                 hideAddAttendanceForm();
                 showAttendance(courseId);
             })
             .catch(error => {
                 console.error('Error adding attendance:', error);
-                document.getElementById('scanResult').innerText = 'เกิดข้อผิดพลาด: ' + error.message;
+                document.getElementById('scanResult').textContent = 'เกิดข้อผิดพลาด: ' + error.message;
                 document.getElementById('scanResult').style.color = 'red';
             });
-    });
+        });
 
-    function exportAttendance() {
-        const selectedCourseId = document.querySelector('.course-button.selected')?.dataset.courseId;
-        const selectedDate = document.getElementById('selectedDate').value;
-        if (!selectedCourseId) {
-            alert('กรุณาเลือกวิชา');
-            return;
+        function exportAttendance() {
+            const selectedCourseId = document.querySelector('.course-button.selected')?.dataset.courseId;
+            const selectedDate = document.getElementById('selectedDate').value;
+            if (!selectedCourseId) {
+                alert('กรุณาเลือกวิชา');
+                return;
+            }
+            window.location.href = `export_attendance.php?course_id=${selectedCourseId}&date=${selectedDate}`;
         }
-        window.location.href = `export_attendance.php?course_id=${selectedCourseId}&date=${selectedDate}`;
-    }
 
-    function updateAttendanceChart(statistics) {
-        console.log('Updating chart with statistics:', statistics);
-        if (currentChart) currentChart.destroy();
-        const ctx = document.getElementById('attendanceChart').getContext('2d');
-        if (!ctx) {
-            console.error('Canvas context not found for attendanceChart');
-            return;
-        }
-        currentChart = new Chart(ctx, {
-            type: 'pie',
-            data: {
-                labels: ['มาเรียน', 'สาย', 'ขาดเรียน'],
-                datasets: [{
-                    data: [
-                        statistics.present || 0,
-                        statistics.late || 0,
-                        statistics.absent || 0
-                    ],
-                    backgroundColor: ['#4CAF50', '#f0ad4e', '#d9534f']
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: { position: 'top' },
-                    tooltip: {
-                        callbacks: {
-                            label: function(context) {
-                                const value = context.raw;
-                                const total = (statistics.total && statistics.total > 0) ? statistics.total : (value || 0);
-                                const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
-                                return `${context.label}: ${value} คน (${percentage}%)`;
+        function updateAttendanceChart(statistics) {
+            console.log('Updating chart with statistics:', statistics);
+            if (currentChart) currentChart.destroy();
+            const ctx = document.getElementById('attendanceChart').getContext('2d');
+            if (!ctx) {
+                console.error('Canvas context not found for attendanceChart');
+                return;
+            }
+            currentChart = new Chart(ctx, {
+                type: 'pie',
+                data: {
+                    labels: ['มาเรียน', 'สาย', 'ขาดเรียน'],
+                    datasets: [{
+                        data: [
+                            statistics.present || 0,
+                            statistics.late || 0,
+                            statistics.absent || 0
+                        ],
+                        backgroundColor: ['#4CAF50', '#f0ad4e', '#d9534f']
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'top' },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const value = context.raw;
+                                    const total = (statistics.total && statistics.total > 0) ? statistics.total : (value || 0);
+                                    const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+                                    return `${context.label}: ${value} คน (${percentage}%)`;
+                                }
                             }
                         }
                     }
                 }
+            });
+        }
+
+        function startAutoRefresh() {
+            let errorCount = 0;
+            setInterval(() => {
+                if (errorCount >= 3) {
+                    console.warn('Stopping auto-refresh due to repeated errors');
+                    return;
+                }
+                const selectedCourseId = document.querySelector('.course-button.selected')?.dataset.courseId;
+                if (selectedCourseId && !window.scanning) {
+                    showAttendance(selectedCourseId);
+                }
+            }, 30000);
+        }
+
+        function logout() {
+            if (window.scanning) window.stopFaceScan?.();
+            window.location.href = 'logout.php';
+        }
+
+        window.addEventListener('beforeunload', () => {
+            if (window.scanning) {
+                fetch('http://127.0.0.1:5000/stop_scan', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                }).catch(error => console.error("Error stopping scan on unload:", error));
+            }
+            if (window.stream) {
+                window.stream.getTracks().forEach(track => track.stop());
             }
         });
-    }
 
-    function startAutoRefresh() {
-        setInterval(() => {
-            const selectedCourseId = document.querySelector('.course-button.selected')?.dataset.courseId;
-            if (selectedCourseId && !window.scanning) {
-                showAttendance(selectedCourseId);
-            }
-        }, 30000);
-    }
+        document.getElementById('startScanBtn').onclick = function() {
+            const courseId = window.currentCourseId;
+            const course = window.courses.find(c => c.course_id == courseId);
+            const selectedDate = document.getElementById('selectedDate').value;
+            const selectedDay = new Date(selectedDate).toLocaleString('en-US', { weekday: 'long' });
 
-    function logout() {
-        if (window.scanning) window.stopFaceScan?.();
-        window.location.href = 'logout.php';
-    }
+            console.log('Start scan button clicked:', { courseId, scheduleId: window.currentScheduleId });
 
-    window.addEventListener('beforeunload', () => {
-        if (window.scanning) {
-            fetch('http://127.0.0.1:5000/stop_scan', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' }
-            }).catch(error => console.error("Error stopping scan on unload:", error));
-        }
-        if (window.stream) {
-            window.stream.getTracks().forEach(track => track.stop());
-        }
-    });
-
-    document.getElementById('startScanBtn').onclick = function() {
-        const courseId = window.currentCourseId;
-        const course = window.courses.find(c => c.course_id == courseId);
-        const selectedDate = document.getElementById('selectedDate').value;
-        const selectedDay = new Date(selectedDate).toLocaleString('en-US', { weekday: 'long' });
-
-        console.log('Start scan button clicked:', { courseId, scheduleId: window.currentScheduleId });
-
-        if (!course) {
-            console.log('No course selected');
-            document.getElementById('scanResult').innerText = 'กรุณาเลือกวิชา';
-            document.getElementById('scanResult').style.color = 'red';
-            return;
-        }
-
-        if (!window.currentScheduleId) {
-            console.log('No scheduleId found');
-            const scheduleDays = course.schedules.map(sched => getDayNameThai(sched.day_of_week)).join(', ');
-            document.getElementById('scanResult').innerText = `ไม่พบตารางเรียนสำหรับวันนี้ (${getDayNameThai(selectedDay)})`;
-            document.getElementById('scanResult').style.color = 'red';
-            window.currentScheduleId = course.schedules[0]?.schedule_id || null;
-            if (!window.currentScheduleId) {
-                document.getElementById('scanResult').innerText = 'ไม่พบตารางเรียนสำหรับวิชานี้';
+            if (!course) {
+                console.log('No course selected');
+                document.getElementById('scanResult').textContent = 'กรุณาเลือกวิชา';
                 document.getElementById('scanResult').style.color = 'red';
                 return;
             }
-        }
 
-        if (typeof window.startFaceScan === 'function') {
-            console.log('Starting face scan with:', { teacherId, scheduleId: window.currentScheduleId });
-            document.getElementById('scanResult').innerText = 'กำลังเริ่มการสแกน...';
-            document.getElementById('scanResult').style.color = 'blue';
-            window.startFaceScan(teacherId, window.currentScheduleId);
-        } else {
-            console.error('startFaceScan function not found.');
-            document.getElementById('scanResult').innerText = 'ไม่สามารถเริ่มการสแกนใบหน้าได้ กรุณาตรวจสอบการเชื่อมต่อหรือติดต่อผู้ดูแลระบบ';
-            document.getElementById('scanResult').style.color = 'red';
-        }
-    };
-</script>
+            if (!window.currentScheduleId) {
+                console.warn('No scheduleId found');
+                const scheduleDays = course.schedules?.map(sched => getDayNameThai(sched.day_of_week)).join(', ') || '';
+                document.getElementById('scanResult').textContent = `ไม่มีตารางเรียนสำหรับวันนี้ (${getDayNameThai(selectedDay)})`;
+                document.getElementById('scanResult').style.color = 'red';
+                window.currentScheduleId = course.schedules[0]?.schedule_id || null;
+                if (!window.currentScheduleId) {
+                    document.getElementById('scanResult').textContent = 'ไม่พบตารางเรียนสำหรับวิชานี้';
+                    return;
+                }
+            }
 
+            if (typeof window.startFaceScan === 'function') {
+                console.log('Starting face scan with:', { teacherId, scheduleId: window.currentScheduleId });
+                document.getElementById('scanResult').textContent = 'กำลังเริ่มการสแกน...';
+                document.getElementById('scanResult').style.color = 'blue';
+                window.startFaceScan(teacherId, window.currentScheduleId);
+            } else {
+                console.error('startFaceScan function not found.');
+                document.getElementById('scanResult').textContent = 'ไม่สามารถเริ่มการสแกนใบหน้าได้';
+                document.getElementById('scanResult').style.color = 'red';
+            }
+        };
+    </script>
 </body>
 </html>
-

@@ -538,14 +538,14 @@ function getSemesterThai($semester) {
     <div class="admin-container">
         <aside class="sidebar">
             <ul>
-                <li><a href="admin_dashboard.php">แดชบอร์ด</a></li>
-                <li><a href="manage_users.php">จัดการผู้ใช้</a></li>
-                <li><a href="add_users.php">เพิ่มผู้ใช้</a></li>
-                <li><a href="manage_course.php">จัดการวิชา</a></li>
-                <li><a href="add_course.php">เพิ่มวิชา</a></li>
-                <li><a href="manage_enrollments.php">จัดการการลงทะเบียน</a></li>
-                <li><a href="enroll_student.php">ลงทะเบียนนิสิต</a></li>
-                <li><a href="logout.php">ออกจากระบบ</a></li>
+                <li><a href="/attend_system/admin/admin_dashboard.php">Dashboard</a></li>
+                <li><a href="/attend_system/admin/manage_users.php">Manage Users</a></li>
+                <li><a href="/attend_system/admin/add_users.php">Add User</a></li>
+                <li><a href="/attend_system/admin/manage_course.php">Manage Courses</a></li>
+                <li><a href="/attend_system/admin/add_course.php">Add Course</a></li>
+                <li><a href="/attend_system/admin/manage_enrollments.php">Manage Enrollments</a></li>
+                <li><a href="/attend_system/admin/enroll_student.php">Enroll Student</a></li>
+                <li><a href="/attend_system/logout.php">Logout</a></li>
             </ul>
         </aside>
         <div class="main-content">
