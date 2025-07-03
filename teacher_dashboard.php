@@ -18,8 +18,9 @@ if (!isset($_SESSION['teacher_id']) || !isset($_SESSION['user_role']) || $_SESSI
 }
 
 $teacher_id = $_SESSION['teacher_id'];
-$teacher_name = $_SESSION['teacher_name'] ?? 'อาจารย์';
+$teacher_name = $_SESSION['user_name'] ?? 'อาจารย์'; // ใช้ 'name' ตามตาราง teachers
 error_log("Teacher ID: " . var_export($teacher_id, true));
+error_log("Teacher Name: " . var_export($teacher_name, true)); // เพิ่มการล็อกเพื่อตรวจสอบ
 
 $get_courses_stmt = $conn->prepare("
     SELECT 
@@ -354,9 +355,7 @@ $conn->close();
                     </tbody>
                 </table>
             </div>
-            <div class="chart-container">
-                <canvas id="attendanceChart" style="width: 100%; height: 300px;"></canvas>
-            </div>
+            
         </div>
     </div>
 
@@ -373,7 +372,7 @@ $conn->close();
             console.log('DOM fully loaded');
             const initialStats = <?php echo json_encode($attendance_stats, JSON_UNESCAPED_UNICODE); ?>;
             console.log('Initial attendance stats:', initialStats);
-            updateAttendanceChart(initialStats);
+            //updateAttendanceChart(initialStats);
             window.initializeVideo?.();
             startAutoRefresh();
 
@@ -586,7 +585,7 @@ $conn->close();
             console.log('DOM fully loaded');
             const initialStats = <?php echo json_encode($attendance_stats, JSON_UNESCAPED_UNICODE); ?>;
             console.log('Initial attendance stats:', initialStats);
-            updateAttendanceChart(initialStats);
+            //updateAttendanceChart(initialStats);
             window.initializeVideo?.();
             startAutoRefresh();
 
@@ -693,7 +692,7 @@ $conn->close();
             console.log('DOM fully loaded');
             const initialStats = <?php echo json_encode($attendance_stats, JSON_UNESCAPED_UNICODE); ?>;
             console.log('Initial attendance stats:', initialStats);
-            updateAttendanceChart(initialStats);
+            //updateAttendanceChart(initialStats);
             window.initializeVideo?.();
             startAutoRefresh();
 
@@ -852,46 +851,7 @@ $conn->close();
             window.location.href = `export_attendance.php?course_id=${selectedCourseId}&date=${selectedDate}`;
         }
 
-        function updateAttendanceChart(statistics) {
-            console.log('Updating chart with statistics:', statistics);
-            if (currentChart) currentChart.destroy();
-            const ctx = document.getElementById('attendanceChart').getContext('2d');
-            if (!ctx) {
-                console.error('Canvas context not found for attendanceChart');
-                return;
-            }
-            currentChart = new Chart(ctx, {
-                type: 'pie',
-                data: {
-                    labels: ['มาเรียน', 'สาย', 'ขาดเรียน'],
-                    datasets: [{
-                        data: [
-                            statistics.present || 0,
-                            statistics.late || 0,
-                            statistics.absent || 0
-                        ],
-                        backgroundColor: ['#4CAF50', '#f0ad4e', '#d9534f']
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: { position: 'top' },
-                        tooltip: {
-                            callbacks: {
-                                label: function(context) {
-                                    const value = context.raw;
-                                    const total = (statistics.total && statistics.total > 0) ? statistics.total : (value || 0);
-                                    const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
-                                    return `${context.label}: ${value} คน (${percentage}%)`;
-                                }
-                            }
-                        }
-                    }
-                }
-            });
-        }
+        
 
         function startAutoRefresh() {
             let errorCount = 0;
