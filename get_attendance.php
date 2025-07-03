@@ -41,8 +41,6 @@ try {
         exit();
     }
 
-    error_log("get_attendance.php: user_role=$user_role, user_id=$user_id");
-
     // ตรวจสอบความเป็นเจ้าของวิชา
     if ($user_role === 'teacher') {
         $course_check = $conn->prepare("SELECT course_id FROM courses WHERE course_id = ? AND teacher_id = ?");
@@ -81,7 +79,7 @@ try {
         $schedule_ids[] = $row['schedule_id'];
     }
     $schedule_query->close();
-    error_log("get_attendance.php: schedule_ids=" . json_encode($schedule_ids));
+    error_log("get_attendance.php: Retrieved schedule_ids=" . json_encode($schedule_ids));
 
     if (empty($schedule_ids)) {
         error_log("get_attendance.php: No schedules found for course_id=$course_id");
@@ -155,7 +153,6 @@ try {
         error_log("get_attendance.php: Attendance data for date $date: " . json_encode($attendance_data[$date]));
     }
 
-    // สร้าง response
     $response = ['attendance' => $attendance_data, 'students' => $students];
     error_log("get_attendance.php: Sending response: " . json_encode($response));
     http_response_code(200);
@@ -171,7 +168,6 @@ try {
         'line' => $e->getLine()
     ], JSON_UNESCAPED_UNICODE);
 } finally {
-    // ปิด statement และ connection อย่างระมัดระวัง
     try {
         if (isset($stmt) && $stmt instanceof mysqli_stmt) {
             $stmt->close();
