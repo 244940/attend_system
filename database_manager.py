@@ -35,6 +35,16 @@ class DatabaseManager:
         except Exception as e:
             logging.error(f"Error fetching student info for {student_id}: {e}")
             return None
+        
+    def get_student_email(self, student_id):
+        try:
+            query = "SELECT email FROM students WHERE student_id = %s"
+            self.cursor.execute(query, (student_id,))
+            result = self.cursor.fetchone()
+            return result[0] if result else None
+        except Exception as e:
+            logging.error(f"Error getting student email: {e}")
+            return None
 
     def get_course_schedule_info(self, course_id, schedule_id):
         try:

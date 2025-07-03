@@ -190,7 +190,11 @@ function getDayNameThai($englishDay) {
 }
 
 function getSemesterThai($semester) {
-    $semesterMap = ['first' => '1', 'second' => '2', 'summer' => 'ฤดูร้อน'];
+    $semesterMap = [
+        'first' => 'ภาคการศึกษาที่ 1',
+        'second' => 'ภาคการศึกษาที่ 2',
+        'summer' => 'ภาคฤดูร้อน'
+    ];
     return $semesterMap[strtolower($semester)] ?? $semester;
 }
 
@@ -421,32 +425,7 @@ $conn->close();
         }
 
 
-        function updateViewDatePicker(courseId) {
-            const course = window.courses.find(c => c.course_id == courseId);
-            if (!course) return;
-
-            const validDates = getValidDatesForCourse(course);
-            const viewDatePicker = document.getElementById('viewDate');
-            if (!viewDatePicker) {
-                console.error('View date picker element not found');
-                return;
-            }
-
-            viewDatePicker.innerHTML = '<option value="">เลือกวันที่</option>'; // ล้างและเพิ่มตัวเลือกเริ่มต้น
-            validDates.forEach(date => {
-                const option = document.createElement('option');
-                option.value = date;
-                option.textContent = new Date(date).toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' });
-                viewDatePicker.appendChild(option);
-            });
-
-            // ตั้งค่าเริ่มต้นเป็นวันที่ล่าสุดถ้ามี
-            if (validDates.length > 0) {
-                viewDatePicker.value = validDates[validDates.length - 1];
-                loadAttendanceForDate(); // โหลดข้อมูลเริ่มต้น
-            }
-            console.log('View date picker updated with value:', viewDatePicker.value);
-        }
+        
 
         function loadAttendanceForDate() {
             const courseId = window.currentCourseId;
@@ -621,13 +600,17 @@ $conn->close();
             const range = {
                 'first': { startMonth: 6, startDay: 24, endMonth: 11, endDay: 4 },
                 'second': { startMonth: 11, startDay: 25, endMonth: 3, endDay: 31 },
-                'summer': { startMonth: 4, startDay: 21, endMonth: today.getMonth() + 1, endDay: today.getDate() } // ครอบคลุมถึง 2025-07-03
+                'summer': { startMonth: 4, startDay: 21, endMonth: 6, endDay: 17 } // ปรับให้จบที่ 06/17
             }[semester] || {};
 
             let startDate = new Date(year, range.startMonth - 1, range.startDay || 1);
             let endDate = new Date(year, range.endMonth - 1, range.endDay || 1);
             if (semester === 'second' && range.endMonth < range.startMonth) {
                 endDate = new Date(year + 1, range.endMonth - 1, range.endDay || 1);
+            }
+            // จำกัด endDate ไม่ให้เกินวันที่ปัจจุบัน (ถ้าต้องการ)
+            if (endDate > today) {
+                endDate = today;
             }
 
             const dayMapping = {
@@ -663,7 +646,7 @@ $conn->close();
                 return;
             }
 
-            datePicker.innerHTML = '<option value="">เลือกวันที่</option>'; // ล้างและเพิ่มตัวเลือกเริ่มต้น
+            datePicker.innerHTML = '<option value="">เลือกวันที่</option>';
             validDates.forEach(date => {
                 const option = document.createElement('option');
                 option.value = date;
@@ -671,11 +654,43 @@ $conn->close();
                 datePicker.appendChild(option);
             });
 
-            // ตั้งค่าเริ่มต้นเป็นวันที่ล่าสุดถ้ามี
-            if (validDates.length > 0) {
-                datePicker.value = validDates[validDates.length - 1];
+            const today = new Date('2025-07-03').toISOString().split('T')[0];
+            if (validDates.includes(today)) {
+                datePicker.value = today; // ใช้วันที่ปัจจุบันถ้ามี
+            } else if (validDates.length > 0) {
+                datePicker.value = validDates[validDates.length - 1]; // ใช้วันที่ล่าสุดถ้าไม่มีวันปัจจุบัน
             }
             console.log('Date picker updated with value:', datePicker.value);
+        }
+
+        function updateViewDatePicker(courseId) {
+            const course = window.courses.find(c => c.course_id == courseId);
+            if (!course) return;
+
+            const validDates = getValidDatesForCourse(course);
+            const viewDatePicker = document.getElementById('viewDate');
+            if (!viewDatePicker) {
+                console.error('View date picker element not found');
+                return;
+            }
+
+            viewDatePicker.innerHTML = '<option value="">เลือกวันที่</option>';
+            validDates.forEach(date => {
+                const option = document.createElement('option');
+                option.value = date;
+                option.textContent = new Date(date).toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' });
+                viewDatePicker.appendChild(option);
+            });
+
+            const today = new Date('2025-07-03').toISOString().split('T')[0];
+            if (validDates.includes(today)) {
+                viewDatePicker.value = today; // ใช้วันที่ปัจจุบันถ้ามี
+                loadAttendanceForDate(); // โหลดข้อมูลสำหรับวันปัจจุบัน
+            } else if (validDates.length > 0) {
+                viewDatePicker.value = validDates[validDates.length - 1];
+                loadAttendanceForDate(); // โหลดข้อมูลสำหรับวันที่ล่าสุด
+            }
+            console.log('View date picker updated with value:', viewDatePicker.value);
         }
 
         function selectDate() {
@@ -718,7 +733,7 @@ $conn->close();
                 <p class="text-sm text-gray-600">
                     กลุ่ม ${course.group_number} |
                     ${scheduleInfo} |
-                    ภาคการศึกษาที่ <?php echo getSemesterThai($current_semester); ?>/${course.c_year}
+                    ภาคการศึกษาที่ <?php echo getSemesterThai('${course.semester}'); ?>/${course.c_year}
                 </p>
             `;
         }

@@ -168,6 +168,9 @@ def process_frame():
             return jsonify({"error": "Face recognition failed"}), 500
 
         results = []
+        # ใช้ set เพื่อติดตาม student_id ที่บันทึกและส่งอีเมลแล้วในคำขอนี้
+        processed_students = set()
+
         for (top, right, bottom, left), face_encoding in zip(face_locations, face_encodings):
             name = "Unknown"
             student_id = None
@@ -189,7 +192,7 @@ def process_frame():
 
             attendance_text = "No attendance record"
             reason = None
-            if student_id is not None:
+            if student_id is not None and student_id not in processed_students:
                 try:
                     current_schedule, reason = db_manager.get_current_schedule(student_id, course_id, schedule_id)
                     logger.debug(f"Current schedule for student {student_id}: {current_schedule}, reason: {reason}")
@@ -206,14 +209,15 @@ def process_frame():
                                 attendance_text = f"คลาสสิ้นสุดแล้ว: {course_name}"
                             else:
                                 attendance_text = f"บันทึกการเข้างานสำหรับ {course_name} สถานะ: {status}"
+                                processed_students.add(student_id)  # เพิ่ม student_id ลงใน set
                         else:
                             attendance_text = f"รหัสตารางไม่ตรงกัน: {reason or 'ตารางไม่สอดคล้อง'}"
                     else:
                         if reason == "Outside schedule time":
-                            # Log absent status for late scans
                             status = db_manager.log_attendance(student_id, schedule_id, status='absent')
                             attendance_text = f"ขาด: ไม่อยู่ในช่วงเวลาคลาส"
                             logger.debug(f"Logged absent status for student {student_id} due to late scan")
+                            processed_students.add(student_id)  # เพิ่ม student_id ลงใน set
                         elif reason == "Not enrolled or invalid schedule":
                             attendance_text = "ไม่อยู่ในรายชื่อการลงทะเบียนเรียน"
                         else:
@@ -229,6 +233,28 @@ def process_frame():
                 "box": {"top": top, "right": right, "bottom": bottom, "left": left},
                 "reason": reason
             })
+
+        # ส่งอีเมลหลังจากประมวลผลทั้งหมด
+        for student_id in processed_students:
+            name = next((face['name'] for face in known_faces if face['id'] == student_id), "Unknown")
+            email = db_manager.get_student_email(student_id)
+            if email and name != "Unknown":
+                course_query = "SELECT course_name FROM courses WHERE course_id = %s"
+                db_manager.cursor.execute(course_query, (course_id,))
+                course_name = db_manager.cursor.fetchone()[0]
+                email_payload = {
+                    "to": email,
+                    "subject": "Attendance Confirmation",
+                    "body_template": f"Dear {name},\n\nYou have been recorded as present for {course_name} on {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}.\n\nBest regards,\nUniversity Attendance System",
+                    "course_name": course_name
+                }
+                email_response = requests.post("http://localhost:5001/api/send-email", json=email_payload)
+                if email_response.status_code == 200:
+                    logger.info(f"Email sent to {email} for student {student_id}")
+                else:
+                    logger.error(f"Failed to send email to {email}: {email_response.text}")
+            else:
+                logger.error(f"No email or unknown student for student_id: {student_id}")
 
         logger.info(f"Processed frame: course_id={course_id}, schedule_id={schedule_id}, results={len(results)}")
         return jsonify({"results": results})
