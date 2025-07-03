@@ -453,7 +453,10 @@ $conn->close();
                 return;
             }
 
-            fetch(`get_attendance.php?course_id=${encodeURIComponent(courseId)}&dates=${encodeURIComponent(JSON.stringify(validDates))}`)
+            // ส่งเฉพาะ selectedDate ไปยัง get_attendance.php
+            const datesToFetch = [selectedDate];
+
+            fetch(`get_attendance.php?course_id=${encodeURIComponent(courseId)}&dates=${encodeURIComponent(JSON.stringify(datesToFetch))}`)
                 .then(response => {
                     return response.text().then(text => {
                         return { status: response.status, text };
@@ -468,15 +471,16 @@ $conn->close();
                         }
                         const { attendance, students } = data;
                         const studentRecords = [];
+                        // จำกัดเฉพาะ student_id ที่อยู่ใน students จาก response และวันที่ที่เลือก
                         Object.keys(students).forEach(student_id => {
-                            validDates.forEach(date => {
+                            if (attendance[selectedDate] && attendance[selectedDate][student_id] !== undefined) {
                                 studentRecords.push({
                                     student_id,
                                     name: students[student_id] || `Student ID ${student_id}`,
-                                    date,
-                                    status: attendance[date]?.[student_id] || 'None'
+                                    date: selectedDate,
+                                    status: attendance[selectedDate][student_id] || 'None'
                                 });
-                            });
+                            }
                         });
                         console.log('Processed student records:', studentRecords);
                         updateAttendanceTable(studentRecords);
@@ -523,10 +527,11 @@ $conn->close();
 
             const semester = course.semester.toLowerCase();
             const year = parseInt(course.c_year);
+            const today = new Date(); // วันที่ปัจจุบัน: 2025-07-03
             const range = {
                 'first': { startMonth: 6, startDay: 24, endMonth: 11, endDay: 4 },
                 'second': { startMonth: 11, startDay: 25, endMonth: 3, endDay: 31 },
-                'summer': { startMonth: 4, startDay: 21, endMonth: 6, endDay: 4 }
+                'summer': { startMonth: 4, startDay: 21, endMonth: today.getMonth() + 1, endDay: today.getDate() } // ครอบคลุมถึง 2025-07-03
             }[semester] || {};
 
             let startDate = new Date(year, range.startMonth - 1, range.startDay || 1);
