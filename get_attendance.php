@@ -28,6 +28,7 @@ try {
     }
 
     error_log("get_attendance.php: course_id=$course_id, dates=" . json_encode($dates));
+    error_log("get_attendance.php: Session data=" . print_r($_SESSION, true));
 
     $user_role = $_SESSION['user_role'] ?? '';
     $user_id = null;
@@ -41,7 +42,6 @@ try {
         exit();
     }
 
-    // ตรวจสอบความเป็นเจ้าของวิชา
     if ($user_role === 'teacher') {
         $course_check = $conn->prepare("SELECT course_id FROM courses WHERE course_id = ? AND teacher_id = ?");
         $course_check->bind_param("ii", $course_id, $user_id);
@@ -66,7 +66,6 @@ try {
     $attendance_data = [];
     $stmt = null;
 
-    // ดึง schedule_id สำหรับ course_id
     $schedule_query = $conn->prepare("SELECT schedule_id FROM schedules WHERE course_id = ?");
     $schedule_query->bind_param("i", $course_id);
     if (!$schedule_query->execute()) {
@@ -91,7 +90,6 @@ try {
         exit();
     }
 
-    // ดึง student_id และชื่อสำหรับ course_id
     $student_query = $conn->prepare("
         SELECT DISTINCT e.student_id, COALESCE(s.name, '') AS name
         FROM enrollments e
@@ -118,13 +116,15 @@ try {
         }
 
         $query = "
-            SELECT s.student_id, COALESCE(a.status, 'Absent') as status
+            SELECT s.student_id, a.status
             FROM students s
             JOIN enrollments e ON s.student_id = e.student_id
             LEFT JOIN attendance a ON s.student_id = a.student_id 
                 AND DATE(a.scan_time) = ?
                 AND a.schedule_id IN (" . implode(',', array_fill(0, count($schedule_ids), '?')) . ")
             WHERE e.course_id = ?
+            ORDER BY a.scan_time DESC
+            LIMIT 1
         ";
 
         $stmt = $conn->prepare($query);
@@ -147,7 +147,7 @@ try {
         $result = $stmt->get_result();
         $attendance_data[$date] = array_fill_keys(array_keys($students), 'None');
         while ($row = $result->fetch_assoc()) {
-            $attendance_data[$date][$row['student_id']] = $row['status'];
+            $attendance_data[$date][$row['student_id']] = $row['status'] ?? 'None';
         }
         $stmt->close();
         error_log("get_attendance.php: Attendance data for date $date: " . json_encode($attendance_data[$date]));

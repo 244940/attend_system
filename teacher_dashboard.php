@@ -308,7 +308,13 @@ $conn->close();
                 <form id="manualAttendanceForm">
                     <div class="mb-2">
                         <label class="block text-sm font-medium">รหัสนิสิต</label>
-                        <input type="text" id="studentId" class="border border-gray-300 rounded px-4 py-2 w-full" required>
+                        <input type="text" id="studentId" class="border border-gray-300 rounded px-4 py-2 w-full" required placeholder="พิมพ์รหัสนิสิต" oninput="suggestStudentIds()">
+                        <div id="idSuggestions" class="border border-gray-300 rounded mt-1 max-h-40 overflow-y-auto hidden"></div>
+                    </div>
+                    <div class="mb-2">
+                        <label class="block text-sm font-medium">ชื่อ-นามสกุล</label>
+                        <input type="text" id="studentName" class="border border-gray-300 rounded px-4 py-2 w-full" required placeholder="พิมพ์ชื่อ" oninput="suggestStudentNames()">
+                        <div id="nameSuggestions" class="border border-gray-300 rounded mt-1 max-h-40 overflow-y-auto hidden"></div>
                     </div>
                     <div class="mb-2">
                         <label class="block text-sm font-medium">สถานะ</label>
@@ -379,6 +385,42 @@ $conn->close();
                 });
             });
         });
+
+        let enrolledStudents = {}; // เก็บรายชื่อและรหัสนิสิตที่ลงทะเบียน
+
+        function suggestStudentIds() {
+            const input = document.getElementById('studentId');
+            const suggestions = document.getElementById('idSuggestions');
+            const query = input.value.toLowerCase();
+
+            if (!query) {
+                suggestions.classList.add('hidden');
+                return;
+            }
+
+            suggestions.innerHTML = '';
+            const matches = Object.keys(enrolledStudents).filter(studentId =>
+                studentId.includes(query)
+            ).slice(0, 5); // แสดงสูงสุด 5 รายการ
+
+            if (matches.length > 0) {
+                matches.forEach(studentId => {
+                    const div = document.createElement('div');
+                    div.textContent = `${studentId} (${enrolledStudents[studentId]})`;
+                    div.className = 'p-2 hover:bg-gray-200 cursor-pointer';
+                    div.onclick = () => {
+                        input.value = studentId;
+                        document.getElementById('studentName').value = enrolledStudents[studentId];
+                        suggestions.classList.add('hidden');
+                    };
+                    suggestions.appendChild(div);
+                });
+                suggestions.classList.remove('hidden');
+            } else {
+                suggestions.classList.add('hidden');
+            }
+        }
+
 
         function updateViewDatePicker(courseId) {
             const course = window.courses.find(c => c.course_id == courseId);
@@ -529,6 +571,19 @@ $conn->close();
 
             document.getElementById('attendanceSection').style.display = 'block';
             // โหลดข้อมูลเริ่มต้นจาก #viewDate
+
+            // ดึงรายชื่อนักเรียนที่ลงทะเบียน
+            fetch(`get_enrolled_students.php?course_id=${encodeURIComponent(courseId)}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.error) throw new Error(data.error);
+                    enrolledStudents = data.students || {};
+                    console.log('Enrolled students:', enrolledStudents);
+                })
+                .catch(error => {
+                    console.error('Error fetching enrolled students:', error);
+                    enrolledStudents = {};
+                });
         }
 
         // เรียก updateDatePicker เมื่อโหลดหน้าและเมื่อเลือกวิชา (สำหรับการสแกนหน้า)
@@ -708,26 +763,67 @@ $conn->close();
             return statusMap[status.toLowerCase()] || status;
         }
 
-        function showAddAttendanceForm(studentId = '', date = '', status = 'Present') {
+        
+        function suggestStudentNames() {
+            const input = document.getElementById('studentName');
+            const suggestions = document.getElementById('nameSuggestions');
+            const query = input.value.toLowerCase();
+
+            if (!query) {
+                suggestions.classList.add('hidden');
+                return;
+            }
+
+            suggestions.innerHTML = '';
+            const matches = Object.entries(enrolledStudents).filter(([studentId, name]) =>
+                name.toLowerCase().includes(query)
+            ).slice(0, 5); // แสดงสูงสุด 5 รายการ
+
+            if (matches.length > 0) {
+                matches.forEach(([studentId, name]) => {
+                    const div = document.createElement('div');
+                    div.textContent = `${name} (${studentId})`;
+                    div.className = 'p-2 hover:bg-gray-200 cursor-pointer';
+                    div.onclick = () => {
+                        input.value = name;
+                        document.getElementById('studentId').value = studentId;
+                        suggestions.classList.add('hidden');
+                    };
+                    suggestions.appendChild(div);
+                });
+                suggestions.classList.remove('hidden');
+            } else {
+                suggestions.classList.add('hidden');
+            }
+        }
+
+        function showAddAttendanceForm(studentId = '', studentName = '', date = '', status = 'Present') {
             const form = document.getElementById('addAttendanceForm');
             form.style.display = 'block';
             document.getElementById('studentId').value = studentId;
+            document.getElementById('studentName').value = studentName || (studentId ? enrolledStudents[studentId] : '');
             document.getElementById('attendanceStatus').value = status;
             document.getElementById('scanTime').value = date ? new Date(date).toISOString().slice(0, 16) : '';
+            document.getElementById('idSuggestions').classList.add('hidden');
+            document.getElementById('nameSuggestions').classList.add('hidden');
         }
 
         function hideAddAttendanceForm() {
             document.getElementById('addAttendanceForm').style.display = 'none';
             document.getElementById('manualAttendanceForm').reset();
+            document.getElementById('idSuggestions').classList.add('hidden');
+            document.getElementById('nameSuggestions').classList.add('hidden');
         }
 
-        function editAttendance(studentId, date, status) {
-            showAddAttendanceForm(studentId, date, status);
+        
+        function editAttendance(studentName, studentId, date, status) {
+            showAddAttendanceForm(studentName, studentId, date, status);
         }
 
         document.getElementById('manualAttendanceForm').addEventListener('submit', function(e) {
             e.preventDefault();
             const studentId = document.getElementById('studentId').value;
+            const studentName = document.getElementById('studentName').value;
             const status = document.getElementById('attendanceStatus').value;
             const scanTime = document.getElementById('scanTime').value;
             const courseId = window.currentCourseId;
@@ -736,6 +832,13 @@ $conn->close();
             if (!courseId || !scheduleId) {
                 console.error('No course or schedule selected');
                 document.getElementById('scanResult').textContent = 'กรุณาเลือกวิชาก่อน';
+                document.getElementById('scanResult').style.color = 'red';
+                return;
+            }
+
+            const expectedName = enrolledStudents[studentId] || '';
+            if (expectedName && expectedName !== studentName) {
+                document.getElementById('scanResult').textContent = 'ชื่อและรหัสนิสิตไม่ตรงกัน';
                 document.getElementById('scanResult').style.color = 'red';
                 return;
             }
@@ -755,8 +858,9 @@ $conn->close();
                 if (data.error) throw new Error(data.error);
                 document.getElementById('scanResult').textContent = data.message || 'บันทึกการเข้าเรียนสำเร็จ';
                 document.getElementById('scanResult').style.color = 'green';
+                // เรียกโหลดข้อมูลใหม่ทันทีหลังบันทึก
+                loadAttendanceForDate();
                 hideAddAttendanceForm();
-                showAttendance(courseId);
             })
             .catch(error => {
                 console.error('Error adding attendance:', error);
@@ -764,6 +868,7 @@ $conn->close();
                 document.getElementById('scanResult').style.color = 'red';
             });
         });
+
 
         function exportAttendance() {
             const selectedCourseId = document.querySelector('.course-button.selected')?.dataset.courseId;
