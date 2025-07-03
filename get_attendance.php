@@ -66,7 +66,7 @@ try {
     $attendance_data = [];
     $stmt = null;
 
-    $schedule_query = $conn->prepare("SELECT schedule_id FROM schedules WHERE course_id = ?");
+    $schedule_query = $conn->prepare("SELECT schedule_id, start_time, end_time FROM schedules WHERE course_id = ?");
     $schedule_query->bind_param("i", $course_id);
     if (!$schedule_query->execute()) {
         error_log("get_attendance.php: Schedule query execution failed: " . $schedule_query->error);
@@ -74,8 +74,13 @@ try {
     }
     $schedule_result = $schedule_query->get_result();
     $schedule_ids = [];
+    $schedule_times = []; // เก็บ start_time และ end_time ของแต่ละ schedule_id
     while ($row = $schedule_result->fetch_assoc()) {
         $schedule_ids[] = $row['schedule_id'];
+        $schedule_times[$row['schedule_id']] = [
+            'start_time' => $row['start_time'],
+            'end_time' => $row['end_time']
+        ];
     }
     $schedule_query->close();
     error_log("get_attendance.php: Retrieved schedule_ids=" . json_encode($schedule_ids));
@@ -109,48 +114,58 @@ try {
     $student_query->close();
     error_log("get_attendance.php: students=" . json_encode(array_keys($students)));
 
+    $current_datetime = new DateTime('now', new DateTimeZone('Asia/Bangkok')); // ใช้เวลาในโซน +07
+
     foreach ($dates as $date) {
         if (!DateTime::createFromFormat('Y-m-d', $date)) {
             $attendance_data[$date] = array_fill_keys(array_keys($students), 'None');
             continue;
         }
 
+        $date_obj = DateTime::createFromFormat('Y-m-d', $date);
+        $is_past_date = $date_obj < $current_datetime->setTime(0, 0, 0); // เปรียบเทียบวันที่
+
         $query = "
             SELECT s.student_id, a.status
             FROM students s
             JOIN enrollments e ON s.student_id = e.student_id
-            LEFT JOIN attendance a ON s.student_id = a.student_id 
-                AND DATE(a.scan_time) = ?
-                AND a.schedule_id IN (" . implode(',', array_fill(0, count($schedule_ids), '?')) . ")
+            LEFT JOIN (
+                SELECT student_id, status, scan_time
+                FROM attendance
+                WHERE schedule_id IN (" . implode(',', array_fill(0, count($schedule_ids), '?')) . ")
+                AND DATE(scan_time) = ?
+                ORDER BY scan_time DESC
+                LIMIT 1
+            ) a ON s.student_id = a.student_id
             WHERE e.course_id = ?
-            ORDER BY a.scan_time DESC
-            LIMIT 1
         ";
 
         $stmt = $conn->prepare($query);
         if (!$stmt) {
             error_log("get_attendance.php: Failed to prepare query for date=$date: " . $conn->error);
-            $attendance_data[$date] = array_fill_keys(array_keys($students), 'None');
+            $attendance_data[$date] = array_fill_keys(array_keys($students), $is_past_date ? 'Absent' : 'None');
             continue;
         }
 
-        $bind_params = array_merge([$date], $schedule_ids, [$course_id]);
-        $bind_types = 's' . str_repeat('i', count($schedule_ids)) . 'i';
+        $bind_params = array_merge($schedule_ids, [$date], [$course_id]);
+        $bind_types = str_repeat('i', count($schedule_ids)) . 'si';
         $stmt->bind_param($bind_types, ...$bind_params);
 
         if (!$stmt->execute()) {
             error_log("get_attendance.php: Query execution failed for date=$date: " . $stmt->error);
-            $attendance_data[$date] = array_fill_keys(array_keys($students), 'None');
+            $attendance_data[$date] = array_fill_keys(array_keys($students), $is_past_date ? 'Absent' : 'None');
             continue;
         }
 
         $result = $stmt->get_result();
-        $attendance_data[$date] = array_fill_keys(array_keys($students), 'None');
+        $attendance_data[$date] = array_fill_keys(array_keys($students), $is_past_date ? 'Absent' : 'None');
         while ($row = $result->fetch_assoc()) {
-            $attendance_data[$date][$row['student_id']] = $row['status'] ?? 'None';
+            if ($row['status'] !== null) {
+                $attendance_data[$date][$row['student_id']] = $row['status'];
+            }
         }
         $stmt->close();
-        error_log("get_attendance.php: Attendance data for date $date: " . json_encode($attendance_data[$date]));
+        error_log("Attendance data for date $date before sending: " . json_encode($attendance_data[$date]));
     }
 
     $response = ['attendance' => $attendance_data, 'students' => $students];

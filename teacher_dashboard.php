@@ -451,58 +451,53 @@ $conn->close();
 
         function loadAttendanceForDate() {
             const courseId = window.currentCourseId;
-            const viewDate = document.getElementById('viewDate').value;
-            if (!courseId || !viewDate) {
-                console.warn('No course or date selected for viewing attendance');
-                document.getElementById('attendanceTableBody').innerHTML = '<tr><td colspan="6" class="text-center text-gray-500">กรุณาเลือกวันที่</td></tr>';
+            const selectedDate = document.getElementById('viewDate').value;
+            if (!courseId || !selectedDate) return;
+
+            fetch(`get_attendance.php?course_id=${courseId}&dates=${JSON.stringify([selectedDate])}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.error) throw new Error(data.error);
+                    console.log('Loaded attendance data:', data); // ตรวจสอบข้อมูล
+                    updateAttendanceTable(data.attendance[selectedDate] || {}, data.students);
+                })
+                .catch(error => {
+                    console.error('Error loading attendance:', error);
+                    document.getElementById('scanResult').textContent = 'เกิดข้อผิดพลาดในการโหลดข้อมูล: ' + error.message;
+                    document.getElementById('scanResult').style.color = 'red';
+                });
+        }
+
+        function updateAttendanceTable(attendanceData, students) {
+            const tableBody = document.getElementById('attendanceTableBody');
+            tableBody.innerHTML = '';
+
+            // Ensure attendanceData and students are valid objects
+            if (typeof attendanceData !== 'object' || attendanceData === null || typeof students !== 'object') {
+                console.error('Invalid attendance data or students:', { attendanceData, students });
                 return;
             }
 
-            const datesToFetch = [viewDate];
-            fetch(`get_attendance.php?course_id=${encodeURIComponent(courseId)}&dates=${encodeURIComponent(JSON.stringify(datesToFetch))}`)
-                .then(response => response.text().then(text => ({ status: response.status, text })))
-                .then(({ status, text }) => {
-                    console.log('Raw response from get_attendance.php for view:', text);
-                    try {
-                        const data = JSON.parse(text);
-                        if (data.error) throw new Error(data.error);
-                        const { attendance, students } = data;
-                        const studentRecords = [];
-                        Object.keys(students).forEach(student_id => {
-                            if (attendance[viewDate] && attendance[viewDate][student_id] !== undefined) {
-                                studentRecords.push({
-                                    student_id,
-                                    name: students[student_id] || `Student ID ${student_id}`,
-                                    date: viewDate,
-                                    status: attendance[viewDate][student_id] || 'None'
-                                });
-                            }
-                        });
-                        console.log('Processed student records for view:', studentRecords);
-                        updateAttendanceTable(studentRecords);
-                        const stats = { present: 0, late: 0, absent: 0, total: studentRecords.length };
-                        studentRecords.forEach(record => {
-                            if (record.status.toLowerCase() === 'present') stats.present++;
-                            else if (record.status.toLowerCase() === 'late') stats.late++;
-                            else if (record.status.toLowerCase() === 'absent') stats.absent++;
-                        });
-                        updateAttendanceChart(stats);
-                    } catch (e) {
-                        console.error('JSON parse error for view:', e.message);
-                        document.getElementById('attendanceTableBody').innerHTML = `
-                            <tr><td colspan="6" class="text-center text-red-500">
-                                ไม่สามารถดึงข้อมูลการเข้าเรียนได้: ${e.message}
-                            </td></tr>`;
-                    }
-                })
-                .catch(error => {
-                    console.error('Error fetching attendance for view:', error);
-                    document.getElementById('attendanceTableBody').innerHTML = `
-                        <tr><td colspan="6" class="text-center text-red-500">
-                            เกิดข้อผิดพลาดในการเชื่อมต่อ: ${error.message}
-                        </td></tr>`;
-                });
+            let index = 1;
+            for (const studentId in students) {
+                if (students.hasOwnProperty(studentId)) {
+                    const status = attendanceData[studentId] || 'None'; // Default to 'None' if no status
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${index++}</td>
+                        <td>${studentId}</td>
+                        <td>${students[studentId]}</td>
+                        <td>${document.getElementById('viewDate').value || 'N/A'}</td>
+                        <td class="status-${status.toLowerCase().replace(' ', '-') || 'none'}">${translateStatus(status)}</td>
+                        <td>
+                            <button onclick="editAttendance('${students[studentId]}', '${studentId}', '${document.getElementById('viewDate').value}', '${status}')" class="edit-button">แก้ไข</button>
+                        </td>
+                    `;
+                    tableBody.appendChild(row);
+                }
+            }
         }
+
 
         function showAttendance(courseId) {
             console.log('showAttendance called with courseId:', courseId);
@@ -729,30 +724,7 @@ $conn->close();
             `;
         }
 
-        function updateAttendanceTable(records) {
-            const tbody = document.getElementById('attendanceTableBody');
-            tbody.innerHTML = '';
-
-            if (!records || records.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="6" class="text-center text-gray-500">ไม่มีข้อมูลการเข้าเรียน</td></tr>';
-                return;
-            }
-
-            records.forEach((record, index) => {
-                const row = document.createElement('tr');
-                row.className = `status-${record.status.toLowerCase()}`;
-                row.innerHTML = `
-                    <td>${index + 1}</td>
-                    <td>${record.student_id || 'N/A'}</td>
-                    <td>${record.name || 'Unknown'}</td>
-                    <td>${record.date}</td>
-                    <td class="font-medium">${translateStatus(record.status)}</td>
-                    <td><button class="edit-button" onclick="editAttendance('${record.student_id}', '${record.date}', '${record.status}')">แก้ไข</button></td>
-                `;
-                tbody.appendChild(row);
-            });
-        }
-
+        
         function translateStatus(status) {
             const statusMap = {
                 'present': 'มาเรียน',
