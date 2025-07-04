@@ -392,37 +392,37 @@ $conn->close();
         let enrolledStudents = {}; // เก็บรายชื่อและรหัสนิสิตที่ลงทะเบียน
 
         function suggestStudentIds() {
-            const input = document.getElementById('studentId');
-            const suggestions = document.getElementById('idSuggestions');
-            const query = input.value.toLowerCase();
+        const input = document.getElementById('studentId');
+        const suggestions = document.getElementById('idSuggestions');
+        const query = input.value.toLowerCase();
 
-            if (!query) {
-                suggestions.classList.add('hidden');
-                return;
-            }
-
-            suggestions.innerHTML = '';
-            const matches = Object.keys(enrolledStudents).filter(studentId =>
-                studentId.includes(query)
-            ).slice(0, 5); // แสดงสูงสุด 5 รายการ
-
-            if (matches.length > 0) {
-                matches.forEach(studentId => {
-                    const div = document.createElement('div');
-                    div.textContent = `${studentId} (${enrolledStudents[studentId]})`;
-                    div.className = 'p-2 hover:bg-gray-200 cursor-pointer';
-                    div.onclick = () => {
-                        input.value = studentId;
-                        document.getElementById('studentName').value = enrolledStudents[studentId];
-                        suggestions.classList.add('hidden');
-                    };
-                    suggestions.appendChild(div);
-                });
-                suggestions.classList.remove('hidden');
-            } else {
-                suggestions.classList.add('hidden');
-            }
+        if (!query) {
+            suggestions.classList.add('hidden');
+            return;
         }
+
+        suggestions.innerHTML = '';
+        const matches = Object.keys(enrolledStudents).filter(studentId =>
+            studentId.includes(query) || enrolledStudents[studentId].toLowerCase().includes(query)
+        ).slice(0, 5);
+
+        if (matches.length > 0) {
+            matches.forEach(studentId => {
+                const div = document.createElement('div');
+                div.textContent = `${studentId} (${enrolledStudents[studentId]})`;
+                div.className = 'p-2 hover:bg-gray-200 cursor-pointer';
+                div.onclick = () => {
+                    input.value = studentId; // Set to numeric student_id
+                    document.getElementById('studentName').value = enrolledStudents[studentId];
+                    suggestions.classList.add('hidden');
+                };
+                suggestions.appendChild(div);
+            });
+            suggestions.classList.remove('hidden');
+        } else {
+            suggestions.classList.add('hidden');
+        }
+    }
 
 
         
@@ -591,124 +591,124 @@ $conn->close();
         }
 
         function getValidDatesForCourse(course) {
-            if (!course || !course.schedules || course.schedules.length === 0) return [];
+        if (!course || !course.schedules || course.schedules.length === 0) return [];
 
-            const semester = course.semester.toLowerCase();
-            const year = parseInt(course.c_year);
-            const today = new Date(); // วันที่ปัจจุบัน
-            const range = {
-                'first': { startMonth: 6, startDay: 24, endMonth: 11, endDay: 4 },
-                'second': { startMonth: 11, startDay: 25, endMonth: 3, endDay: 31 },
-                'summer': { startMonth: 4, startDay: 21, endMonth: 6, endDay: 17 }
-            }[semester] || {};
+        const semester = course.semester.toLowerCase();
+        const year = parseInt(course.c_year);
+        const today = new Date(); // Current date (2025-07-04)
+        const range = {
+            'first': { startMonth: 6, startDay: 24, endMonth: 11, endDay: 4 },
+            'second': { startMonth: 11, startDay: 25, endMonth: 3, endDay: 31 },
+            'summer': { startMonth: 4, startDay: 21, endMonth: 6, endDay: 17 }
+        }[semester] || {};
 
-            let startDate = new Date(year, range.startMonth - 1, range.startDay || 1);
-            let endDate = new Date(year, range.endMonth - 1, range.endDay || 1);
-            if (semester === 'second' && range.endMonth < range.startMonth) {
-                endDate = new Date(year + 1, range.endMonth - 1, range.endDay || 1);
-            }
-            // ตรวจสอบว่า endDate ครอบคลุมถึงวันปัจจุบันถ้าอยู่ในช่วง
-            if (today >= startDate && today <= endDate) {
-                endDate = today;
-            }
-
-            const dayMapping = {
-                'Monday': 1, 'Tuesday': 2, 'Wednesday': 3, 'Thursday': 4,
-                'Friday': 5, 'Saturday': 6, 'Sunday': 0
-            };
-
-            let validDates = [];
-            course.schedules.forEach(sched => {
-                const targetDay = dayMapping[sched.day_of_week];
-                let current = new Date(startDate);
-                while (current <= endDate) {
-                    if (current.getDay() === targetDay) {
-                        validDates.push(current.toISOString().split('T')[0]);
-                    }
-                    current.setDate(current.getDate() + 1);
-                }
-            });
-
-            validDates = [...new Set(validDates)].sort();
-            // เพิ่มวันปัจจุบันถ้ามีในช่วงและตรงกับ day_of_week
-            const todayStr = today.toISOString().split('T')[0];
-            if (today >= startDate && today <= endDate) {
-                const todayDay = today.getDay();
-                if (course.schedules.some(sched => dayMapping[sched.day_of_week] === todayDay)) {
-                    if (!validDates.includes(todayStr)) validDates.push(todayStr);
-                    validDates.sort();
-                }
-            }
-            console.log('Valid dates for course:', course.course_id, validDates);
-            return validDates;
+        let startDate = new Date(year, range.startMonth - 1, range.startDay || 1);
+        let endDate = new Date(year, range.endMonth - 1, range.endDay || 1);
+        if (semester === 'second' && range.endMonth < range.startMonth) {
+            endDate = new Date(year + 1, range.endMonth - 1, range.endDay || 1);
         }
+        // Include current date if within semester
+        if (today >= startDate && today <= endDate) {
+            endDate = today;
+        }
+
+        const dayMapping = {
+            'Monday': 1, 'Tuesday': 2, 'Wednesday': 3, 'Thursday': 4,
+            'Friday': 5, 'Saturday': 6, 'Sunday': 0
+        };
+
+        let validDates = [];
+        course.schedules.forEach(sched => {
+            const targetDay = dayMapping[sched.day_of_week];
+            let current = new Date(startDate);
+            while (current <= endDate) {
+                if (current.getDay() === targetDay) {
+                    validDates.push(current.toISOString().split('T')[0]);
+                }
+                current.setDate(current.getDate() + 1);
+            }
+        });
+
+        validDates = [...new Set(validDates)].sort();
+        // Add current date if it matches a scheduled day
+        const todayStr = today.toISOString().split('T')[0];
+        if (today >= startDate && today <= endDate) {
+            const todayDay = today.getDay();
+            if (course.schedules.some(sched => dayMapping[sched.day_of_week] === todayDay)) {
+                if (!validDates.includes(todayStr)) validDates.push(todayStr);
+                validDates.sort();
+            }
+        }
+        console.log('Valid dates for course:', course.course_id, validDates);
+        return validDates;
+    }
 
         function updateDatePicker(courseId) {
-            const course = window.courses.find(c => c.course_id == courseId);
-            if (!course) return;
+        const course = window.courses.find(c => c.course_id == courseId);
+        if (!course) return;
 
-            const validDates = getValidDatesForCourse(course);
-            const datePicker = document.getElementById('selectedDate');
-            if (!datePicker) {
-                console.error('Date picker element not found');
-                return;
-            }
-
-            datePicker.innerHTML = '<option value="">เลือกวันที่</option>';
-            validDates.forEach(date => {
-                const option = document.createElement('option');
-                option.value = date;
-                option.textContent = new Date(date).toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' });
-                datePicker.appendChild(option);
-            });
-
-            const today = new Date('2025-07-03').toISOString().split('T')[0];
-            if (validDates.includes(today)) {
-                datePicker.value = today; // ใช้วันที่ปัจจุบันถ้ามี
-            } else if (validDates.length > 0) {
-                datePicker.value = validDates[validDates.length - 1]; // ใช้วันที่ล่าสุด
-                console.warn(`วันที่ปัจจุบัน (${today}) ไม่มีในตารางเรียน ใช้วันที่ล่าสุด: ${datePicker.value}`);
-            } else {
-                datePicker.value = today; // ถ้าไม่มี validDates ใช้วันปัจจุบัน
-                console.warn('ไม่มีวันที่เรียนในตาราง ใช้วันที่ปัจจุบัน:', today);
-            }
-            console.log('Date picker updated with value:', datePicker.value, new Date(datePicker.value).toLocaleString('en-US', { weekday: 'long', timeZone: 'Asia/Bangkok' }));
+        const validDates = getValidDatesForCourse(course);
+        const datePicker = document.getElementById('selectedDate');
+        if (!datePicker) {
+            console.error('Date picker element not found');
+            return;
         }
+
+        datePicker.innerHTML = '<option value="">เลือกวันที่</option>';
+        validDates.forEach(date => {
+            const option = document.createElement('option');
+            option.value = date;
+            option.textContent = new Date(date).toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' });
+            datePicker.appendChild(option);
+        });
+
+        const today = new Date().toISOString().split('T')[0]; // Use real current date
+        if (validDates.includes(today)) {
+            datePicker.value = today; // Select current date if it’s valid
+        } else if (validDates.length > 0) {
+            datePicker.value = validDates[validDates.length - 1]; // Fallback to latest valid date
+            console.warn(`Current date (${today}) is not in teaching schedule, using latest date: ${datePicker.value}`);
+        } else {
+            datePicker.value = today; // Fallback to current date if no valid dates
+            console.warn('No teaching dates available, using current date:', today);
+        }
+        console.log('Date picker updated with value:', datePicker.value, new Date(datePicker.value).toLocaleString('en-US', { weekday: 'long', timeZone: 'Asia/Bangkok' }));
+    }
 
         function updateViewDatePicker(courseId) {
-            const course = window.courses.find(c => c.course_id == courseId);
-            if (!course) return;
+        const course = window.courses.find(c => c.course_id == courseId);
+        if (!course) return;
 
-            const validDates = getValidDatesForCourse(course);
-            const viewDatePicker = document.getElementById('viewDate');
-            if (!viewDatePicker) {
-                console.error('View date picker element not found');
-                return;
-            }
-
-            viewDatePicker.innerHTML = '<option value="">เลือกวันที่</option>';
-            validDates.forEach(date => {
-                const option = document.createElement('option');
-                option.value = date;
-                option.textContent = new Date(date).toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' });
-                viewDatePicker.appendChild(option);
-            });
-
-            const today = new Date('2025-07-03').toISOString().split('T')[0];
-            if (validDates.includes(today)) {
-                viewDatePicker.value = today; // ใช้วันที่ปัจจุบันถ้ามี
-                loadAttendanceForDate(); // โหลดข้อมูลสำหรับวันปัจจุบัน
-            } else if (validDates.length > 0) {
-                viewDatePicker.value = validDates[validDates.length - 1];
-                loadAttendanceForDate(); // โหลดข้อมูลสำหรับวันที่ล่าสุด
-                console.warn(`วันที่ปัจจุบัน (${today}) ไม่มีในตารางเรียน ใช้วันที่ล่าสุด: ${viewDatePicker.value}`);
-            } else {
-                viewDatePicker.value = today;
-                loadAttendanceForDate(); // โหลดข้อมูลสำหรับวันปัจจุบัน
-                console.warn('ไม่มีวันที่เรียนในตาราง ใช้วันที่ปัจจุบัน:', today);
-            }
-            console.log('View date picker updated with value:', viewDatePicker.value);
+        const validDates = getValidDatesForCourse(course);
+        const viewDatePicker = document.getElementById('viewDate');
+        if (!viewDatePicker) {
+            console.error('View date picker element not found');
+            return;
         }
+
+        viewDatePicker.innerHTML = '<option value="">เลือกวันที่</option>';
+        validDates.forEach(date => {
+            const option = document.createElement('option');
+            option.value = date;
+            option.textContent = new Date(date).toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' });
+            viewDatePicker.appendChild(option);
+        });
+
+        const today = new Date().toISOString().split('T')[0]; // Use real current date
+        if (validDates.includes(today)) {
+            viewDatePicker.value = today; // Select current date if it’s valid
+            loadAttendanceForDate(); // Load attendance for current date
+        } else if (validDates.length > 0) {
+            viewDatePicker.value = validDates[validDates.length - 1]; // Fallback to latest valid date
+            loadAttendanceForDate(); // Load attendance for latest date
+            console.warn(`Current date (${today}) is not in teaching schedule, using latest date: ${viewDatePicker.value}`);
+        } else {
+            viewDatePicker.value = today; // Fallback to current date
+            loadAttendanceForDate(); // Load attendance for current date
+            console.warn('No teaching dates available, using current date:', today);
+        }
+        console.log('View date picker updated with value:', viewDatePicker.value);
+    }
 
         function selectDate() {
             const selectedCourseId = document.querySelector('.course-button.selected')?.dataset.courseId;
@@ -721,18 +721,22 @@ $conn->close();
 
         // เรียก updateDatePicker เมื่อโหลดหน้าและเมื่อเลือกวิชา
         document.addEventListener('DOMContentLoaded', function() {
-            console.log('DOM fully loaded');
-            const initialStats = <?php echo json_encode($attendance_stats, JSON_UNESCAPED_UNICODE); ?>;
-            console.log('Initial attendance stats:', initialStats);
-            //updateAttendanceChart(initialStats);
-            window.initializeVideo?.();
-            startAutoRefresh();
+        console.log('DOM fully loaded');
+        const initialStats = <?php echo json_encode($attendance_stats, JSON_UNESCAPED_UNICODE); ?>;
+        console.log('Initial attendance stats:', initialStats);
+        window.initializeVideo?.();
+        startAutoRefresh();
 
-            // เพิ่ม event listeners สำหรับ course buttons
+            // Initialize date picker with current date
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('selectedDate').value = today;
+            document.getElementById('viewDate').value = today;
+
+            // Add event listeners for course buttons
             document.querySelectorAll('.course-button').forEach(button => {
                 button.addEventListener('click', function() {
                     const courseId = this.dataset.courseId;
-                    updateDatePicker(courseId); // อัปเดต DatePicker เมื่อเลือกวิชา
+                    updateDatePicker(courseId);
                     showAttendance(courseId);
                 });
             });
@@ -768,37 +772,37 @@ $conn->close();
 
         
         function suggestStudentNames() {
-            const input = document.getElementById('studentName');
-            const suggestions = document.getElementById('nameSuggestions');
-            const query = input.value.toLowerCase();
+        const input = document.getElementById('studentName');
+        const suggestions = document.getElementById('nameSuggestions');
+        const query = input.value.toLowerCase();
 
-            if (!query) {
-                suggestions.classList.add('hidden');
-                return;
-            }
-
-            suggestions.innerHTML = '';
-            const matches = Object.entries(enrolledStudents).filter(([studentId, name]) =>
-                name.toLowerCase().includes(query)
-            ).slice(0, 5); // แสดงสูงสุด 5 รายการ
-
-            if (matches.length > 0) {
-                matches.forEach(([studentId, name]) => {
-                    const div = document.createElement('div');
-                    div.textContent = `${name} (${studentId})`;
-                    div.className = 'p-2 hover:bg-gray-200 cursor-pointer';
-                    div.onclick = () => {
-                        input.value = name;
-                        document.getElementById('studentId').value = studentId;
-                        suggestions.classList.add('hidden');
-                    };
-                    suggestions.appendChild(div);
-                });
-                suggestions.classList.remove('hidden');
-            } else {
-                suggestions.classList.add('hidden');
-            }
+        if (!query) {
+            suggestions.classList.add('hidden');
+            return;
         }
+
+        suggestions.innerHTML = '';
+        const matches = Object.entries(enrolledStudents).filter(([studentId, name]) =>
+            name.toLowerCase().includes(query)
+        ).slice(0, 5); // Limit to 5 suggestions
+
+        if (matches.length > 0) {
+            matches.forEach(([studentId, name]) => {
+                const div = document.createElement('div');
+                div.textContent = `${name} (${studentId})`;
+                div.className = 'p-2 hover:bg-gray-200 cursor-pointer';
+                div.onclick = () => {
+                    document.getElementById('studentName').value = name;
+                    document.getElementById('studentId').value = studentId; // Set to numeric student_id
+                    suggestions.classList.add('hidden');
+                };
+                suggestions.appendChild(div);
+            });
+            suggestions.classList.remove('hidden');
+        } else {
+            suggestions.classList.add('hidden');
+        }
+    }
 
         function showAddAttendanceForm(studentId = '', studentName = '', date = '', status = 'Present') {
             const form = document.getElementById('addAttendanceForm');
@@ -824,53 +828,69 @@ $conn->close();
         }
 
         document.getElementById('manualAttendanceForm').addEventListener('submit', function(e) {
-            e.preventDefault();
-            const studentId = document.getElementById('studentId').value;
-            const studentName = document.getElementById('studentName').value;
-            const status = document.getElementById('attendanceStatus').value;
-            const scanTime = document.getElementById('scanTime').value;
-            const courseId = window.currentCourseId;
-            const scheduleId = window.currentScheduleId;
+        e.preventDefault();
+        const studentId = document.getElementById('studentId').value.trim();
+        const studentName = document.getElementById('studentName').value.trim();
+        const status = document.getElementById('attendanceStatus').value;
+        const scanTime = document.getElementById('scanTime').value;
+        const courseId = window.currentCourseId;
+        const scheduleId = window.currentScheduleId;
 
-            if (!courseId || !scheduleId) {
-                console.error('No course or schedule selected');
-                document.getElementById('scanResult').textContent = 'กรุณาเลือกวิชาก่อน';
-                document.getElementById('scanResult').style.color = 'red';
-                return;
-            }
+        if (!courseId || !scheduleId) {
+            console.error('No course or schedule selected');
+            document.getElementById('scanResult').textContent = 'กรุณาเลือกวิชาก่อน';
+            document.getElementById('scanResult').style.color = 'red';
+            return;
+        }
 
-            const expectedName = enrolledStudents[studentId] || '';
-            if (expectedName && expectedName !== studentName) {
-                document.getElementById('scanResult').textContent = 'ชื่อและรหัสนิสิตไม่ตรงกัน';
-                document.getElementById('scanResult').style.color = 'red';
-                return;
-            }
+        // Validate studentId is numeric and exists in enrolledStudents
+        if (!/^\d+$/.test(studentId) || !enrolledStudents[studentId]) {
+            console.error('Invalid student ID:', studentId);
+            document.getElementById('scanResult').textContent = 'รหัสนิสิตไม่ถูกต้องหรือไม่ได้ลงทะเบียนในวิชานี้';
+            document.getElementById('scanResult').style.color = 'red';
+            return;
+        }
 
-            fetch('add_attendance.php', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    student_id: studentId,
-                    schedule_id: scheduleId,
-                    scan_time: new Date(scanTime).toISOString().slice(0, 19).replace('T', ' '),
-                    status
-                })
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.error) throw new Error(data.error);
-                document.getElementById('scanResult').textContent = data.message || 'บันทึกการเข้าเรียนสำเร็จ';
-                document.getElementById('scanResult').style.color = 'green';
-                // เรียกโหลดข้อมูลใหม่ทันทีหลังบันทึก
-                loadAttendanceForDate();
-                hideAddAttendanceForm();
-            })
-            .catch(error => {
-                console.error('Error adding attendance:', error);
-                document.getElementById('scanResult').textContent = 'เกิดข้อผิดพลาด: ' + error.message;
-                document.getElementById('scanResult').style.color = 'red';
-            });
+        // Validate name matches the studentId
+        const expectedName = enrolledStudents[studentId];
+        if (expectedName !== studentName) {
+            console.error('Name mismatch:', { studentId, studentName, expectedName });
+            document.getElementById('scanResult').textContent = 'ชื่อและรหัสนิสิตไม่ตรงกัน';
+            document.getElementById('scanResult').style.color = 'red';
+            return;
+        }
+
+        console.log('Submitting attendance with:', {
+            student_id: studentId,
+            schedule_id: scheduleId,
+            scan_time: new Date(scanTime).toISOString().slice(0, 19).replace('T', ' '),
+            status
         });
+
+        fetch('add_attendance.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                student_id: studentId,
+                schedule_id: scheduleId,
+                scan_time: new Date(scanTime).toISOString().slice(0, 19).replace('T', ' '),
+                status
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) throw new Error(data.error);
+            document.getElementById('scanResult').textContent = data.message || 'บันทึกการเข้าเรียนสำเร็จ';
+            document.getElementById('scanResult').style.color = 'green';
+            loadAttendanceForDate();
+            hideAddAttendanceForm();
+        })
+        .catch(error => {
+            console.error('Error adding attendance:', error);
+            document.getElementById('scanResult').textContent = 'เกิดข้อผิดพลาด: ' + error.message;
+            document.getElementById('scanResult').style.color = 'red';
+        });
+    });
 
 
         function exportAttendance() {
