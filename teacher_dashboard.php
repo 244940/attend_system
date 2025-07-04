@@ -191,9 +191,10 @@ function getDayNameThai($englishDay) {
 
 function getSemesterThai($semester) {
     $semesterMap = [
+        'summer' => 'ภาคฤดูร้อน'
         'first' => 'ภาคการศึกษาที่ 1',
         'second' => 'ภาคการศึกษาที่ 2',
-        'summer' => 'ภาคฤดูร้อน'
+
     ];
     return $semesterMap[strtolower($semester)] ?? $semester;
 }
@@ -362,6 +363,7 @@ $conn->close();
             
         </div>
     </div>
+    <!--popup แจ้งผลการเข้าเรียน -->
         <div id="statusModel" class="fixed inset=0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50 hidden">
         <div class ="bg-white rounded-lg shadow-xl p-6 w-full max-w-sm mx-auto">
             <div class="flex justify-between items-center mb-4">
@@ -387,8 +389,17 @@ $conn->close();
             const box = document.getElementById('statusModel');
             box.classList.remove('hidden');
             box.classList.add('flex');
-            
+
+            if (autoCloseMs) {
+                setTimeout(closeStatusModel, autoCloseMs);
+            }
         }
+        function closeStatusModel() {
+            const box = document.getElementById('statusModel');
+            box.classList.remove('hidden');
+            box.classList.add('flex');
+        }
+            
         let currentChart = null;
         const courses = <?php echo json_encode($courses, JSON_UNESCAPED_UNICODE | JSON_PARTIAL_OUTPUT_ON_ERROR) ?: '[]'; ?>;
         window.courses = courses;
