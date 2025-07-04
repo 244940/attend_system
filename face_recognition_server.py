@@ -13,9 +13,13 @@ import sys
 import traceback
 from logging.handlers import RotatingFileHandler
 import requests
+from requests.exceptions import ConnectionError, HTTPError
 
+# Force UTF-8 encoding for stdout and stderr
 if sys.stdout.encoding != 'utf-8':
     sys.stdout = open(sys.stdout.fileno(), mode='w', encoding='utf-8', buffering=1)
+if sys.stderr.encoding != 'utf-8':
+    sys.stderr = open(sys.stderr.fileno(), mode='w', encoding='utf-8', buffering=1)
 
 logging.basicConfig(
     level=logging.DEBUG,
@@ -168,7 +172,6 @@ def process_frame():
             return jsonify({"error": "Face recognition failed"}), 500
 
         results = []
-        # ใช้ set เพื่อติดตาม student_id ที่บันทึกและส่งอีเมลแล้วในคำขอนี้
         processed_students = set()
 
         for (top, right, bottom, left), face_encoding in zip(face_locations, face_encodings):
@@ -187,8 +190,6 @@ def process_frame():
                 except Exception as e:
                     logger.error(f"Face comparison error: {e}")
                     continue
-            else:
-                logger.warning("No known faces available")
 
             attendance_text = "No attendance record"
             reason = None
@@ -199,29 +200,27 @@ def process_frame():
                     if current_schedule:
                         schedule_id_db, start_time, end_time, course_name = current_schedule
                         if str(schedule_id_db) == str(schedule_id):
-                            status = db_manager.log_attendance(student_id, schedule_id, status='present')
+                            status = db_manager.log_attendance(student_id, schedule_id)
                             logger.debug(f"Attendance status for student {student_id}: {status}")
                             if status == "Too soon to log again":
                                 attendance_text = f"ลงชื่อซ้ำเร็วเกินไปสำหรับ {course_name}"
                             elif status == "Error":
                                 attendance_text = f"บันทึกการเข้างานล้มเหลว: {reason or 'เกิดข้อผิดพลาดในฐานข้อมูล'}"
-                            elif status == "Class ended":
-                                attendance_text = f"คลาสสิ้นสุดแล้ว: {course_name}"
-                            else:
-                                attendance_text = f"บันทึกการเข้างานสำหรับ {course_name} สถานะ: {status}"
-                                processed_students.add(student_id)  # เพิ่ม student_id ลงใน set
+                            elif status == "Invalid schedule":
+                                attendance_text = f"รหัสตารางไม่ถูกต้อง"
+                            elif status == "present":
+                                attendance_text = f"บันทึกการเข้างานสำหรับ {course_name} สถานะ: มาเรียน"
+                                processed_students.add(student_id)
+                            elif status == "late":
+                                attendance_text = f"บันทึกการเข้างานสำหรับ {course_name} สถานะ: มาสาย"
+                                processed_students.add(student_id)
+                            elif status == "absent":
+                                attendance_text = f"บันทึกการเข้างานสำหรับ {course_name} สถานะ: ขาดเรียน"
+                                processed_students.add(student_id)
                         else:
                             attendance_text = f"รหัสตารางไม่ตรงกัน: {reason or 'ตารางไม่สอดคล้อง'}"
                     else:
-                        if reason == "Outside schedule time":
-                            status = db_manager.log_attendance(student_id, schedule_id, status='absent')
-                            attendance_text = f"ขาด: ไม่อยู่ในช่วงเวลาคลาส"
-                            logger.debug(f"Logged absent status for student {student_id} due to late scan")
-                            processed_students.add(student_id)  # เพิ่ม student_id ลงใน set
-                        elif reason == "Not enrolled or invalid schedule":
-                            attendance_text = "ไม่อยู่ในรายชื่อการลงทะเบียนเรียน"
-                        else:
-                            attendance_text = f"ข้อผิดพลาด: {reason or 'ไม่พบข้อมูลตาราง'}"
+                        attendance_text = f"ข้อผิดพลาด: {reason or 'ไม่พบข้อมูลตาราง'}"
                 except Exception as e:
                     reason = str(e)
                     logger.error(f"Attendance logging error for student {student_id}: {str(e)}\n{traceback.format_exc()}")
@@ -234,30 +233,50 @@ def process_frame():
                 "reason": reason
             })
 
-        # ส่งอีเมลหลังจากประมวลผลทั้งหมด
+        # ส่งอีเมลสำหรับนิสิตที่มีสถานะ present หรือ late
         for student_id in processed_students:
-            name = next((face['name'] for face in known_faces if face['id'] == student_id), "Unknown")
-            email = db_manager.get_student_email(student_id)
-            if email and name != "Unknown":
-                course_query = "SELECT course_name FROM courses WHERE course_id = %s"
-                db_manager.cursor.execute(course_query, (course_id,))
-                course_name = db_manager.cursor.fetchone()[0]
-                email_payload = {
-                    "to": email,
-                    "subject": "Attendance Confirmation",
-                    "body_template": f"Dear {name},\n\nYou have been recorded as present for {course_name} on {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}.\n\nBest regards,\nUniversity Attendance System",
-                    "course_name": course_name
-                }
-                email_response = requests.post("http://localhost:5001/api/send-email", json=email_payload)
-                if email_response.status_code == 200:
-                    logger.info(f"Email sent to {email} for student {student_id}")
-                else:
-                    logger.error(f"Failed to send email to {email}: {email_response.text}")
-            else:
-                logger.error(f"No email or unknown student for student_id: {student_id}")
+            last_log_time = db_manager.get_last_log_time(student_id, schedule_id)
+            if last_log_time is None:
+                continue  # ข้ามหากไม่มีบันทึกการสแกนล่าสุด
+            query = """
+            SELECT status FROM attendance
+            WHERE student_id = %s AND schedule_id = %s AND scan_time = %s
+            """
+            db_manager.cursor.execute(query, (student_id, schedule_id, last_log_time))
+            status_result = db_manager.cursor.fetchone()
+            if not status_result or status_result[0] not in ['present', 'late']:
+                continue  # ส่งอีเมลเฉพาะสถานะ present หรือ late
+
+            student_info = db_manager.get_student_info(student_id)
+            if not student_info:
+                logger.error(f"No student info found for student {student_id}")
+                continue
+            email, name = student_info
+            if not email:
+                logger.error(f"No email found for student {student_id}")
+                email = f"{student_id}@student.example.com"  # Fallback
+
+            course_info = db_manager.get_course_schedule_info(course_id, schedule_id)
+            course_name = course_info[0] if course_info else "Unknown Course"
+
+            status_text = "มาเรียน" if status_result[0] == "present" else "มาสาย"
+            email_payload = {
+                "to": email,
+                "subject": "แจ้งสถานะการเข้าเรียน",
+                "body_template": f"เรียน {name},\n\nคุณได้รับการบันทึกสถานะการเข้าเรียนเป็น '{status_text}' สำหรับวิชา {course_name} เมื่อวันที่ {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}.\n\nด้วยความเคารพ,\nระบบลงทะเบียนการเข้าเรียน",
+                "course_name": course_name
+            }
+            try:
+                email_response = requests.post("http://localhost:5001/api/send-email", json=email_payload, timeout=5)
+                email_response.raise_for_status()
+                logger.info(f"Email sent successfully to {email} for student {student_id}")
+            except (ConnectionError, HTTPError) as e:
+                logger.error(f"Failed to send email to {email} for student {student_id}: {e}")
+            except Exception as e:
+                logger.error(f"Unexpected error sending email to {email} for student {student_id}: {e}")
 
         logger.info(f"Processed frame: course_id={course_id}, schedule_id={schedule_id}, results={len(results)}")
-        return jsonify({"results": results})
+        return jsonify({"results": results}), 200
     except Exception as e:
         logger.error(f"Error in process_frame: {str(e)}\n{traceback.format_exc()}")
         return jsonify({"error": str(e)}), 500

@@ -4,7 +4,7 @@ async function fetchWithRetry(url, options, retries = 3, delay = 1000, timeout =
     for (let i = 0; i <= retries; i++) {
         try {
             const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), timeout); // 20s timeout
+            const timeoutId = setTimeout(() => controller.abort(), timeout);
             console.log(`Attempting fetch to ${url}, attempt ${i + 1}`);
             const response = await fetch(url, { ...options, signal: controller.signal });
             clearTimeout(timeoutId);
@@ -92,56 +92,42 @@ async function startFaceScan(teacherId, scheduleId) {
     document.getElementById('scanResult').innerText = 'กำลังเริ่มการสแกน...';
     document.getElementById('scanResult').style.color = 'black';
 
-    const urls = [
-        'http://127.0.0.1:5000/start_scan',
-        'http://192.168.1.108:5000/start_scan',
-        'http://localhost:5000/start_scan'
-    ];
-    let lastError = null;
-
-    for (const url of urls) {
-        try {
-            const data = await fetchWithRetry(url, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    course_id: currentCourseId,
-                    teacher_id: teacherId,
-                    schedule_id: currentScheduleId
-                })
-            });
-            console.log('Scan started:', data);
-            if (data.error) throw new Error(data.error);
-            scanning = true;
-            document.getElementById('startScanBtn').style.display = 'none';
-            document.getElementById('stopScanBtn').style.display = 'inline-block';
-            document.getElementById('scanResult').innerText = 'กำลังสแกนใบหน้า...';
-            document.getElementById('scanResult').style.color = 'green';
-            processFrames();
-            return;
-        } catch (error) {
-            console.error(`Failed to connect to ${url}:`, error);
-            lastError = error;
-            document.getElementById('scanResult').innerText = `ลองเชื่อมต่อ ${url} ไม่สำเร็จ...`;
-            document.getElementById('scanResult').style.color = 'orange';
+    const url = 'http://127.0.0.1:5000/start_scan';
+    try {
+        const data = await fetchWithRetry(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                course_id: currentCourseId,
+                teacher_id: teacherId,
+                schedule_id: currentScheduleId
+            })
+        });
+        console.log('Scan started:', data);
+        if (data.error) throw new Error(data.error);
+        scanning = true;
+        document.getElementById('startScanBtn').style.display = 'none';
+        document.getElementById('stopScanBtn').style.display = 'inline-block';
+        document.getElementById('scanResult').innerText = 'กำลังสแกนใบหน้า...';
+        document.getElementById('scanResult').style.color = 'green';
+        processFrames();
+    } catch (error) {
+        console.error(`Failed to connect to ${url}:`, error);
+        let errorMessage = 'ไม่สามารถเริ่มการสแกนได้: เซิร์ฟเวอร์ไม่ตอบสนอง';
+        if (error.name === 'AbortError') {
+            errorMessage = 'การเชื่อมต่อเซิร์ฟเวอร์หมดเวลา';
+        } else if (error.message.includes('HTTP')) {
+            errorMessage = `ข้อผิดพลาดเซิร์ฟเวอร์: ${error.message}`;
         }
+        showToast(errorMessage, 'danger');
+        document.getElementById('scanResult').innerHTML = `
+            ${errorMessage}
+            <button onclick="startFaceScan('${teacherId}', ${currentScheduleId})" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded ml-2">
+                ลองใหม่
+            </button>
+        `;
+        document.getElementById('scanResult').style.color = 'red';
     }
-
-    console.error('All URLs failed:', lastError);
-    let errorMessage = 'ไม่สามารถเริ่มการสแกนได้: เซิร์ฟเวอร์ไม่ตอบสนอง';
-    if (lastError.name === 'AbortError') {
-        errorMessage = 'การเชื่อมต่อเซิร์ฟเวอร์หมดเวลา';
-    } else if (lastError.message.includes('HTTP')) {
-        errorMessage = `ข้อผิดพลาดเซิร์ฟเวอร์: ${lastError.message}`;
-    }
-    showToast(errorMessage, 'danger');
-    document.getElementById('scanResult').innerHTML = `
-        ${errorMessage}
-        <button onclick="startFaceScan('${teacherId}', ${currentScheduleId})" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded ml-2">
-            ลองใหม่
-        </button>
-    `;
-    document.getElementById('scanResult').style.color = 'red';
 }
 
 async function processFrames() {
@@ -159,35 +145,22 @@ async function processFrames() {
         const frameData = canvas.toDataURL('image/jpeg', 0.4);
         console.log(`Frame data size: ${frameData.length} bytes`);
 
-        const urls = [
-            'http://127.0.0.1:5000/process_frame',
-            'http://192.168.1.108:5000/process_frame',
-            'http://localhost:5000/process_frame'
-        ];
-        let response = null;
+        const url = 'http://127.0.0.1:5000/process_frame';
+        const response = await fetchWithRetry(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                frame: frameData,
+                course_id: window.currentCourseId,
+                schedule_id: window.currentScheduleId
+            })
+        });
 
-        for (const url of urls) {
-            try {
-                response = await fetchWithRetry(url, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        frame: frameData,
-                        course_id: window.currentCourseId,
-                        schedule_id: window.currentScheduleId
-                    })
-                });
-                break;
-            } catch (error) {
-                console.error(`Failed to process frame at ${url}:`, error);
-                if (error.name === 'AbortError') {
-                    console.warn('Fetch aborted, likely due to timeout or scan stop');
-                    return;
-                }
-            }
+        if (response.error) {
+            console.error('Server error:', response.error);
+            showToast(`ข้อผิดพลาดจากเซิร์ฟเวอร์: ${response.error}`, 'danger');
+            return;
         }
-
-        if (!response) throw new Error('All process_frame URLs failed');
 
         const results = response.results || [];
         console.log('Frame processing results:', results);
@@ -195,13 +168,13 @@ async function processFrames() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         for (const result of results) {
             const { top, right, bottom, left } = result.box;
-            ctx.strokeStyle = result.name === 'Unknown' ? 'red' : 'green';
+            ctx.strokeStyle = result.name === 'Unknown' ? 'red' : (result.attendance_text.includes('ขาด') ? 'red' : (result.attendance_text.includes('มาสาย') ? 'yellow' : 'green'));
             ctx.lineWidth = 2;
             ctx.strokeRect(left * scale, top * scale, (right - left) * scale, (bottom - top) * scale);
             ctx.fillStyle = ctx.strokeStyle;
             ctx.font = '16px Sarabun';
             ctx.fillText(`${result.name} (${result.attendance_text})`, left * scale, (top - 10) * scale);
-            showToast(result.attendance_text, result.attendance_text.includes('ขาด') ? 'danger' : 'success');
+            showToast(result.attendance_text, result.attendance_text.includes('ขาด') ? 'danger' : (result.attendance_text.includes('มาสาย') ? 'warning' : 'success'));
         }
 
         document.getElementById('scanResult').innerText = `ตรวจพบ ${results.length} ใบหน้า`;
@@ -224,19 +197,12 @@ function stopFaceScan() {
     document.getElementById('scanResult').innerText = 'หยุดการสแกนแล้ว';
     document.getElementById('scanResult').style.color = 'blue';
 
-    const urls = [
-        'http://127.0.0.1:5000/stop_scan',
-        'http://192.168.1.108:5000/stop_scan',
-        'http://localhost:5000/stop_scan'
-    ];
-    for (const url of urls) {
-        fetchWithRetry(url, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' }
-        }).catch(error => console.error(`Error stopping scan at ${url}:`, error));
-    }
+    const url = 'http://127.0.0.1:5000/stop_scan';
+    fetchWithRetry(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+    }).catch(error => console.error(`Error stopping scan at ${url}:`, error));
 
-    // Refresh table after stopping scan
     const courseId = window.currentCourseId;
     const selectedDate = document.getElementById('selectedDate').value;
     if (courseId) {

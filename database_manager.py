@@ -151,9 +151,9 @@ class DatabaseManager:
                 minutes, seconds = divmod(remainder, 60)
                 end_time = time(hours, minutes, seconds)
             start_dt = datetime.combine(today, start_time)
-            early_dt = start_dt - timedelta(minutes=10)  # 10-minute early
-            late_dt = start_dt + timedelta(minutes=5)
             end_dt = datetime.combine(today, end_time)
+            early_dt = start_dt - timedelta(minutes=30)  # 08:30:00
+            late_dt = start_dt + timedelta(minutes=30)   # 09:30:00
 
             # Determine status if not explicitly provided
             if status is None:
@@ -163,6 +163,9 @@ class DatabaseManager:
                 elif early_dt <= now <= late_dt:
                     status = "present"
                     logging.info(f"Marked present (early or on-time): student_id={student_id}, schedule_id={schedule_id}")
+                elif late_dt < now <= end_dt:
+                    status = "late"
+                    logging.info(f"Marked late (after allowed period): student_id={student_id}, schedule_id={schedule_id}")
                 else:
                     status = "absent"
                     logging.info(f"Marked absent (outside time window): student_id={student_id}, schedule_id={schedule_id}")

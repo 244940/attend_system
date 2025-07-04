@@ -1,0 +1,29 @@
+2025-07-04 09:19:27,410 - WARNING -  * Debugger is active!
+2025-07-04 09:19:31,490 - INFO -  * Debugger PIN: 249-321-551
+2025-07-04 09:21:18,815 - INFO -  * Detected change in 'C:\\xampp\\htdocs\\attend_system\\face_recognition_server.py', reloading
+2025-07-04 09:23:37,391 - WARNING -  * Debugger is active!
+2025-07-04 09:23:37,831 - INFO -  * Debugger PIN: 249-321-551
+2025-07-04 09:25:28,135 - INFO -  * Detected change in 'C:\\xampp\\htdocs\\attend_system\\database_manager.py', reloading
+2025-07-04 09:26:18,242 - WARNING -  * Debugger is active!
+2025-07-04 09:26:18,996 - INFO -  * Debugger PIN: 249-321-551
+2025-07-04 09:34:37,817 - INFO -  * Detected change in 'C:\\xampp\\htdocs\\attend_system\\database_manager.py', reloading
+2025-07-04 09:35:05,818 - WARNING -  * Debugger is active!
+2025-07-04 09:35:06,109 - INFO -  * Debugger PIN: 249-321-551
+2025-07-04 09:49:17,563 - ERROR - SMTP configuration missing
+2025-07-04 09:49:17,586 - INFO - 127.0.0.1 - - [04/Jul/2025 09:49:17] "[35m[1mPOST /api/send-email HTTP/1.1[0m" 500 -
+2025-07-04 09:52:55,258 - INFO -  * Detected change in 'C:\\xampp\\htdocs\\attend_system\\email_server.py', reloading
+2025-07-04 09:53:09,947 - INFO - Starting email service...
+2025-07-04 09:53:10,854 - WARNING -  * Debugger is active!
+2025-07-04 09:53:11,144 - INFO -  * Debugger PIN: 249-321-551
+2025-07-04 09:54:03,043 - INFO - Email sent to student.real@email.com for course ???????? 2
+2025-07-04 09:54:03,081 - INFO - 127.0.0.1 - - [04/Jul/2025 09:54:03] "POST /api/send-email HTTP/1.1" 200 -
+2025-07-04 09:57:52,653 - INFO - Email sent to wonwinpor@gmail.com for course 01417112
+2025-07-04 09:57:52,683 - INFO - 127.0.0.1 - - [04/Jul/2025 09:57:52] "POST /api/send-email HTTP/1.1" 200 -
+2025-07-04 09:58:58,461 - INFO - Email sent to piyawan.saiw@ku.th for course 01417112
+2025-07-04 09:58:58,874 - INFO - 127.0.0.1 - - [04/Jul/2025 09:58:58] "POST /api/send-email HTTP/1.1" 200 -
+2025-07-04 10:36:30,649 - INFO - Email sent to wonwinpor@gmail.com for course 01418333
+2025-07-04 10:36:30,770 - INFO - 127.0.0.1 - - [04/Jul/2025 10:36:30] "POST /api/send-email HTTP/1.1" 200 -
+2025-07-04 10:36:57,804 - INFO - Email sent to pornpairin.n@ku.th for course 01418333
+2025-07-04 10:36:57,846 - INFO - 127.0.0.1 - - [04/Jul/2025 10:36:57] "POST /api/send-email HTTP/1.1" 200 -
+2025-07-04 10:37:12,985 - INFO - Email sent to piyawan.saiw@ku.th for course 01418333
+2025-07-04 10:37:13,056 - INFO - 127.0.0.1 - - [04/Jul/2025 10:37:13] "POST /api/send-email HTTP/1.1" 200 -

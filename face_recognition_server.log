@@ -14,3 +14,17 @@
 2025-06-10 14:10:51,953 - INFO -  * Restarting with stat
 2025-06-10 14:11:02,544 - WARNING -  * Debugger is active!
 2025-06-10 14:11:02,778 - INFO -  * Debugger PIN: 757-742-842
+2025-07-04 09:00:15,378 - INFO - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5001
+ * Running on http://192.168.1.120:5001
+2025-07-04 09:00:15,383 - INFO - [33mPress CTRL+C to quit[0m
+2025-07-04 09:00:15,402 - INFO -  * Restarting with stat
+2025-07-04 09:00:18,686 - WARNING -  * Debugger is active!
+2025-07-04 09:00:18,718 - INFO -  * Debugger PIN: 249-321-551
+2025-07-04 09:18:46,538 - INFO -  * Detected change in 'C:\\xampp\\htdocs\\attend_system\\email_server.py', reloading
+2025-07-04 09:18:50,642 - INFO -  * Restarting with stat
+2025-07-04 09:21:25,674 - INFO -  * Restarting with stat
+2025-07-04 09:25:32,005 - INFO -  * Restarting with stat
+2025-07-04 09:34:39,677 - INFO -  * Restarting with stat
+2025-07-04 09:52:58,388 - INFO -  * Restarting with stat

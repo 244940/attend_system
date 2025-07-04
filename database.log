@@ -4451,3 +4451,1185 @@ TypeError: combine() argument 2 must be datetime.time, not datetime.timedelta
 2025-06-10 17:04:44,311 - INFO - Detected 0 faces
 2025-06-10 17:04:44,344 - INFO - Processed frame: course_id=10, schedule_id=16, results=0
 2025-06-10 17:04:44,386 - INFO - 127.0.0.1 - - [10/Jun/2025 17:04:44] "POST /process_frame HTTP/1.1" 200 -
+2025-07-04 08:50:52,899 - INFO - Connected to attend_data database
+2025-07-04 08:50:52,968 - INFO - Database manager initialized
+2025-07-04 08:50:52,977 - INFO - Loaded 8 known faces
+2025-07-04 08:50:52,992 - INFO - Starting Flask server...
+2025-07-04 08:50:58,687 - INFO - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://192.168.1.120:5000
+2025-07-04 08:50:59,505 - INFO - [33mPress CTRL+C to quit[0m
+2025-07-04 08:50:59,891 - INFO -  * Restarting with stat
+2025-07-04 08:52:34,234 - INFO - Connected to attend_data database
+2025-07-04 08:52:34,248 - INFO - Database manager initialized
+2025-07-04 08:52:34,250 - INFO - Loaded 8 known faces
+2025-07-04 08:52:34,308 - INFO - Starting Flask server...
+2025-07-04 08:52:34,751 - WARNING -  * Debugger is active!
+2025-07-04 08:52:34,952 - INFO -  * Debugger PIN: 249-321-551
+2025-07-04 08:52:37,416 - INFO - 127.0.0.1 - - [04/Jul/2025 08:52:37] "OPTIONS /start_scan HTTP/1.1" 200 -
+2025-07-04 08:52:37,759 - INFO - Received request to /start_scan
+2025-07-04 08:52:37,887 - INFO - Request data: {'course_id': '11', 'teacher_id': '5424000002', 'schedule_id': 18}
+2025-07-04 08:52:37,939 - INFO - Scanning started: course_id=11, teacher_id=5424000002, schedule_id=18
+2025-07-04 08:52:38,022 - INFO - 127.0.0.1 - - [04/Jul/2025 08:52:38] "POST /start_scan HTTP/1.1" 200 -
+2025-07-04 08:52:39,038 - INFO - 127.0.0.1 - - [04/Jul/2025 08:52:39] "OPTIONS /process_frame HTTP/1.1" 200 -
+2025-07-04 08:52:39,721 - INFO - Received request to /process_frame
+2025-07-04 08:52:39,850 - DEBUG - Request data keys: ['frame', 'course_id', 'schedule_id']
+2025-07-04 08:52:43,806 - INFO - Detected 1 faces
+2025-07-04 08:52:43,895 - INFO - Found schedule: student_id=6421600002, course_id=11, schedule_id=18
+2025-07-04 08:52:43,980 - WARNING - Current time 2025-07-04 08:52:43.980480 outside schedule 10:30:00-12:30:00
+2025-07-04 08:52:44,109 - DEBUG - Current schedule for student 6421600002: None, reason: Outside schedule time
+2025-07-04 08:52:44,239 - INFO - Fetched schedule: schedule_id=18
+2025-07-04 08:52:44,310 - INFO - Attendance logged: student_id=6421600002, schedule_id=18, status=absent
+2025-07-04 08:52:44,379 - DEBUG - Logged absent status for student 6421600002 due to late scan
+2025-07-04 08:52:44,403 - DEBUG - Starting new HTTP connection (1): localhost:5001
+2025-07-04 08:52:50,900 - ERROR - Error in process_frame: HTTPConnectionPool(host='localhost', port=5001): Max retries exceeded with url: /api/send-email (Caused by NewConnectionError('<urllib3.connection.HTTPConnection object at 0x000002585693D3D0>: Failed to establish a new connection: [WinError 10061] No connection could be made because the target machine actively refused it'))
+Traceback (most recent call last):
+  File "C:\Python312\Lib\site-packages\urllib3\connection.py", line 196, in _new_conn
+    sock = connection.create_connection(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python312\Lib\site-packages\urllib3\util\connection.py", line 85, in create_connection
+    raise err
+  File "C:\Python312\Lib\site-packages\urllib3\util\connection.py", line 73, in create_connection
+    sock.connect(sa)
+ConnectionRefusedError: [WinError 10061] No connection could be made because the target machine actively refused it
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Python312\Lib\site-packages\urllib3\connectionpool.py", line 789, in urlopen
+    response = self._make_request(
+               ^^^^^^^^^^^^^^^^^^^
+  File "C:\Python312\Lib\site-packages\urllib3\connectionpool.py", line 495, in _make_request
+    conn.request(
+  File "C:\Python312\Lib\site-packages\urllib3\connection.py", line 398, in request
+    self.endheaders()
+  File "C:\Python312\Lib\http\client.py", line 1326, in endheaders
+    self._send_output(message_body, encode_chunked=encode_chunked)
+  File "C:\Python312\Lib\http\client.py", line 1085, in _send_output
+    self.send(msg)
+  File "C:\Python312\Lib\http\client.py", line 1029, in send
+    self.connect()
+  File "C:\Python312\Lib\site-packages\urllib3\connection.py", line 236, in connect
+    self.sock = self._new_conn()
+                ^^^^^^^^^^^^^^^^
+  File "C:\Python312\Lib\site-packages\urllib3\connection.py", line 211, in _new_conn
+    raise NewConnectionError(
+urllib3.exceptions.NewConnectionError: <urllib3.connection.HTTPConnection object at 0x000002585693D3D0>: Failed to establish a new connection: [WinError 10061] No connection could be made because the target machine actively refused it
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Python312\Lib\site-packages\requests\adapters.py", line 667, in send
+    resp = conn.urlopen(
+           ^^^^^^^^^^^^^
+  File "C:\Python312\Lib\site-packages\urllib3\connectionpool.py", line 843, in urlopen
+    retries = retries.increment(
+              ^^^^^^^^^^^^^^^^^^
+  File "C:\Python312\Lib\site-packages\urllib3\util\retry.py", line 519, in increment
+    raise MaxRetryError(_pool, url, reason) from reason  # type: ignore[arg-type]
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+urllib3.exceptions.MaxRetryError: HTTPConnectionPool(host='localhost', port=5001): Max retries exceeded with url: /api/send-email (Caused by NewConnectionError('<urllib3.connection.HTTPConnection object at 0x000002585693D3D0>: Failed to establish a new connection: [WinError 10061] No connection could be made because the target machine actively refused it'))
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\xampp\htdocs\attend_system\face_recognition_server.py", line 251, in process_frame
+    email_response = requests.post("http://localhost:5001/api/send-email", json=email_payload)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python312\Lib\site-packages\requests\api.py", line 115, in post
+    return request("post", url, data=data, json=json, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python312\Lib\site-packages\requests\api.py", line 59, in request
+    return session.request(method=method, url=url, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python312\Lib\site-packages\requests\sessions.py", line 589, in request
+    resp = self.send(prep, **send_kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python312\Lib\site-packages\requests\sessions.py", line 703, in send
+    r = adapter.send(request, **kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python312\Lib\site-packages\requests\adapters.py", line 700, in send
+    raise ConnectionError(e, request=request)
+requests.exceptions.ConnectionError: HTTPConnectionPool(host='localhost', port=5001): Max retries exceeded with url: /api/send-email (Caused by NewConnectionError('<urllib3.connection.HTTPConnection object at 0x000002585693D3D0>: Failed to establish a new connection: [WinError 10061] No connection could be made because the target machine actively refused it'))
+
+2025-07-04 08:52:51,287 - INFO - 127.0.0.1 - - [04/Jul/2025 08:52:51] "[35m[1mPOST /process_frame HTTP/1.1[0m" 500 -
+2025-07-04 08:52:53,234 - INFO - 127.0.0.1 - - [04/Jul/2025 08:52:53] "OPTIONS /process_frame HTTP/1.1" 200 -
+2025-07-04 08:52:53,470 - INFO - Received request to /process_frame
+2025-07-04 08:52:53,508 - DEBUG - Request data keys: ['frame', 'course_id', 'schedule_id']
+2025-07-04 08:52:58,737 - INFO - Detected 1 faces
+2025-07-04 08:52:58,801 - INFO - Found schedule: student_id=6421600002, course_id=11, schedule_id=18
+2025-07-04 08:52:58,871 - WARNING - Current time 2025-07-04 08:52:58.871545 outside schedule 10:30:00-12:30:00
+2025-07-04 08:52:58,948 - DEBUG - Current schedule for student 6421600002: None, reason: Outside schedule time
+2025-07-04 08:52:58,967 - INFO - Too soon to log again: student_id=6421600002, schedule_id=18
+2025-07-04 08:52:58,992 - DEBUG - Logged absent status for student 6421600002 due to late scan
+2025-07-04 08:52:59,042 - DEBUG - Starting new HTTP connection (1): localhost:5001
+2025-07-04 08:53:03,806 - ERROR - Error in process_frame: HTTPConnectionPool(host='localhost', port=5001): Max retries exceeded with url: /api/send-email (Caused by NewConnectionError('<urllib3.connection.HTTPConnection object at 0x000002585E23A2D0>: Failed to establish a new connection: [WinError 10061] No connection could be made because the target machine actively refused it'))
+Traceback (most recent call last):
+  File "C:\Python312\Lib\site-packages\urllib3\connection.py", line 196, in _new_conn
+    sock = connection.create_connection(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python312\Lib\site-packages\urllib3\util\connection.py", line 85, in create_connection
+    raise err
+  File "C:\Python312\Lib\site-packages\urllib3\util\connection.py", line 73, in create_connection
+    sock.connect(sa)
+ConnectionRefusedError: [WinError 10061] No connection could be made because the target machine actively refused it
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Python312\Lib\site-packages\urllib3\connectionpool.py", line 789, in urlopen
+    response = self._make_request(
+               ^^^^^^^^^^^^^^^^^^^
+  File "C:\Python312\Lib\site-packages\urllib3\connectionpool.py", line 495, in _make_request
+    conn.request(
+  File "C:\Python312\Lib\site-packages\urllib3\connection.py", line 398, in request
+    self.endheaders()
+  File "C:\Python312\Lib\http\client.py", line 1326, in endheaders
+    self._send_output(message_body, encode_chunked=encode_chunked)
+  File "C:\Python312\Lib\http\client.py", line 1085, in _send_output
+    self.send(msg)
+  File "C:\Python312\Lib\http\client.py", line 1029, in send
+    self.connect()
+  File "C:\Python312\Lib\site-packages\urllib3\connection.py", line 236, in connect
+    self.sock = self._new_conn()
+                ^^^^^^^^^^^^^^^^
+  File "C:\Python312\Lib\site-packages\urllib3\connection.py", line 211, in _new_conn
+    raise NewConnectionError(
+urllib3.exceptions.NewConnectionError: <urllib3.connection.HTTPConnection object at 0x000002585E23A2D0>: Failed to establish a new connection: [WinError 10061] No connection could be made because the target machine actively refused it
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Python312\Lib\site-packages\requests\adapters.py", line 667, in send
+    resp = conn.urlopen(
+           ^^^^^^^^^^^^^
+  File "C:\Python312\Lib\site-packages\urllib3\connectionpool.py", line 843, in urlopen
+    retries = retries.increment(
+              ^^^^^^^^^^^^^^^^^^
+  File "C:\Python312\Lib\site-packages\urllib3\util\retry.py", line 519, in increment
+    raise MaxRetryError(_pool, url, reason) from reason  # type: ignore[arg-type]
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+urllib3.exceptions.MaxRetryError: HTTPConnectionPool(host='localhost', port=5001): Max retries exceeded with url: /api/send-email (Caused by NewConnectionError('<urllib3.connection.HTTPConnection object at 0x000002585E23A2D0>: Failed to establish a new connection: [WinError 10061] No connection could be made because the target machine actively refused it'))
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\xampp\htdocs\attend_system\face_recognition_server.py", line 251, in process_frame
+    email_response = requests.post("http://localhost:5001/api/send-email", json=email_payload)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python312\Lib\site-packages\requests\api.py", line 115, in post
+    return request("post", url, data=data, json=json, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python312\Lib\site-packages\requests\api.py", line 59, in request
+    return session.request(method=method, url=url, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python312\Lib\site-packages\requests\sessions.py", line 589, in request
+    resp = self.send(prep, **send_kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python312\Lib\site-packages\requests\sessions.py", line 703, in send
+    r = adapter.send(request, **kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python312\Lib\site-packages\requests\adapters.py", line 700, in send
+    raise ConnectionError(e, request=request)
+requests.exceptions.ConnectionError: HTTPConnectionPool(host='localhost', port=5001): Max retries exceeded with url: /api/send-email (Caused by NewConnectionError('<urllib3.connection.HTTPConnection object at 0x000002585E23A2D0>: Failed to establish a new connection: [WinError 10061] No connection could be made because the target machine actively refused it'))
+
+2025-07-04 08:53:04,130 - INFO - 127.0.0.1 - - [04/Jul/2025 08:53:04] "[35m[1mPOST /process_frame HTTP/1.1[0m" 500 -
+2025-07-04 08:53:05,871 - INFO - 127.0.0.1 - - [04/Jul/2025 08:53:05] "OPTIONS /process_frame HTTP/1.1" 200 -
+2025-07-04 08:53:05,923 - INFO - Received request to /process_frame
+2025-07-04 08:53:05,965 - DEBUG - Request data keys: ['frame', 'course_id', 'schedule_id']
+2025-07-04 08:53:08,514 - INFO - Detected 1 faces
+2025-07-04 08:53:08,525 - INFO - Found schedule: student_id=6421600002, course_id=11, schedule_id=18
+2025-07-04 08:53:08,575 - WARNING - Current time 2025-07-04 08:53:08.574911 outside schedule 10:30:00-12:30:00
+2025-07-04 08:53:08,576 - DEBUG - Current schedule for student 6421600002: None, reason: Outside schedule time
+2025-07-04 08:53:08,588 - INFO - Too soon to log again: student_id=6421600002, schedule_id=18
+2025-07-04 08:53:08,647 - DEBUG - Logged absent status for student 6421600002 due to late scan
+2025-07-04 08:53:08,656 - DEBUG - Starting new HTTP connection (1): localhost:5001
+2025-07-04 08:53:13,369 - ERROR - Error in process_frame: HTTPConnectionPool(host='localhost', port=5001): Max retries exceeded with url: /api/send-email (Caused by NewConnectionError('<urllib3.connection.HTTPConnection object at 0x000002585E1F7DD0>: Failed to establish a new connection: [WinError 10061] No connection could be made because the target machine actively refused it'))
+Traceback (most recent call last):
+  File "C:\Python312\Lib\site-packages\urllib3\connection.py", line 196, in _new_conn
+    sock = connection.create_connection(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python312\Lib\site-packages\urllib3\util\connection.py", line 85, in create_connection
+    raise err
+  File "C:\Python312\Lib\site-packages\urllib3\util\connection.py", line 73, in create_connection
+    sock.connect(sa)
+ConnectionRefusedError: [WinError 10061] No connection could be made because the target machine actively refused it
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Python312\Lib\site-packages\urllib3\connectionpool.py", line 789, in urlopen
+    response = self._make_request(
+               ^^^^^^^^^^^^^^^^^^^
+  File "C:\Python312\Lib\site-packages\urllib3\connectionpool.py", line 495, in _make_request
+    conn.request(
+  File "C:\Python312\Lib\site-packages\urllib3\connection.py", line 398, in request
+    self.endheaders()
+  File "C:\Python312\Lib\http\client.py", line 1326, in endheaders
+    self._send_output(message_body, encode_chunked=encode_chunked)
+  File "C:\Python312\Lib\http\client.py", line 1085, in _send_output
+    self.send(msg)
+  File "C:\Python312\Lib\http\client.py", line 1029, in send
+    self.connect()
+  File "C:\Python312\Lib\site-packages\urllib3\connection.py", line 236, in connect
+    self.sock = self._new_conn()
+                ^^^^^^^^^^^^^^^^
+  File "C:\Python312\Lib\site-packages\urllib3\connection.py", line 211, in _new_conn
+    raise NewConnectionError(
+urllib3.exceptions.NewConnectionError: <urllib3.connection.HTTPConnection object at 0x000002585E1F7DD0>: Failed to establish a new connection: [WinError 10061] No connection could be made because the target machine actively refused it
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Python312\Lib\site-packages\requests\adapters.py", line 667, in send
+    resp = conn.urlopen(
+           ^^^^^^^^^^^^^
+  File "C:\Python312\Lib\site-packages\urllib3\connectionpool.py", line 843, in urlopen
+    retries = retries.increment(
+              ^^^^^^^^^^^^^^^^^^
+  File "C:\Python312\Lib\site-packages\urllib3\util\retry.py", line 519, in increment
+    raise MaxRetryError(_pool, url, reason) from reason  # type: ignore[arg-type]
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+urllib3.exceptions.MaxRetryError: HTTPConnectionPool(host='localhost', port=5001): Max retries exceeded with url: /api/send-email (Caused by NewConnectionError('<urllib3.connection.HTTPConnection object at 0x000002585E1F7DD0>: Failed to establish a new connection: [WinError 10061] No connection could be made because the target machine actively refused it'))
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\xampp\htdocs\attend_system\face_recognition_server.py", line 251, in process_frame
+    email_response = requests.post("http://localhost:5001/api/send-email", json=email_payload)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python312\Lib\site-packages\requests\api.py", line 115, in post
+    return request("post", url, data=data, json=json, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python312\Lib\site-packages\requests\api.py", line 59, in request
+    return session.request(method=method, url=url, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python312\Lib\site-packages\requests\sessions.py", line 589, in request
+    resp = self.send(prep, **send_kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python312\Lib\site-packages\requests\sessions.py", line 703, in send
+    r = adapter.send(request, **kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python312\Lib\site-packages\requests\adapters.py", line 700, in send
+    raise ConnectionError(e, request=request)
+requests.exceptions.ConnectionError: HTTPConnectionPool(host='localhost', port=5001): Max retries exceeded with url: /api/send-email (Caused by NewConnectionError('<urllib3.connection.HTTPConnection object at 0x000002585E1F7DD0>: Failed to establish a new connection: [WinError 10061] No connection could be made because the target machine actively refused it'))
+
+2025-07-04 08:53:13,543 - INFO - 127.0.0.1 - - [04/Jul/2025 08:53:13] "[35m[1mPOST /process_frame HTTP/1.1[0m" 500 -
+2025-07-04 08:53:14,822 - INFO - 127.0.0.1 - - [04/Jul/2025 08:53:14] "OPTIONS /process_frame HTTP/1.1" 200 -
+2025-07-04 08:53:14,917 - INFO - Received request to /process_frame
+2025-07-04 08:53:14,927 - DEBUG - Request data keys: ['frame', 'course_id', 'schedule_id']
+2025-07-04 08:53:21,760 - INFO - Detected 1 faces
+2025-07-04 08:53:22,161 - INFO - Found schedule: student_id=6421600002, course_id=11, schedule_id=18
+2025-07-04 08:53:22,773 - WARNING - Current time 2025-07-04 08:53:22.773547 outside schedule 10:30:00-12:30:00
+2025-07-04 08:53:23,014 - DEBUG - Current schedule for student 6421600002: None, reason: Outside schedule time
+2025-07-04 08:53:23,366 - INFO - Too soon to log again: student_id=6421600002, schedule_id=18
+2025-07-04 08:53:23,624 - DEBUG - Logged absent status for student 6421600002 due to late scan
+2025-07-04 08:53:23,840 - DEBUG - Starting new HTTP connection (1): localhost:5001
+2025-07-04 08:53:28,829 - ERROR - Error in process_frame: HTTPConnectionPool(host='localhost', port=5001): Max retries exceeded with url: /api/send-email (Caused by NewConnectionError('<urllib3.connection.HTTPConnection object at 0x000002585E23BDA0>: Failed to establish a new connection: [WinError 10061] No connection could be made because the target machine actively refused it'))
+Traceback (most recent call last):
+  File "C:\Python312\Lib\site-packages\urllib3\connection.py", line 196, in _new_conn
+    sock = connection.create_connection(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python312\Lib\site-packages\urllib3\util\connection.py", line 85, in create_connection
+    raise err
+  File "C:\Python312\Lib\site-packages\urllib3\util\connection.py", line 73, in create_connection
+    sock.connect(sa)
+ConnectionRefusedError: [WinError 10061] No connection could be made because the target machine actively refused it
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Python312\Lib\site-packages\urllib3\connectionpool.py", line 789, in urlopen
+    response = self._make_request(
+               ^^^^^^^^^^^^^^^^^^^
+  File "C:\Python312\Lib\site-packages\urllib3\connectionpool.py", line 495, in _make_request
+    conn.request(
+  File "C:\Python312\Lib\site-packages\urllib3\connection.py", line 398, in request
+    self.endheaders()
+  File "C:\Python312\Lib\http\client.py", line 1326, in endheaders
+    self._send_output(message_body, encode_chunked=encode_chunked)
+  File "C:\Python312\Lib\http\client.py", line 1085, in _send_output
+    self.send(msg)
+  File "C:\Python312\Lib\http\client.py", line 1029, in send
+    self.connect()
+  File "C:\Python312\Lib\site-packages\urllib3\connection.py", line 236, in connect
+    self.sock = self._new_conn()
+                ^^^^^^^^^^^^^^^^
+  File "C:\Python312\Lib\site-packages\urllib3\connection.py", line 211, in _new_conn
+    raise NewConnectionError(
+urllib3.exceptions.NewConnectionError: <urllib3.connection.HTTPConnection object at 0x000002585E23BDA0>: Failed to establish a new connection: [WinError 10061] No connection could be made because the target machine actively refused it
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Python312\Lib\site-packages\requests\adapters.py", line 667, in send
+    resp = conn.urlopen(
+           ^^^^^^^^^^^^^
+  File "C:\Python312\Lib\site-packages\urllib3\connectionpool.py", line 843, in urlopen
+    retries = retries.increment(
+              ^^^^^^^^^^^^^^^^^^
+  File "C:\Python312\Lib\site-packages\urllib3\util\retry.py", line 519, in increment
+    raise MaxRetryError(_pool, url, reason) from reason  # type: ignore[arg-type]
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+urllib3.exceptions.MaxRetryError: HTTPConnectionPool(host='localhost', port=5001): Max retries exceeded with url: /api/send-email (Caused by NewConnectionError('<urllib3.connection.HTTPConnection object at 0x000002585E23BDA0>: Failed to establish a new connection: [WinError 10061] No connection could be made because the target machine actively refused it'))
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\xampp\htdocs\attend_system\face_recognition_server.py", line 251, in process_frame
+    email_response = requests.post("http://localhost:5001/api/send-email", json=email_payload)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python312\Lib\site-packages\requests\api.py", line 115, in post
+    return request("post", url, data=data, json=json, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python312\Lib\site-packages\requests\api.py", line 59, in request
+    return session.request(method=method, url=url, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python312\Lib\site-packages\requests\sessions.py", line 589, in request
+    resp = self.send(prep, **send_kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python312\Lib\site-packages\requests\sessions.py", line 703, in send
+    r = adapter.send(request, **kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python312\Lib\site-packages\requests\adapters.py", line 700, in send
+    raise ConnectionError(e, request=request)
+requests.exceptions.ConnectionError: HTTPConnectionPool(host='localhost', port=5001): Max retries exceeded with url: /api/send-email (Caused by NewConnectionError('<urllib3.connection.HTTPConnection object at 0x000002585E23BDA0>: Failed to establish a new connection: [WinError 10061] No connection could be made because the target machine actively refused it'))
+
+2025-07-04 08:53:29,829 - INFO - 127.0.0.1 - - [04/Jul/2025 08:53:29] "[35m[1mPOST /process_frame HTTP/1.1[0m" 500 -
+2025-07-04 09:05:36,253 - INFO - 127.0.0.1 - - [04/Jul/2025 09:05:36] "[33mPOST /api/send-email HTTP/1.1[0m" 404 -
+2025-07-04 09:18:46,403 - INFO -  * Detected change in 'C:\\xampp\\htdocs\\attend_system\\email_server.py', reloading
+2025-07-04 09:18:46,842 - INFO - Closing database connection...
+2025-07-04 09:18:47,771 - INFO - Database connection closed
+2025-07-04 09:18:56,009 - INFO -  * Restarting with stat
+2025-07-04 09:25:23,495 - INFO - Connected to attend_data database
+2025-07-04 09:25:23,583 - INFO - Database manager initialized
+2025-07-04 09:25:23,586 - INFO - Loaded 8 known faces
+2025-07-04 09:25:23,720 - INFO - Starting Flask server...
+2025-07-04 09:25:26,169 - WARNING -  * Debugger is active!
+2025-07-04 09:25:27,808 - INFO -  * Debugger PIN: 249-321-551
+2025-07-04 09:26:06,304 - INFO -  * Detected change in 'C:\\xampp\\htdocs\\attend_system\\face_recognition_server.py', reloading
+2025-07-04 09:26:06,654 - INFO - Closing database connection...
+2025-07-04 09:26:06,967 - INFO - Database connection closed
+2025-07-04 09:26:10,556 - INFO -  * Restarting with stat
+2025-07-04 09:28:05,918 - INFO - Connected to attend_data database
+2025-07-04 09:28:05,940 - INFO - Database manager initialized
+2025-07-04 09:28:05,962 - INFO - Loaded 8 known faces
+2025-07-04 09:28:06,039 - INFO - Starting Flask server...
+2025-07-04 09:28:06,437 - WARNING -  * Debugger is active!
+2025-07-04 09:28:06,502 - INFO -  * Debugger PIN: 249-321-551
+2025-07-04 09:28:07,317 - INFO - 127.0.0.1 - - [04/Jul/2025 09:28:07] "OPTIONS /start_scan HTTP/1.1" 200 -
+2025-07-04 09:28:07,391 - INFO - 127.0.0.1 - - [04/Jul/2025 09:28:07] "OPTIONS /start_scan HTTP/1.1" 200 -
+2025-07-04 09:28:07,588 - INFO - Received request to /start_scan
+2025-07-04 09:28:07,604 - INFO - Request data: {'course_id': '12', 'teacher_id': '5424000002', 'schedule_id': 19}
+2025-07-04 09:28:07,657 - INFO - Scanning started: course_id=12, teacher_id=5424000002, schedule_id=19
+2025-07-04 09:28:07,725 - INFO - 127.0.0.1 - - [04/Jul/2025 09:28:07] "POST /start_scan HTTP/1.1" 200 -
+2025-07-04 09:28:08,235 - INFO - 127.0.0.1 - - [04/Jul/2025 09:28:08] "OPTIONS /process_frame HTTP/1.1" 200 -
+2025-07-04 09:28:08,688 - INFO - Received request to /process_frame
+2025-07-04 09:28:09,004 - DEBUG - Request data keys: ['frame', 'course_id', 'schedule_id']
+2025-07-04 09:28:15,162 - INFO - Detected 1 faces
+2025-07-04 09:28:15,313 - INFO - Found schedule: student_id=6421600002, course_id=12, schedule_id=19
+2025-07-04 09:28:16,895 - INFO - Fetched schedule: schedule_id=19
+2025-07-04 09:28:16,907 - INFO - Marked absent (outside time window): student_id=6421600002, schedule_id=19
+2025-07-04 09:28:16,922 - INFO - Attendance logged: student_id=6421600002, schedule_id=19, status=absent
+2025-07-04 09:28:16,924 - DEBUG - Attendance status for student 6421600002: absent
+2025-07-04 09:28:16,932 - INFO - Processed frame: course_id=12, schedule_id=19, results=1
+2025-07-04 09:28:17,013 - INFO - 127.0.0.1 - - [04/Jul/2025 09:28:17] "POST /process_frame HTTP/1.1" 200 -
+2025-07-04 09:28:38,447 - INFO - 127.0.0.1 - - [04/Jul/2025 09:28:38] "OPTIONS /process_frame HTTP/1.1" 200 -
+2025-07-04 09:28:39,892 - INFO - Received request to /process_frame
+2025-07-04 09:28:40,144 - DEBUG - Request data keys: ['frame', 'course_id', 'schedule_id']
+2025-07-04 09:28:44,318 - INFO - Detected 1 faces
+2025-07-04 09:28:44,360 - INFO - Found schedule: student_id=6421600002, course_id=12, schedule_id=19
+2025-07-04 09:28:47,294 - INFO - Too soon to log again: student_id=6421600002, schedule_id=19
+2025-07-04 09:28:47,312 - DEBUG - Attendance status for student 6421600002: Too soon to log again
+2025-07-04 09:28:48,614 - INFO - Processed frame: course_id=12, schedule_id=19, results=1
+2025-07-04 09:28:48,846 - INFO - 127.0.0.1 - - [04/Jul/2025 09:28:48] "POST /process_frame HTTP/1.1" 200 -
+2025-07-04 09:28:51,055 - INFO - 127.0.0.1 - - [04/Jul/2025 09:28:51] "OPTIONS /process_frame HTTP/1.1" 200 -
+2025-07-04 09:28:53,308 - INFO - Received request to /process_frame
+2025-07-04 09:28:53,666 - DEBUG - Request data keys: ['frame', 'course_id', 'schedule_id']
+2025-07-04 09:29:03,648 - INFO - Detected 1 faces
+2025-07-04 09:29:03,913 - INFO - Found schedule: student_id=6421600002, course_id=12, schedule_id=19
+2025-07-04 09:29:14,289 - INFO - 127.0.0.1 - - [04/Jul/2025 09:29:14] "OPTIONS /process_frame HTTP/1.1" 200 -
+2025-07-04 09:29:16,347 - INFO - Too soon to log again: student_id=6421600002, schedule_id=19
+2025-07-04 09:29:17,105 - DEBUG - Attendance status for student 6421600002: Too soon to log again
+2025-07-04 09:29:17,524 - INFO - Received request to /process_frame
+2025-07-04 09:29:17,524 - INFO - Processed frame: course_id=12, schedule_id=19, results=1
+2025-07-04 09:29:18,278 - DEBUG - Request data keys: ['frame', 'course_id', 'schedule_id']
+2025-07-04 09:29:18,896 - INFO - 127.0.0.1 - - [04/Jul/2025 09:29:18] "POST /process_frame HTTP/1.1" 200 -
+2025-07-04 09:29:32,118 - INFO - Detected 1 faces
+2025-07-04 09:29:32,615 - INFO - Found schedule: student_id=6421600002, course_id=12, schedule_id=19
+2025-07-04 09:29:36,088 - INFO - 127.0.0.1 - - [04/Jul/2025 09:29:36] "OPTIONS /process_frame HTTP/1.1" 200 -
+2025-07-04 09:29:38,140 - INFO - Too soon to log again: student_id=6421600002, schedule_id=19
+2025-07-04 09:29:38,402 - DEBUG - Attendance status for student 6421600002: Too soon to log again
+2025-07-04 09:29:38,682 - INFO - Processed frame: course_id=12, schedule_id=19, results=1
+2025-07-04 09:29:38,685 - INFO - Received request to /process_frame
+2025-07-04 09:29:38,907 - INFO - 127.0.0.1 - - [04/Jul/2025 09:29:38] "POST /process_frame HTTP/1.1" 200 -
+2025-07-04 09:29:39,239 - DEBUG - Request data keys: ['frame', 'course_id', 'schedule_id']
+2025-07-04 09:29:44,357 - INFO - Detected 1 faces
+2025-07-04 09:29:44,683 - INFO - Found schedule: student_id=6421600002, course_id=12, schedule_id=19
+2025-07-04 09:29:52,706 - INFO - Too soon to log again: student_id=6421600002, schedule_id=19
+2025-07-04 09:29:52,967 - DEBUG - Attendance status for student 6421600002: Too soon to log again
+2025-07-04 09:29:53,200 - INFO - Processed frame: course_id=12, schedule_id=19, results=1
+2025-07-04 09:29:53,417 - INFO - 127.0.0.1 - - [04/Jul/2025 09:29:53] "POST /process_frame HTTP/1.1" 200 -
+2025-07-04 09:32:22,293 - INFO - 127.0.0.1 - - [04/Jul/2025 09:32:22] "OPTIONS /process_frame HTTP/1.1" 200 -
+2025-07-04 09:32:23,419 - INFO - Received request to /process_frame
+2025-07-04 09:32:24,238 - DEBUG - Request data keys: ['frame', 'course_id', 'schedule_id']
+2025-07-04 09:32:26,841 - INFO - Detected 0 faces
+2025-07-04 09:32:26,972 - INFO - Processed frame: course_id=12, schedule_id=19, results=0
+2025-07-04 09:32:27,039 - INFO - 127.0.0.1 - - [04/Jul/2025 09:32:27] "POST /process_frame HTTP/1.1" 200 -
+2025-07-04 09:33:17,931 - INFO - 127.0.0.1 - - [04/Jul/2025 09:33:17] "OPTIONS /process_frame HTTP/1.1" 200 -
+2025-07-04 09:33:19,112 - INFO - Received request to /process_frame
+2025-07-04 09:33:19,406 - DEBUG - Request data keys: ['frame', 'course_id', 'schedule_id']
+2025-07-04 09:33:33,868 - INFO - Detected 1 faces
+2025-07-04 09:33:34,339 - WARNING - No schedule found: student_id=6421600001, course_id=12, schedule_id=19
+2025-07-04 09:33:34,633 - DEBUG - Current schedule for student 6421600001: None, reason: Not enrolled or invalid schedule
+2025-07-04 09:33:35,452 - INFO - Processed frame: course_id=12, schedule_id=19, results=1
+2025-07-04 09:33:37,310 - INFO - 127.0.0.1 - - [04/Jul/2025 09:33:37] "POST /process_frame HTTP/1.1" 200 -
+2025-07-04 09:33:40,492 - INFO - 127.0.0.1 - - [04/Jul/2025 09:33:40] "OPTIONS /process_frame HTTP/1.1" 200 -
+2025-07-04 09:33:44,038 - INFO - Received request to /process_frame
+2025-07-04 09:33:45,110 - DEBUG - Request data keys: ['frame', 'course_id', 'schedule_id']
+2025-07-04 09:33:58,705 - INFO - Detected 1 faces
+2025-07-04 09:33:59,033 - WARNING - No schedule found: student_id=6421600001, course_id=12, schedule_id=19
+2025-07-04 09:33:59,234 - DEBUG - Current schedule for student 6421600001: None, reason: Not enrolled or invalid schedule
+2025-07-04 09:33:59,460 - INFO - Processed frame: course_id=12, schedule_id=19, results=1
+2025-07-04 09:33:59,635 - INFO - 127.0.0.1 - - [04/Jul/2025 09:33:59] "POST /process_frame HTTP/1.1" 200 -
+2025-07-04 09:34:37,195 - INFO -  * Detected change in 'C:\\xampp\\htdocs\\attend_system\\database_manager.py', reloading
+2025-07-04 09:34:37,669 - INFO - Closing database connection...
+2025-07-04 09:34:39,118 - INFO - Database connection closed
+2025-07-04 09:34:41,839 - INFO -  * Restarting with stat
+2025-07-04 09:35:38,227 - INFO - Connected to attend_data database
+2025-07-04 09:35:38,228 - INFO - Database manager initialized
+2025-07-04 09:35:38,231 - INFO - Loaded 8 known faces
+2025-07-04 09:35:38,235 - INFO - Starting Flask server...
+2025-07-04 09:35:38,387 - WARNING -  * Debugger is active!
+2025-07-04 09:35:38,430 - INFO -  * Debugger PIN: 249-321-551
+2025-07-04 09:35:38,654 - INFO - 127.0.0.1 - - [04/Jul/2025 09:35:38] "OPTIONS /process_frame HTTP/1.1" 200 -
+2025-07-04 09:35:38,667 - INFO - 127.0.0.1 - - [04/Jul/2025 09:35:38] "OPTIONS /process_frame HTTP/1.1" 200 -
+2025-07-04 09:35:38,708 - INFO - 127.0.0.1 - - [04/Jul/2025 09:35:38] "OPTIONS /process_frame HTTP/1.1" 200 -
+2025-07-04 09:35:44,674 - INFO - 127.0.0.1 - - [04/Jul/2025 09:35:44] "OPTIONS /start_scan HTTP/1.1" 200 -
+2025-07-04 09:35:44,948 - INFO - Received request to /start_scan
+2025-07-04 09:35:44,957 - INFO - Request data: {'course_id': '12', 'teacher_id': '5424000002', 'schedule_id': 19}
+2025-07-04 09:35:44,978 - INFO - Scanning started: course_id=12, teacher_id=5424000002, schedule_id=19
+2025-07-04 09:35:44,983 - INFO - 127.0.0.1 - - [04/Jul/2025 09:35:44] "POST /start_scan HTTP/1.1" 200 -
+2025-07-04 09:35:45,277 - INFO - 127.0.0.1 - - [04/Jul/2025 09:35:45] "OPTIONS /process_frame HTTP/1.1" 200 -
+2025-07-04 09:35:45,314 - INFO - Received request to /process_frame
+2025-07-04 09:35:45,316 - DEBUG - Request data keys: ['frame', 'course_id', 'schedule_id']
+2025-07-04 09:35:47,619 - INFO - Detected 1 faces
+2025-07-04 09:35:47,630 - INFO - Found schedule: student_id=6421600002, course_id=12, schedule_id=19
+2025-07-04 09:35:48,382 - INFO - Too soon to log again: student_id=6421600002, schedule_id=19
+2025-07-04 09:35:48,383 - DEBUG - Attendance status for student 6421600002: Too soon to log again
+2025-07-04 09:35:48,385 - INFO - Processed frame: course_id=12, schedule_id=19, results=1
+2025-07-04 09:35:48,399 - INFO - 127.0.0.1 - - [04/Jul/2025 09:35:48] "POST /process_frame HTTP/1.1" 200 -
+2025-07-04 09:35:48,677 - INFO - Received request to /process_frame
+2025-07-04 09:35:48,683 - DEBUG - Request data keys: ['frame', 'course_id', 'schedule_id']
+2025-07-04 09:35:51,251 - INFO - Detected 1 faces
+2025-07-04 09:35:51,258 - INFO - Found schedule: student_id=6421600002, course_id=12, schedule_id=19
+2025-07-04 09:35:51,493 - INFO - Too soon to log again: student_id=6421600002, schedule_id=19
+2025-07-04 09:35:51,498 - DEBUG - Attendance status for student 6421600002: Too soon to log again
+2025-07-04 09:35:51,578 - INFO - Processed frame: course_id=12, schedule_id=19, results=1
+2025-07-04 09:35:51,632 - INFO - 127.0.0.1 - - [04/Jul/2025 09:35:51] "POST /process_frame HTTP/1.1" 200 -
+2025-07-04 09:35:51,853 - INFO - 127.0.0.1 - - [04/Jul/2025 09:35:51] "OPTIONS /process_frame HTTP/1.1" 200 -
+2025-07-04 09:35:51,895 - INFO - Received request to /process_frame
+2025-07-04 09:35:51,897 - DEBUG - Request data keys: ['frame', 'course_id', 'schedule_id']
+2025-07-04 09:35:54,295 - INFO - Detected 1 faces
+2025-07-04 09:35:54,380 - INFO - Found schedule: student_id=6421600002, course_id=12, schedule_id=19
+2025-07-04 09:35:54,786 - INFO - Too soon to log again: student_id=6421600002, schedule_id=19
+2025-07-04 09:35:54,800 - DEBUG - Attendance status for student 6421600002: Too soon to log again
+2025-07-04 09:35:54,801 - INFO - Processed frame: course_id=12, schedule_id=19, results=1
+2025-07-04 09:35:54,803 - INFO - 127.0.0.1 - - [04/Jul/2025 09:35:54] "POST /process_frame HTTP/1.1" 200 -
+2025-07-04 09:35:55,220 - INFO - Received request to /process_frame
+2025-07-04 09:35:55,233 - DEBUG - Request data keys: ['frame', 'course_id', 'schedule_id']
+2025-07-04 09:35:58,669 - INFO - Detected 1 faces
+2025-07-04 09:35:58,976 - INFO - Found schedule: student_id=6421600002, course_id=12, schedule_id=19
+2025-07-04 09:36:01,292 - INFO - Too soon to log again: student_id=6421600002, schedule_id=19
+2025-07-04 09:36:01,299 - DEBUG - Attendance status for student 6421600002: Too soon to log again
+2025-07-04 09:36:01,301 - INFO - Processed frame: course_id=12, schedule_id=19, results=1
+2025-07-04 09:36:01,303 - INFO - 127.0.0.1 - - [04/Jul/2025 09:36:01] "POST /process_frame HTTP/1.1" 200 -
+2025-07-04 09:36:39,032 - INFO - 127.0.0.1 - - [04/Jul/2025 09:36:39] "OPTIONS /process_frame HTTP/1.1" 200 -
+2025-07-04 09:36:39,398 - INFO - Received request to /process_frame
+2025-07-04 09:36:39,413 - DEBUG - Request data keys: ['frame', 'course_id', 'schedule_id']
+2025-07-04 09:36:40,385 - INFO - Detected 0 faces
+2025-07-04 09:36:40,402 - INFO - Processed frame: course_id=12, schedule_id=19, results=0
+2025-07-04 09:36:40,416 - INFO - 127.0.0.1 - - [04/Jul/2025 09:36:40] "POST /process_frame HTTP/1.1" 200 -
+2025-07-04 09:36:40,903 - INFO - Received request to /process_frame
+2025-07-04 09:36:40,915 - DEBUG - Request data keys: ['frame', 'course_id', 'schedule_id']
+2025-07-04 09:36:46,731 - INFO - Detected 1 faces
+2025-07-04 09:36:47,232 - INFO - Processed frame: course_id=12, schedule_id=19, results=1
+2025-07-04 09:36:47,585 - INFO - 127.0.0.1 - - [04/Jul/2025 09:36:47] "POST /process_frame HTTP/1.1" 200 -
+2025-07-04 09:38:03,524 - INFO - 127.0.0.1 - - [04/Jul/2025 09:38:03] "OPTIONS /process_frame HTTP/1.1" 200 -
+2025-07-04 09:38:05,205 - INFO - Received request to /process_frame
+2025-07-04 09:38:05,983 - DEBUG - Request data keys: ['frame', 'course_id', 'schedule_id']
+2025-07-04 09:38:23,132 - INFO - Detected 1 faces
+2025-07-04 09:38:23,237 - INFO - Found schedule: student_id=6421600002, course_id=12, schedule_id=19
+2025-07-04 09:38:23,585 - INFO - Too soon to log again: student_id=6421600002, schedule_id=19
+2025-07-04 09:38:23,610 - DEBUG - Attendance status for student 6421600002: Too soon to log again
+2025-07-04 09:38:23,614 - INFO - Processed frame: course_id=12, schedule_id=19, results=1
+2025-07-04 09:38:23,617 - INFO - 127.0.0.1 - - [04/Jul/2025 09:38:23] "POST /process_frame HTTP/1.1" 200 -
+2025-07-04 09:38:35,892 - INFO - 127.0.0.1 - - [04/Jul/2025 09:38:35] "[33mPOST /api/send-email HTTP/1.1[0m" 404 -
+2025-07-04 09:39:23,411 - INFO - 127.0.0.1 - - [04/Jul/2025 09:39:23] "OPTIONS /start_scan HTTP/1.1" 200 -
+2025-07-04 09:39:23,559 - INFO - Received request to /start_scan
+2025-07-04 09:39:23,560 - INFO - Request data: {'course_id': '12', 'teacher_id': '5424000002', 'schedule_id': 19}
+2025-07-04 09:39:23,563 - INFO - Scanning started: course_id=12, teacher_id=5424000002, schedule_id=19
+2025-07-04 09:39:23,566 - INFO - 127.0.0.1 - - [04/Jul/2025 09:39:23] "POST /start_scan HTTP/1.1" 200 -
+2025-07-04 09:39:24,071 - INFO - 127.0.0.1 - - [04/Jul/2025 09:39:24] "OPTIONS /process_frame HTTP/1.1" 200 -
+2025-07-04 09:39:24,342 - INFO - Received request to /process_frame
+2025-07-04 09:39:24,422 - DEBUG - Request data keys: ['frame', 'course_id', 'schedule_id']
+2025-07-04 09:39:27,134 - INFO - Detected 1 faces
+2025-07-04 09:39:27,140 - WARNING - No schedule found: student_id=6421600006, course_id=12, schedule_id=19
+2025-07-04 09:39:27,142 - DEBUG - Current schedule for student 6421600006: None, reason: Not enrolled or invalid schedule
+2025-07-04 09:39:27,173 - INFO - Processed frame: course_id=12, schedule_id=19, results=1
+2025-07-04 09:39:27,178 - INFO - 127.0.0.1 - - [04/Jul/2025 09:39:27] "POST /process_frame HTTP/1.1" 200 -
+2025-07-04 09:39:27,533 - INFO - Received request to /process_frame
+2025-07-04 09:39:27,545 - DEBUG - Request data keys: ['frame', 'course_id', 'schedule_id']
+2025-07-04 09:39:30,216 - INFO - Detected 1 faces
+2025-07-04 09:39:30,283 - WARNING - No schedule found: student_id=6421600006, course_id=12, schedule_id=19
+2025-07-04 09:39:30,294 - DEBUG - Current schedule for student 6421600006: None, reason: Not enrolled or invalid schedule
+2025-07-04 09:39:30,315 - INFO - Processed frame: course_id=12, schedule_id=19, results=1
+2025-07-04 09:39:30,346 - INFO - 127.0.0.1 - - [04/Jul/2025 09:39:30] "POST /process_frame HTTP/1.1" 200 -
+2025-07-04 09:39:31,343 - INFO - 127.0.0.1 - - [04/Jul/2025 09:39:31] "OPTIONS /process_frame HTTP/1.1" 200 -
+2025-07-04 09:39:31,558 - INFO - Received request to /process_frame
+2025-07-04 09:39:31,646 - DEBUG - Request data keys: ['frame', 'course_id', 'schedule_id']
+2025-07-04 09:39:35,065 - INFO - Detected 1 faces
+2025-07-04 09:39:35,265 - WARNING - No schedule found: student_id=6421600006, course_id=12, schedule_id=19
+2025-07-04 09:39:35,370 - DEBUG - Current schedule for student 6421600006: None, reason: Not enrolled or invalid schedule
+2025-07-04 09:39:35,743 - INFO - Processed frame: course_id=12, schedule_id=19, results=1
+2025-07-04 09:39:35,856 - INFO - 127.0.0.1 - - [04/Jul/2025 09:39:35] "POST /process_frame HTTP/1.1" 200 -
+2025-07-04 09:39:52,459 - INFO - 127.0.0.1 - - [04/Jul/2025 09:39:52] "OPTIONS /process_frame HTTP/1.1" 200 -
+2025-07-04 09:39:53,151 - INFO - Received request to /process_frame
+2025-07-04 09:39:53,161 - DEBUG - Request data keys: ['frame', 'course_id', 'schedule_id']
+2025-07-04 09:39:55,591 - INFO - Detected 1 faces
+2025-07-04 09:39:55,609 - WARNING - No schedule found: student_id=6421600006, course_id=12, schedule_id=19
+2025-07-04 09:39:55,652 - DEBUG - Current schedule for student 6421600006: None, reason: Not enrolled or invalid schedule
+2025-07-04 09:39:55,674 - INFO - Processed frame: course_id=12, schedule_id=19, results=1
+2025-07-04 09:39:55,720 - INFO - 127.0.0.1 - - [04/Jul/2025 09:39:55] "POST /process_frame HTTP/1.1" 200 -
+2025-07-04 09:39:55,973 - INFO - Received request to /process_frame
+2025-07-04 09:39:55,978 - DEBUG - Request data keys: ['frame', 'course_id', 'schedule_id']
+2025-07-04 09:39:58,339 - INFO - Detected 1 faces
+2025-07-04 09:39:58,346 - WARNING - No schedule found: student_id=6421600006, course_id=12, schedule_id=19
+2025-07-04 09:39:58,392 - DEBUG - Current schedule for student 6421600006: None, reason: Not enrolled or invalid schedule
+2025-07-04 09:39:58,393 - INFO - Processed frame: course_id=12, schedule_id=19, results=1
+2025-07-04 09:39:58,394 - INFO - 127.0.0.1 - - [04/Jul/2025 09:39:58] "POST /process_frame HTTP/1.1" 200 -
+2025-07-04 09:39:58,673 - INFO - 127.0.0.1 - - [04/Jul/2025 09:39:58] "OPTIONS /process_frame HTTP/1.1" 200 -
+2025-07-04 09:39:58,801 - INFO - Received request to /process_frame
+2025-07-04 09:39:58,856 - DEBUG - Request data keys: ['frame', 'course_id', 'schedule_id']
+2025-07-04 09:40:02,151 - INFO - Detected 1 faces
+2025-07-04 09:40:02,347 - WARNING - No schedule found: student_id=6421600006, course_id=12, schedule_id=19
+2025-07-04 09:40:02,378 - DEBUG - Current schedule for student 6421600006: None, reason: Not enrolled or invalid schedule
+2025-07-04 09:40:02,379 - INFO - Processed frame: course_id=12, schedule_id=19, results=1
+2025-07-04 09:40:02,382 - INFO - 127.0.0.1 - - [04/Jul/2025 09:40:02] "POST /process_frame HTTP/1.1" 200 -
+2025-07-04 09:40:02,940 - INFO - Received request to /process_frame
+2025-07-04 09:40:03,012 - DEBUG - Request data keys: ['frame', 'course_id', 'schedule_id']
+2025-07-04 09:40:05,288 - INFO - Detected 1 faces
+2025-07-04 09:40:05,294 - WARNING - No schedule found: student_id=6421600006, course_id=12, schedule_id=19
+2025-07-04 09:40:05,327 - DEBUG - Current schedule for student 6421600006: None, reason: Not enrolled or invalid schedule
+2025-07-04 09:40:05,331 - INFO - Processed frame: course_id=12, schedule_id=19, results=1
+2025-07-04 09:40:05,383 - INFO - 127.0.0.1 - - [04/Jul/2025 09:40:05] "POST /process_frame HTTP/1.1" 200 -
+2025-07-04 09:40:05,791 - INFO - 127.0.0.1 - - [04/Jul/2025 09:40:05] "OPTIONS /process_frame HTTP/1.1" 200 -
+2025-07-04 09:40:05,916 - INFO - Received request to /process_frame
+2025-07-04 09:40:05,927 - DEBUG - Request data keys: ['frame', 'course_id', 'schedule_id']
+2025-07-04 09:40:07,889 - INFO - Detected 1 faces
+2025-07-04 09:40:07,893 - WARNING - No schedule found: student_id=6421600006, course_id=12, schedule_id=19
+2025-07-04 09:40:07,894 - DEBUG - Current schedule for student 6421600006: None, reason: Not enrolled or invalid schedule
+2025-07-04 09:40:07,910 - INFO - Processed frame: course_id=12, schedule_id=19, results=1
+2025-07-04 09:40:07,914 - INFO - 127.0.0.1 - - [04/Jul/2025 09:40:07] "POST /process_frame HTTP/1.1" 200 -
+2025-07-04 09:40:08,277 - INFO - Received request to /process_frame
+2025-07-04 09:40:08,345 - DEBUG - Request data keys: ['frame', 'course_id', 'schedule_id']
+2025-07-04 09:40:10,128 - INFO - Detected 1 faces
+2025-07-04 09:40:10,133 - WARNING - No schedule found: student_id=6421600006, course_id=12, schedule_id=19
+2025-07-04 09:40:10,145 - DEBUG - Current schedule for student 6421600006: None, reason: Not enrolled or invalid schedule
+2025-07-04 09:40:10,147 - INFO - Processed frame: course_id=12, schedule_id=19, results=1
+2025-07-04 09:40:10,149 - INFO - 127.0.0.1 - - [04/Jul/2025 09:40:10] "POST /process_frame HTTP/1.1" 200 -
+2025-07-04 09:40:10,401 - INFO - Received request to /process_frame
+2025-07-04 09:40:10,458 - DEBUG - Request data keys: ['frame', 'course_id', 'schedule_id']
+2025-07-04 09:40:14,369 - INFO - Detected 1 faces
+2025-07-04 09:40:14,373 - WARNING - No schedule found: student_id=6421600006, course_id=12, schedule_id=19
+2025-07-04 09:40:14,374 - DEBUG - Current schedule for student 6421600006: None, reason: Not enrolled or invalid schedule
+2025-07-04 09:40:14,397 - INFO - Processed frame: course_id=12, schedule_id=19, results=1
+2025-07-04 09:40:14,401 - INFO - 127.0.0.1 - - [04/Jul/2025 09:40:14] "POST /process_frame HTTP/1.1" 200 -
+2025-07-04 09:40:34,609 - INFO - 127.0.0.1 - - [04/Jul/2025 09:40:34] "OPTIONS /process_frame HTTP/1.1" 200 -
+2025-07-04 09:40:34,793 - INFO - Received request to /process_frame
+2025-07-04 09:40:34,805 - DEBUG - Request data keys: ['frame', 'course_id', 'schedule_id']
+2025-07-04 09:40:35,394 - INFO - Detected 0 faces
+2025-07-04 09:40:35,395 - INFO - Processed frame: course_id=12, schedule_id=19, results=0
+2025-07-04 09:40:35,397 - INFO - 127.0.0.1 - - [04/Jul/2025 09:40:35] "POST /process_frame HTTP/1.1" 200 -
+2025-07-04 09:40:54,530 - INFO - 127.0.0.1 - - [04/Jul/2025 09:40:54] "OPTIONS /process_frame HTTP/1.1" 200 -
+2025-07-04 09:40:54,804 - INFO - Received request to /process_frame
+2025-07-04 09:40:54,811 - DEBUG - Request data keys: ['frame', 'course_id', 'schedule_id']
+2025-07-04 09:40:58,465 - INFO - Detected 1 faces
+2025-07-04 09:40:58,478 - INFO - Found schedule: student_id=6421600002, course_id=12, schedule_id=19
+2025-07-04 09:40:59,302 - INFO - Too soon to log again: student_id=6421600002, schedule_id=19
+2025-07-04 09:40:59,303 - DEBUG - Attendance status for student 6421600002: Too soon to log again
+2025-07-04 09:40:59,323 - INFO - Processed frame: course_id=12, schedule_id=19, results=1
+2025-07-04 09:40:59,336 - INFO - 127.0.0.1 - - [04/Jul/2025 09:40:59] "POST /process_frame HTTP/1.1" 200 -
+2025-07-04 09:40:59,788 - INFO - Received request to /process_frame
+2025-07-04 09:40:59,824 - DEBUG - Request data keys: ['frame', 'course_id', 'schedule_id']
+2025-07-04 09:41:01,722 - INFO - Detected 1 faces
+2025-07-04 09:41:01,761 - INFO - Found schedule: student_id=6421600002, course_id=12, schedule_id=19
+2025-07-04 09:41:02,257 - INFO - Too soon to log again: student_id=6421600002, schedule_id=19
+2025-07-04 09:41:02,279 - DEBUG - Attendance status for student 6421600002: Too soon to log again
+2025-07-04 09:41:02,283 - INFO - Processed frame: course_id=12, schedule_id=19, results=1
+2025-07-04 09:41:02,312 - INFO - 127.0.0.1 - - [04/Jul/2025 09:41:02] "POST /process_frame HTTP/1.1" 200 -
+2025-07-04 09:41:02,533 - INFO - 127.0.0.1 - - [04/Jul/2025 09:41:02] "OPTIONS /process_frame HTTP/1.1" 200 -
+2025-07-04 09:41:02,779 - INFO - Received request to /process_frame
+2025-07-04 09:41:02,791 - DEBUG - Request data keys: ['frame', 'course_id', 'schedule_id']
+2025-07-04 09:41:04,919 - INFO - Detected 1 faces
+2025-07-04 09:41:04,923 - INFO - Found schedule: student_id=6421600002, course_id=12, schedule_id=19
+2025-07-04 09:41:07,424 - INFO - Too soon to log again: student_id=6421600002, schedule_id=19
+2025-07-04 09:41:08,435 - DEBUG - Attendance status for student 6421600002: Too soon to log again
+2025-07-04 09:41:08,441 - INFO - Processed frame: course_id=12, schedule_id=19, results=1
+2025-07-04 09:41:08,927 - INFO - 127.0.0.1 - - [04/Jul/2025 09:41:08] "POST /process_frame HTTP/1.1" 200 -
+2025-07-04 09:43:25,213 - INFO - 127.0.0.1 - - [04/Jul/2025 09:43:25] "[33mPOST /api/send-email HTTP/1.1[0m" 404 -
+2025-07-04 09:44:01,570 - INFO - 127.0.0.1 - - [04/Jul/2025 09:44:01] "OPTIONS /start_scan HTTP/1.1" 200 -
+2025-07-04 09:44:01,627 - INFO - Received request to /start_scan
+2025-07-04 09:44:01,629 - INFO - Request data: {'course_id': '13', 'teacher_id': '5424000002', 'schedule_id': 20}
+2025-07-04 09:44:01,631 - ERROR - Invalid course, teacher, or schedule: course_id=13, teacher_id=5424000002, schedule_id=20
+2025-07-04 09:44:01,632 - INFO - 127.0.0.1 - - [04/Jul/2025 09:44:01] "[31m[1mPOST /start_scan HTTP/1.1[0m" 403 -
+2025-07-04 09:44:02,720 - INFO - Received request to /start_scan
+2025-07-04 09:44:02,721 - INFO - Request data: {'course_id': '13', 'teacher_id': '5424000002', 'schedule_id': 20}
+2025-07-04 09:44:02,732 - ERROR - Invalid course, teacher, or schedule: course_id=13, teacher_id=5424000002, schedule_id=20
+2025-07-04 09:44:02,733 - INFO - 127.0.0.1 - - [04/Jul/2025 09:44:02] "[31m[1mPOST /start_scan HTTP/1.1[0m" 403 -
+2025-07-04 09:44:03,812 - INFO - Received request to /start_scan
+2025-07-04 09:44:03,813 - INFO - Request data: {'course_id': '13', 'teacher_id': '5424000002', 'schedule_id': 20}
+2025-07-04 09:44:03,816 - ERROR - Invalid course, teacher, or schedule: course_id=13, teacher_id=5424000002, schedule_id=20
+2025-07-04 09:44:03,819 - INFO - 127.0.0.1 - - [04/Jul/2025 09:44:03] "[31m[1mPOST /start_scan HTTP/1.1[0m" 403 -
+2025-07-04 09:44:04,906 - INFO - Received request to /start_scan
+2025-07-04 09:44:04,914 - INFO - Request data: {'course_id': '13', 'teacher_id': '5424000002', 'schedule_id': 20}
+2025-07-04 09:44:04,917 - ERROR - Invalid course, teacher, or schedule: course_id=13, teacher_id=5424000002, schedule_id=20
+2025-07-04 09:44:04,918 - INFO - 127.0.0.1 - - [04/Jul/2025 09:44:04] "[31m[1mPOST /start_scan HTTP/1.1[0m" 403 -
+2025-07-04 09:45:35,407 - INFO - 127.0.0.1 - - [04/Jul/2025 09:45:35] "OPTIONS /start_scan HTTP/1.1" 200 -
+2025-07-04 09:45:35,917 - INFO - Received request to /start_scan
+2025-07-04 09:45:35,926 - INFO - Request data: {'course_id': '13', 'teacher_id': '5424000002', 'schedule_id': 20}
+2025-07-04 09:45:35,980 - ERROR - Invalid course, teacher, or schedule: course_id=13, teacher_id=5424000002, schedule_id=20
+2025-07-04 09:45:36,005 - INFO - 127.0.0.1 - - [04/Jul/2025 09:45:36] "[31m[1mPOST /start_scan HTTP/1.1[0m" 403 -
+2025-07-04 09:45:38,100 - INFO - Received request to /start_scan
+2025-07-04 09:45:38,225 - INFO - Request data: {'course_id': '13', 'teacher_id': '5424000002', 'schedule_id': 20}
+2025-07-04 09:45:38,303 - ERROR - Invalid course, teacher, or schedule: course_id=13, teacher_id=5424000002, schedule_id=20
+2025-07-04 09:45:38,503 - INFO - 127.0.0.1 - - [04/Jul/2025 09:45:38] "[31m[1mPOST /start_scan HTTP/1.1[0m" 403 -
+2025-07-04 09:45:40,929 - INFO - 127.0.0.1 - - [04/Jul/2025 09:45:40] "OPTIONS /start_scan HTTP/1.1" 200 -
+2025-07-04 09:45:41,729 - INFO - Received request to /start_scan
+2025-07-04 09:45:42,107 - INFO - Request data: {'course_id': '13', 'teacher_id': '5424000002', 'schedule_id': 20}
+2025-07-04 09:45:42,211 - ERROR - Invalid course, teacher, or schedule: course_id=13, teacher_id=5424000002, schedule_id=20
+2025-07-04 09:45:42,464 - INFO - 127.0.0.1 - - [04/Jul/2025 09:45:42] "[31m[1mPOST /start_scan HTTP/1.1[0m" 403 -
+2025-07-04 09:45:45,481 - INFO - Received request to /start_scan
+2025-07-04 09:45:45,714 - INFO - Request data: {'course_id': '13', 'teacher_id': '5424000002', 'schedule_id': 20}
+2025-07-04 09:45:45,717 - ERROR - Invalid course, teacher, or schedule: course_id=13, teacher_id=5424000002, schedule_id=20
+2025-07-04 09:45:45,719 - INFO - 127.0.0.1 - - [04/Jul/2025 09:45:45] "[31m[1mPOST /start_scan HTTP/1.1[0m" 403 -
+2025-07-04 09:52:57,210 - INFO -  * Detected change in 'C:\\xampp\\htdocs\\attend_system\\email_server.py', reloading
+2025-07-04 09:52:58,170 - INFO - Closing database connection...
+2025-07-04 09:52:58,632 - INFO - Database connection closed
+2025-07-04 09:53:00,601 - INFO -  * Restarting with stat
+2025-07-04 09:54:02,235 - INFO - Connected to attend_data database
+2025-07-04 09:54:02,243 - INFO - Database manager initialized
+2025-07-04 09:54:02,258 - INFO - Loaded 8 known faces
+2025-07-04 09:54:02,266 - INFO - Starting Flask server...
+2025-07-04 09:54:02,394 - WARNING -  * Debugger is active!
+2025-07-04 09:54:02,444 - INFO -  * Debugger PIN: 249-321-551
+2025-07-04 09:57:34,299 - INFO - 127.0.0.1 - - [04/Jul/2025 09:57:34] "OPTIONS /start_scan HTTP/1.1" 200 -
+2025-07-04 09:57:34,494 - INFO - Received request to /start_scan
+2025-07-04 09:57:34,523 - INFO - Request data: {'course_id': '12', 'teacher_id': '5424000002', 'schedule_id': 19}
+2025-07-04 09:57:34,527 - INFO - Scanning started: course_id=12, teacher_id=5424000002, schedule_id=19
+2025-07-04 09:57:34,534 - INFO - 127.0.0.1 - - [04/Jul/2025 09:57:34] "POST /start_scan HTTP/1.1" 200 -
+2025-07-04 09:57:34,781 - INFO - 127.0.0.1 - - [04/Jul/2025 09:57:34] "OPTIONS /process_frame HTTP/1.1" 200 -
+2025-07-04 09:57:34,996 - INFO - Received request to /process_frame
+2025-07-04 09:57:35,024 - DEBUG - Request data keys: ['frame', 'course_id', 'schedule_id']
+2025-07-04 09:57:37,070 - INFO - Detected 1 faces
+2025-07-04 09:57:37,074 - INFO - Found schedule: student_id=6421600002, course_id=12, schedule_id=19
+2025-07-04 09:57:37,175 - INFO - Too soon to log again: student_id=6421600002, schedule_id=19
+2025-07-04 09:57:37,176 - DEBUG - Attendance status for student 6421600002: Too soon to log again
+2025-07-04 09:57:37,177 - INFO - Processed frame: course_id=12, schedule_id=19, results=1
+2025-07-04 09:57:37,179 - INFO - 127.0.0.1 - - [04/Jul/2025 09:57:37] "POST /process_frame HTTP/1.1" 200 -
+2025-07-04 09:57:37,377 - INFO - Received request to /process_frame
+2025-07-04 09:57:37,381 - DEBUG - Request data keys: ['frame', 'course_id', 'schedule_id']
+2025-07-04 09:57:38,062 - INFO - Detected 0 faces
+2025-07-04 09:57:38,066 - INFO - Processed frame: course_id=12, schedule_id=19, results=0
+2025-07-04 09:57:38,072 - INFO - 127.0.0.1 - - [04/Jul/2025 09:57:38] "POST /process_frame HTTP/1.1" 200 -
+2025-07-04 09:57:38,166 - INFO - Received request to /process_frame
+2025-07-04 09:57:38,327 - DEBUG - Request data keys: ['frame', 'course_id', 'schedule_id']
+2025-07-04 09:57:40,795 - INFO - Detected 1 faces
+2025-07-04 09:57:40,910 - WARNING - No schedule found: student_id=6421600001, course_id=12, schedule_id=19
+2025-07-04 09:57:40,953 - DEBUG - Current schedule for student 6421600001: None, reason: Not enrolled or invalid schedule
+2025-07-04 09:57:40,956 - INFO - Processed frame: course_id=12, schedule_id=19, results=1
+2025-07-04 09:57:40,957 - INFO - 127.0.0.1 - - [04/Jul/2025 09:57:40] "POST /process_frame HTTP/1.1" 200 -
+2025-07-04 09:57:41,390 - INFO - 127.0.0.1 - - [04/Jul/2025 09:57:41] "OPTIONS /process_frame HTTP/1.1" 200 -
+2025-07-04 09:57:41,749 - INFO - Received request to /process_frame
+2025-07-04 09:57:41,799 - DEBUG - Request data keys: ['frame', 'course_id', 'schedule_id']
+2025-07-04 09:57:44,296 - INFO - Detected 1 faces
+2025-07-04 09:57:44,324 - WARNING - No schedule found: student_id=6421600001, course_id=12, schedule_id=19
+2025-07-04 09:57:44,336 - DEBUG - Current schedule for student 6421600001: None, reason: Not enrolled or invalid schedule
+2025-07-04 09:57:44,346 - INFO - Processed frame: course_id=12, schedule_id=19, results=1
+2025-07-04 09:57:44,349 - INFO - 127.0.0.1 - - [04/Jul/2025 09:57:44] "POST /process_frame HTTP/1.1" 200 -
+2025-07-04 09:57:44,582 - INFO - Received request to /process_frame
+2025-07-04 09:57:44,584 - DEBUG - Request data keys: ['frame', 'course_id', 'schedule_id']
+2025-07-04 09:57:46,770 - INFO - Detected 1 faces
+2025-07-04 09:57:46,776 - INFO - Found schedule: student_id=6421600006, course_id=12, schedule_id=19
+2025-07-04 09:57:47,507 - INFO - Fetched schedule: schedule_id=19
+2025-07-04 09:57:47,515 - INFO - Marked late (after allowed period): student_id=6421600006, schedule_id=19
+2025-07-04 09:57:47,529 - INFO - Attendance logged: student_id=6421600006, schedule_id=19, status=late
+2025-07-04 09:57:47,533 - DEBUG - Attendance status for student 6421600006: late
+2025-07-04 09:57:47,556 - DEBUG - Starting new HTTP connection (1): localhost:5001
+2025-07-04 09:57:52,738 - DEBUG - http://localhost:5001 "POST /api/send-email HTTP/11" 200 43
+2025-07-04 09:57:52,787 - INFO - Email sent successfully to wonwinpor@gmail.com for student 6421600006
+2025-07-04 09:57:52,905 - INFO - Processed frame: course_id=12, schedule_id=19, results=1
+2025-07-04 09:57:53,018 - INFO - 127.0.0.1 - - [04/Jul/2025 09:57:53] "POST /process_frame HTTP/1.1" 200 -
+2025-07-04 09:57:53,207 - INFO - 127.0.0.1 - - [04/Jul/2025 09:57:53] "OPTIONS /process_frame HTTP/1.1" 200 -
+2025-07-04 09:57:53,280 - INFO - Received request to /process_frame
+2025-07-04 09:57:53,308 - DEBUG - Request data keys: ['frame', 'course_id', 'schedule_id']
+2025-07-04 09:57:57,309 - INFO - Detected 1 faces
+2025-07-04 09:57:57,517 - INFO - Found schedule: student_id=6421600006, course_id=12, schedule_id=19
+2025-07-04 09:57:58,366 - INFO - Too soon to log again: student_id=6421600006, schedule_id=19
+2025-07-04 09:57:58,661 - DEBUG - Attendance status for student 6421600006: Too soon to log again
+2025-07-04 09:57:58,668 - INFO - Processed frame: course_id=12, schedule_id=19, results=1
+2025-07-04 09:57:58,675 - INFO - 127.0.0.1 - - [04/Jul/2025 09:57:58] "POST /process_frame HTTP/1.1" 200 -
+2025-07-04 09:58:35,497 - INFO - 127.0.0.1 - - [04/Jul/2025 09:58:35] "OPTIONS /process_frame HTTP/1.1" 200 -
+2025-07-04 09:58:37,127 - INFO - Received request to /process_frame
+2025-07-04 09:58:37,929 - DEBUG - Request data keys: ['frame', 'course_id', 'schedule_id']
+2025-07-04 09:58:42,532 - INFO - Detected 1 faces
+2025-07-04 09:58:43,748 - INFO - Found schedule: student_id=6421600002, course_id=12, schedule_id=19
+2025-07-04 09:58:49,814 - INFO - Fetched schedule: schedule_id=19
+2025-07-04 09:58:50,277 - INFO - Marked late (after allowed period): student_id=6421600002, schedule_id=19
+2025-07-04 09:58:50,920 - INFO - Attendance logged: student_id=6421600002, schedule_id=19, status=late
+2025-07-04 09:58:51,045 - DEBUG - Attendance status for student 6421600002: late
+2025-07-04 09:58:53,042 - DEBUG - Starting new HTTP connection (1): localhost:5001
+2025-07-04 09:58:58,885 - DEBUG - http://localhost:5001 "POST /api/send-email HTTP/11" 200 43
+2025-07-04 09:58:58,979 - INFO - 127.0.0.1 - - [04/Jul/2025 09:58:58] "OPTIONS /process_frame HTTP/1.1" 200 -
+2025-07-04 09:58:59,030 - INFO - Email sent successfully to piyawan.saiw@ku.th for student 6421600002
+2025-07-04 09:58:59,032 - INFO - Processed frame: course_id=12, schedule_id=19, results=1
+2025-07-04 09:58:59,319 - INFO - 127.0.0.1 - - [04/Jul/2025 09:58:59] "POST /process_frame HTTP/1.1" 200 -
+2025-07-04 09:58:59,750 - INFO - Received request to /process_frame
+2025-07-04 09:58:59,775 - DEBUG - Request data keys: ['frame', 'course_id', 'schedule_id']
+2025-07-04 09:59:07,802 - INFO - Detected 1 faces
+2025-07-04 09:59:08,315 - INFO - Found schedule: student_id=6421600002, course_id=12, schedule_id=19
+2025-07-04 09:59:15,994 - INFO - Too soon to log again: student_id=6421600002, schedule_id=19
+2025-07-04 09:59:16,268 - DEBUG - Attendance status for student 6421600002: Too soon to log again
+2025-07-04 09:59:16,610 - INFO - Processed frame: course_id=12, schedule_id=19, results=1
+2025-07-04 09:59:16,819 - INFO - 127.0.0.1 - - [04/Jul/2025 09:59:16] "POST /process_frame HTTP/1.1" 200 -
+2025-07-04 09:59:51,917 - INFO - 127.0.0.1 - - [04/Jul/2025 09:59:51] "OPTIONS /process_frame HTTP/1.1" 200 -
+2025-07-04 09:59:55,807 - INFO - Received request to /process_frame
+2025-07-04 09:59:56,726 - DEBUG - Request data keys: ['frame', 'course_id', 'schedule_id']
+2025-07-04 10:00:11,883 - INFO - Detected 1 faces
+2025-07-04 10:00:13,504 - WARNING - No schedule found: student_id=6421600001, course_id=12, schedule_id=19
+2025-07-04 10:00:14,577 - DEBUG - Current schedule for student 6421600001: None, reason: Not enrolled or invalid schedule
+2025-07-04 10:00:15,217 - INFO - 127.0.0.1 - - [04/Jul/2025 10:00:15] "OPTIONS /process_frame HTTP/1.1" 200 -
+2025-07-04 10:00:15,218 - INFO - Processed frame: course_id=12, schedule_id=19, results=1
+2025-07-04 10:00:16,398 - INFO - 127.0.0.1 - - [04/Jul/2025 10:00:16] "POST /process_frame HTTP/1.1" 200 -
+2025-07-04 10:00:17,402 - INFO - Received request to /process_frame
+2025-07-04 10:00:18,218 - DEBUG - Request data keys: ['frame', 'course_id', 'schedule_id']
+2025-07-04 10:01:12,573 - INFO - Detected 1 faces
+2025-07-04 10:01:15,379 - WARNING - No schedule found: student_id=6421600001, course_id=12, schedule_id=19
+2025-07-04 10:01:15,394 - INFO - 127.0.0.1 - - [04/Jul/2025 10:01:15] "OPTIONS /process_frame HTTP/1.1" 200 -
+2025-07-04 10:01:17,133 - DEBUG - Current schedule for student 6421600001: None, reason: Not enrolled or invalid schedule
+2025-07-04 10:01:17,998 - INFO - 127.0.0.1 - - [04/Jul/2025 10:01:17] "OPTIONS /process_frame HTTP/1.1" 200 -
+2025-07-04 10:01:18,000 - INFO - Processed frame: course_id=12, schedule_id=19, results=1
+2025-07-04 10:01:19,920 - INFO - 127.0.0.1 - - [04/Jul/2025 10:01:19] "POST /process_frame HTTP/1.1" 200 -
+2025-07-04 10:01:20,331 - INFO - Received request to /process_frame
+2025-07-04 10:01:21,548 - DEBUG - Request data keys: ['frame', 'course_id', 'schedule_id']
+2025-07-04 10:01:55,532 - INFO - Detected 1 faces
+2025-07-04 10:01:55,633 - WARNING - No schedule found: student_id=6421600001, course_id=12, schedule_id=19
+2025-07-04 10:01:55,851 - DEBUG - Current schedule for student 6421600001: None, reason: Not enrolled or invalid schedule
+2025-07-04 10:01:57,030 - INFO - Processed frame: course_id=12, schedule_id=19, results=1
+2025-07-04 10:01:57,566 - INFO - 127.0.0.1 - - [04/Jul/2025 10:01:57] "POST /process_frame HTTP/1.1" 200 -
+2025-07-04 10:36:11,043 - INFO - 127.0.0.1 - - [04/Jul/2025 10:36:11] "OPTIONS /start_scan HTTP/1.1" 200 -
+2025-07-04 10:36:11,255 - INFO - Received request to /start_scan
+2025-07-04 10:36:11,262 - INFO - Request data: {'course_id': '11', 'teacher_id': '5424000002', 'schedule_id': 18}
+2025-07-04 10:36:11,275 - INFO - Scanning started: course_id=11, teacher_id=5424000002, schedule_id=18
+2025-07-04 10:36:11,361 - INFO - 127.0.0.1 - - [04/Jul/2025 10:36:11] "POST /start_scan HTTP/1.1" 200 -
+2025-07-04 10:36:11,723 - INFO - 127.0.0.1 - - [04/Jul/2025 10:36:11] "OPTIONS /process_frame HTTP/1.1" 200 -
+2025-07-04 10:36:12,043 - INFO - Received request to /process_frame
+2025-07-04 10:36:12,182 - DEBUG - Request data keys: ['frame', 'course_id', 'schedule_id']
+2025-07-04 10:36:21,071 - INFO - Detected 1 faces
+2025-07-04 10:36:21,643 - INFO - Found schedule: student_id=6421600006, course_id=11, schedule_id=18
+2025-07-04 10:36:24,582 - INFO - Fetched schedule: schedule_id=18
+2025-07-04 10:36:24,631 - INFO - Marked present (early or on-time): student_id=6421600006, schedule_id=18
+2025-07-04 10:36:24,762 - INFO - Attendance logged: student_id=6421600006, schedule_id=18, status=present
+2025-07-04 10:36:24,788 - DEBUG - Attendance status for student 6421600006: present
+2025-07-04 10:36:24,844 - DEBUG - Starting new HTTP connection (1): localhost:5001
+2025-07-04 10:36:30,782 - DEBUG - http://localhost:5001 "POST /api/send-email HTTP/11" 200 43
+2025-07-04 10:36:30,875 - INFO - Email sent successfully to wonwinpor@gmail.com for student 6421600006
+2025-07-04 10:36:31,101 - INFO - Processed frame: course_id=11, schedule_id=18, results=1
+2025-07-04 10:36:31,207 - INFO - 127.0.0.1 - - [04/Jul/2025 10:36:31] "POST /process_frame HTTP/1.1" 200 -
+2025-07-04 10:36:31,731 - INFO - 127.0.0.1 - - [04/Jul/2025 10:36:31] "OPTIONS /process_frame HTTP/1.1" 200 -
+2025-07-04 10:36:31,977 - INFO - Received request to /process_frame
+2025-07-04 10:36:32,043 - DEBUG - Request data keys: ['frame', 'course_id', 'schedule_id']
+2025-07-04 10:36:40,736 - INFO - Detected 1 faces
+2025-07-04 10:36:40,864 - INFO - Found schedule: student_id=6421600006, course_id=11, schedule_id=18
+2025-07-04 10:36:42,841 - INFO - Too soon to log again: student_id=6421600006, schedule_id=18
+2025-07-04 10:36:42,975 - DEBUG - Attendance status for student 6421600006: Too soon to log again
+2025-07-04 10:36:43,213 - INFO - Processed frame: course_id=11, schedule_id=18, results=1
+2025-07-04 10:36:43,347 - INFO - 127.0.0.1 - - [04/Jul/2025 10:36:43] "POST /process_frame HTTP/1.1" 200 -
+2025-07-04 10:36:44,607 - INFO - 127.0.0.1 - - [04/Jul/2025 10:36:44] "OPTIONS /process_frame HTTP/1.1" 200 -
+2025-07-04 10:36:44,993 - INFO - Received request to /process_frame
+2025-07-04 10:36:45,177 - DEBUG - Request data keys: ['frame', 'course_id', 'schedule_id']
+2025-07-04 10:36:51,706 - INFO - Detected 1 faces
+2025-07-04 10:36:51,851 - INFO - Found schedule: student_id=6421600001, course_id=11, schedule_id=18
+2025-07-04 10:36:52,533 - INFO - Fetched schedule: schedule_id=18
+2025-07-04 10:36:52,538 - INFO - Marked present (early or on-time): student_id=6421600001, schedule_id=18
+2025-07-04 10:36:52,556 - INFO - Attendance logged: student_id=6421600001, schedule_id=18, status=present
+2025-07-04 10:36:52,566 - DEBUG - Attendance status for student 6421600001: present
+2025-07-04 10:36:52,581 - DEBUG - Starting new HTTP connection (1): localhost:5001
+2025-07-04 10:36:57,855 - DEBUG - http://localhost:5001 "POST /api/send-email HTTP/11" 200 43
+2025-07-04 10:36:57,955 - INFO - Email sent successfully to pornpairin.n@ku.th for student 6421600001
+2025-07-04 10:36:58,043 - INFO - Processed frame: course_id=11, schedule_id=18, results=1
+2025-07-04 10:36:58,177 - INFO - 127.0.0.1 - - [04/Jul/2025 10:36:58] "POST /process_frame HTTP/1.1" 200 -
+2025-07-04 10:36:58,467 - INFO - 127.0.0.1 - - [04/Jul/2025 10:36:58] "OPTIONS /process_frame HTTP/1.1" 200 -
+2025-07-04 10:36:58,506 - INFO - Received request to /process_frame
+2025-07-04 10:36:58,514 - DEBUG - Request data keys: ['frame', 'course_id', 'schedule_id']
+2025-07-04 10:37:06,174 - INFO - Detected 1 faces
+2025-07-04 10:37:06,389 - INFO - Found schedule: student_id=6421600002, course_id=11, schedule_id=18
+2025-07-04 10:37:07,773 - INFO - Fetched schedule: schedule_id=18
+2025-07-04 10:37:07,779 - INFO - Marked present (early or on-time): student_id=6421600002, schedule_id=18
+2025-07-04 10:37:07,791 - INFO - Attendance logged: student_id=6421600002, schedule_id=18, status=present
+2025-07-04 10:37:07,795 - DEBUG - Attendance status for student 6421600002: present
+2025-07-04 10:37:07,806 - DEBUG - Starting new HTTP connection (1): localhost:5001
+2025-07-04 10:37:13,243 - DEBUG - http://localhost:5001 "POST /api/send-email HTTP/11" 200 43
+2025-07-04 10:37:13,334 - INFO - Email sent successfully to piyawan.saiw@ku.th for student 6421600002
+2025-07-04 10:37:13,633 - INFO - Processed frame: course_id=11, schedule_id=18, results=1
+2025-07-04 10:37:14,112 - INFO - 127.0.0.1 - - [04/Jul/2025 10:37:14] "POST /process_frame HTTP/1.1" 200 -
+2025-07-04 10:37:14,972 - INFO - 127.0.0.1 - - [04/Jul/2025 10:37:14] "OPTIONS /process_frame HTTP/1.1" 200 -
+2025-07-04 10:37:15,623 - INFO - Received request to /process_frame
+2025-07-04 10:37:16,063 - DEBUG - Request data keys: ['frame', 'course_id', 'schedule_id']
+2025-07-04 10:37:24,672 - INFO - Detected 1 faces
+2025-07-04 10:37:24,844 - INFO - Found schedule: student_id=6421600002, course_id=11, schedule_id=18
+2025-07-04 10:37:30,335 - INFO - Too soon to log again: student_id=6421600002, schedule_id=18
+2025-07-04 10:37:30,876 - DEBUG - Attendance status for student 6421600002: Too soon to log again
+2025-07-04 10:37:31,912 - INFO - Processed frame: course_id=11, schedule_id=18, results=1
+2025-07-04 10:37:32,565 - INFO - 127.0.0.1 - - [04/Jul/2025 10:37:32] "POST /process_frame HTTP/1.1" 200 -
+2025-07-04 10:37:34,552 - INFO - 127.0.0.1 - - [04/Jul/2025 10:37:34] "OPTIONS /process_frame HTTP/1.1" 200 -
+2025-07-04 10:37:35,200 - INFO - Received request to /process_frame
+2025-07-04 10:37:35,403 - DEBUG - Request data keys: ['frame', 'course_id', 'schedule_id']
+2025-07-04 10:37:43,523 - INFO - Detected 1 faces
+2025-07-04 10:37:43,721 - INFO - Found schedule: student_id=6421600002, course_id=11, schedule_id=18
+2025-07-04 10:37:47,726 - INFO - Too soon to log again: student_id=6421600002, schedule_id=18
+2025-07-04 10:37:47,756 - DEBUG - Attendance status for student 6421600002: Too soon to log again
+2025-07-04 10:37:48,037 - INFO - Processed frame: course_id=11, schedule_id=18, results=1
+2025-07-04 10:37:48,107 - INFO - 127.0.0.1 - - [04/Jul/2025 10:37:48] "POST /process_frame HTTP/1.1" 200 -
+2025-07-04 10:37:48,543 - INFO - 127.0.0.1 - - [04/Jul/2025 10:37:48] "OPTIONS /process_frame HTTP/1.1" 200 -
+2025-07-04 10:37:48,954 - INFO - Received request to /process_frame
+2025-07-04 10:37:49,056 - DEBUG - Request data keys: ['frame', 'course_id', 'schedule_id']
+2025-07-04 10:37:54,326 - INFO - Detected 1 faces
+2025-07-04 10:37:54,464 - INFO - Found schedule: student_id=6421600002, course_id=11, schedule_id=18
+2025-07-04 10:37:54,857 - INFO - Too soon to log again: student_id=6421600002, schedule_id=18
+2025-07-04 10:37:54,858 - DEBUG - Attendance status for student 6421600002: Too soon to log again
+2025-07-04 10:37:54,859 - INFO - Processed frame: course_id=11, schedule_id=18, results=1
+2025-07-04 10:37:54,864 - INFO - 127.0.0.1 - - [04/Jul/2025 10:37:54] "POST /process_frame HTTP/1.1" 200 -
+2025-07-04 10:37:55,007 - INFO - 127.0.0.1 - - [04/Jul/2025 10:37:55] "OPTIONS /process_frame HTTP/1.1" 200 -
+2025-07-04 10:37:55,189 - INFO - Received request to /process_frame
+2025-07-04 10:37:55,242 - DEBUG - Request data keys: ['frame', 'course_id', 'schedule_id']
+2025-07-04 10:38:02,456 - INFO - Detected 1 faces
+2025-07-04 10:38:02,664 - INFO - Found schedule: student_id=6421600002, course_id=11, schedule_id=18
+2025-07-04 10:38:05,235 - INFO - Too soon to log again: student_id=6421600002, schedule_id=18
+2025-07-04 10:38:05,425 - DEBUG - Attendance status for student 6421600002: Too soon to log again
+2025-07-04 10:38:05,464 - INFO - Processed frame: course_id=11, schedule_id=18, results=1
+2025-07-04 10:38:05,666 - INFO - 127.0.0.1 - - [04/Jul/2025 10:38:05] "POST /process_frame HTTP/1.1" 200 -
+2025-07-04 10:38:06,630 - INFO - 127.0.0.1 - - [04/Jul/2025 10:38:06] "OPTIONS /process_frame HTTP/1.1" 200 -
+2025-07-04 10:38:07,045 - INFO - Received request to /process_frame
+2025-07-04 10:38:07,177 - DEBUG - Request data keys: ['frame', 'course_id', 'schedule_id']
+2025-07-04 10:38:26,592 - INFO - Detected 2 faces
+2025-07-04 10:38:27,175 - INFO - Found schedule: student_id=6421600006, course_id=11, schedule_id=18
+2025-07-04 10:38:27,671 - INFO - 127.0.0.1 - - [04/Jul/2025 10:38:27] "OPTIONS /process_frame HTTP/1.1" 200 -
+2025-07-04 10:38:28,080 - INFO - Too soon to log again: student_id=6421600006, schedule_id=18
+2025-07-04 10:38:28,977 - DEBUG - Attendance status for student 6421600006: Too soon to log again
+2025-07-04 10:38:29,295 - INFO - Received request to /process_frame
+2025-07-04 10:38:29,303 - INFO - Found schedule: student_id=6421600002, course_id=11, schedule_id=18
+2025-07-04 10:38:29,504 - DEBUG - Request data keys: ['frame', 'course_id', 'schedule_id']
+2025-07-04 10:38:40,842 - INFO - Detected 2 faces
+2025-07-04 10:38:40,874 - INFO - Too soon to log again: student_id=6421600002, schedule_id=18
+2025-07-04 10:38:40,878 - INFO - Found schedule: student_id=6421600006, course_id=11, schedule_id=18
+2025-07-04 10:38:40,884 - DEBUG - Attendance status for student 6421600002: Too soon to log again
+2025-07-04 10:38:40,944 - INFO - Processed frame: course_id=11, schedule_id=18, results=2
+2025-07-04 10:38:41,022 - INFO - Too soon to log again: student_id=6421600006, schedule_id=18
+2025-07-04 10:38:41,027 - INFO - 127.0.0.1 - - [04/Jul/2025 10:38:41] "POST /process_frame HTTP/1.1" 200 -
+2025-07-04 10:38:41,031 - DEBUG - Attendance status for student 6421600006: Too soon to log again
+2025-07-04 10:38:41,037 - INFO - Found schedule: student_id=6421600002, course_id=11, schedule_id=18
+2025-07-04 10:38:41,137 - INFO - Too soon to log again: student_id=6421600002, schedule_id=18
+2025-07-04 10:38:41,146 - DEBUG - Attendance status for student 6421600002: Too soon to log again
+2025-07-04 10:38:41,148 - INFO - Processed frame: course_id=11, schedule_id=18, results=2
+2025-07-04 10:38:41,158 - INFO - 127.0.0.1 - - [04/Jul/2025 10:38:41] "POST /process_frame HTTP/1.1" 200 -
+2025-07-04 10:38:41,383 - INFO - 127.0.0.1 - - [04/Jul/2025 10:38:41] "OPTIONS /process_frame HTTP/1.1" 200 -
+2025-07-04 10:38:41,532 - INFO - Received request to /process_frame
+2025-07-04 10:38:41,536 - DEBUG - Request data keys: ['frame', 'course_id', 'schedule_id']
+2025-07-04 10:38:46,369 - INFO - Detected 0 faces
+2025-07-04 10:38:46,510 - INFO - Processed frame: course_id=11, schedule_id=18, results=0
+2025-07-04 10:38:46,584 - INFO - 127.0.0.1 - - [04/Jul/2025 10:38:46] "POST /process_frame HTTP/1.1" 200 -
+2025-07-04 10:38:47,559 - INFO - 127.0.0.1 - - [04/Jul/2025 10:38:47] "OPTIONS /process_frame HTTP/1.1" 200 -
+2025-07-04 10:38:48,165 - INFO - Received request to /process_frame
+2025-07-04 10:38:48,490 - DEBUG - Request data keys: ['frame', 'course_id', 'schedule_id']
+2025-07-04 10:39:00,415 - INFO - Detected 1 faces
+2025-07-04 10:39:00,541 - INFO - Found schedule: student_id=6421600002, course_id=11, schedule_id=18
+2025-07-04 10:39:05,444 - INFO - Too soon to log again: student_id=6421600002, schedule_id=18
+2025-07-04 10:39:05,538 - DEBUG - Attendance status for student 6421600002: Too soon to log again
+2025-07-04 10:39:05,600 - INFO - Processed frame: course_id=11, schedule_id=18, results=1
+2025-07-04 10:39:05,702 - INFO - 127.0.0.1 - - [04/Jul/2025 10:39:05] "POST /process_frame HTTP/1.1" 200 -
+2025-07-04 10:39:06,193 - INFO - 127.0.0.1 - - [04/Jul/2025 10:39:06] "OPTIONS /process_frame HTTP/1.1" 200 -
+2025-07-04 10:39:06,706 - INFO - Received request to /process_frame
+2025-07-04 10:39:06,939 - DEBUG - Request data keys: ['frame', 'course_id', 'schedule_id']
+2025-07-04 10:39:09,985 - INFO - Detected 0 faces
+2025-07-04 10:39:10,031 - INFO - Processed frame: course_id=11, schedule_id=18, results=0
+2025-07-04 10:39:10,062 - INFO - 127.0.0.1 - - [04/Jul/2025 10:39:10] "POST /process_frame HTTP/1.1" 200 -
+2025-07-04 10:39:10,253 - INFO - Received request to /process_frame
+2025-07-04 10:39:10,274 - DEBUG - Request data keys: ['frame', 'course_id', 'schedule_id']
+2025-07-04 10:39:17,532 - INFO - Detected 1 faces
+2025-07-04 10:39:17,643 - INFO - Found schedule: student_id=6421600002, course_id=11, schedule_id=18
+2025-07-04 10:39:19,055 - INFO - Too soon to log again: student_id=6421600002, schedule_id=18
+2025-07-04 10:39:19,063 - DEBUG - Attendance status for student 6421600002: Too soon to log again
+2025-07-04 10:39:19,073 - INFO - Processed frame: course_id=11, schedule_id=18, results=1
+2025-07-04 10:39:19,078 - INFO - 127.0.0.1 - - [04/Jul/2025 10:39:19] "POST /process_frame HTTP/1.1" 200 -
+2025-07-04 10:39:19,505 - INFO - 127.0.0.1 - - [04/Jul/2025 10:39:19] "OPTIONS /process_frame HTTP/1.1" 200 -
+2025-07-04 10:39:19,549 - INFO - Received request to /process_frame
+2025-07-04 10:39:19,556 - DEBUG - Request data keys: ['frame', 'course_id', 'schedule_id']
+2025-07-04 10:39:25,274 - INFO - Detected 1 faces
+2025-07-04 10:39:25,368 - INFO - Found schedule: student_id=6421600002, course_id=11, schedule_id=18
+2025-07-04 10:39:25,662 - INFO - Too soon to log again: student_id=6421600002, schedule_id=18
+2025-07-04 10:39:25,680 - DEBUG - Attendance status for student 6421600002: Too soon to log again
+2025-07-04 10:39:25,681 - INFO - Processed frame: course_id=11, schedule_id=18, results=1
+2025-07-04 10:39:25,684 - INFO - 127.0.0.1 - - [04/Jul/2025 10:39:25] "POST /process_frame HTTP/1.1" 200 -
+2025-07-04 10:39:25,966 - INFO - 127.0.0.1 - - [04/Jul/2025 10:39:25] "OPTIONS /process_frame HTTP/1.1" 200 -
+2025-07-04 10:39:26,025 - INFO - Received request to /process_frame
+2025-07-04 10:39:26,040 - DEBUG - Request data keys: ['frame', 'course_id', 'schedule_id']
+2025-07-04 10:39:33,010 - INFO - Detected 1 faces
+2025-07-04 10:39:33,851 - INFO - Found schedule: student_id=6421600002, course_id=11, schedule_id=18
+2025-07-04 10:39:42,612 - INFO - Too soon to log again: student_id=6421600002, schedule_id=18
+2025-07-04 10:39:42,685 - DEBUG - Attendance status for student 6421600002: Too soon to log again
+2025-07-04 10:39:42,831 - INFO - Processed frame: course_id=11, schedule_id=18, results=1
+2025-07-04 10:39:43,043 - INFO - 127.0.0.1 - - [04/Jul/2025 10:39:43] "POST /process_frame HTTP/1.1" 200 -
+2025-07-04 10:39:50,809 - INFO - 127.0.0.1 - - [04/Jul/2025 10:39:50] "OPTIONS /process_frame HTTP/1.1" 200 -
+2025-07-04 10:39:51,123 - INFO - Received request to /process_frame
+2025-07-04 10:39:51,462 - DEBUG - Request data keys: ['frame', 'course_id', 'schedule_id']
+2025-07-04 10:39:58,453 - INFO - Detected 1 faces
+2025-07-04 10:39:58,466 - INFO - Found schedule: student_id=6421600002, course_id=11, schedule_id=18
+2025-07-04 10:39:58,799 - INFO - Too soon to log again: student_id=6421600002, schedule_id=18
+2025-07-04 10:39:58,806 - DEBUG - Attendance status for student 6421600002: Too soon to log again
+2025-07-04 10:39:58,809 - INFO - Processed frame: course_id=11, schedule_id=18, results=1
+2025-07-04 10:39:58,812 - INFO - 127.0.0.1 - - [04/Jul/2025 10:39:58] "POST /process_frame HTTP/1.1" 200 -
+2025-07-04 10:39:58,959 - INFO - 127.0.0.1 - - [04/Jul/2025 10:39:58] "OPTIONS /process_frame HTTP/1.1" 200 -
+2025-07-04 10:39:59,002 - INFO - Received request to /process_frame
+2025-07-04 10:39:59,025 - DEBUG - Request data keys: ['frame', 'course_id', 'schedule_id']
+2025-07-04 10:40:02,951 - INFO - Detected 1 faces
+2025-07-04 10:40:02,999 - INFO - Found schedule: student_id=6421600002, course_id=11, schedule_id=18
+2025-07-04 10:40:03,476 - INFO - Too soon to log again: student_id=6421600002, schedule_id=18
+2025-07-04 10:40:03,482 - DEBUG - Attendance status for student 6421600002: Too soon to log again
+2025-07-04 10:40:03,483 - INFO - Processed frame: course_id=11, schedule_id=18, results=1
+2025-07-04 10:40:03,486 - INFO - 127.0.0.1 - - [04/Jul/2025 10:40:03] "POST /process_frame HTTP/1.1" 200 -
+2025-07-04 10:40:03,584 - INFO - Received request to /process_frame
+2025-07-04 10:40:03,586 - DEBUG - Request data keys: ['frame', 'course_id', 'schedule_id']
+2025-07-04 10:40:09,481 - INFO - Detected 1 faces
+2025-07-04 10:40:09,669 - INFO - Found schedule: student_id=6421600002, course_id=11, schedule_id=18
+2025-07-04 10:40:10,374 - INFO - Too soon to log again: student_id=6421600002, schedule_id=18
+2025-07-04 10:40:10,374 - DEBUG - Attendance status for student 6421600002: Too soon to log again
+2025-07-04 10:40:10,377 - INFO - Processed frame: course_id=11, schedule_id=18, results=1
+2025-07-04 10:40:10,381 - INFO - 127.0.0.1 - - [04/Jul/2025 10:40:10] "POST /process_frame HTTP/1.1" 200 -
+2025-07-04 10:40:10,482 - INFO - 127.0.0.1 - - [04/Jul/2025 10:40:10] "OPTIONS /process_frame HTTP/1.1" 200 -
+2025-07-04 10:40:10,539 - INFO - Received request to /process_frame
+2025-07-04 10:40:10,547 - DEBUG - Request data keys: ['frame', 'course_id', 'schedule_id']
+2025-07-04 10:40:14,775 - INFO - Detected 1 faces
+2025-07-04 10:40:14,785 - INFO - Found schedule: student_id=6421600002, course_id=11, schedule_id=18
+2025-07-04 10:40:14,914 - INFO - Too soon to log again: student_id=6421600002, schedule_id=18
+2025-07-04 10:40:14,917 - DEBUG - Attendance status for student 6421600002: Too soon to log again
+2025-07-04 10:40:14,919 - INFO - Processed frame: course_id=11, schedule_id=18, results=1
+2025-07-04 10:40:14,925 - INFO - 127.0.0.1 - - [04/Jul/2025 10:40:14] "POST /process_frame HTTP/1.1" 200 -
+2025-07-04 10:40:15,208 - INFO - Received request to /process_frame
+2025-07-04 10:40:15,256 - DEBUG - Request data keys: ['frame', 'course_id', 'schedule_id']
+2025-07-04 10:40:18,222 - INFO - Detected 0 faces
+2025-07-04 10:40:18,370 - INFO - Processed frame: course_id=11, schedule_id=18, results=0
+2025-07-04 10:40:18,550 - INFO - 127.0.0.1 - - [04/Jul/2025 10:40:18] "POST /process_frame HTTP/1.1" 200 -
+2025-07-04 10:40:19,623 - INFO - 127.0.0.1 - - [04/Jul/2025 10:40:19] "OPTIONS /process_frame HTTP/1.1" 200 -
+2025-07-04 10:40:20,208 - INFO - Received request to /process_frame
+2025-07-04 10:40:20,385 - DEBUG - Request data keys: ['frame', 'course_id', 'schedule_id']
+2025-07-04 10:40:25,372 - INFO - Detected 1 faces
+2025-07-04 10:40:25,378 - INFO - Found schedule: student_id=6421600001, course_id=11, schedule_id=18
+2025-07-04 10:40:25,490 - INFO - Too soon to log again: student_id=6421600001, schedule_id=18
+2025-07-04 10:40:25,545 - DEBUG - Attendance status for student 6421600001: Too soon to log again
+2025-07-04 10:40:25,561 - INFO - Processed frame: course_id=11, schedule_id=18, results=1
+2025-07-04 10:40:25,664 - INFO - 127.0.0.1 - - [04/Jul/2025 10:40:25] "POST /process_frame HTTP/1.1" 200 -
+2025-07-04 10:40:25,991 - INFO - 127.0.0.1 - - [04/Jul/2025 10:40:25] "OPTIONS /process_frame HTTP/1.1" 200 -
+2025-07-04 10:40:26,284 - INFO - Received request to /process_frame
+2025-07-04 10:40:26,324 - DEBUG - Request data keys: ['frame', 'course_id', 'schedule_id']
+2025-07-04 10:40:30,936 - INFO - Detected 1 faces
+2025-07-04 10:40:30,997 - INFO - Found schedule: student_id=6421600002, course_id=11, schedule_id=18
+2025-07-04 10:40:31,153 - INFO - Too soon to log again: student_id=6421600002, schedule_id=18
+2025-07-04 10:40:31,159 - DEBUG - Attendance status for student 6421600002: Too soon to log again
+2025-07-04 10:40:31,161 - INFO - Processed frame: course_id=11, schedule_id=18, results=1
+2025-07-04 10:40:31,163 - INFO - 127.0.0.1 - - [04/Jul/2025 10:40:31] "POST /process_frame HTTP/1.1" 200 -
+2025-07-04 10:40:31,529 - INFO - 127.0.0.1 - - [04/Jul/2025 10:40:31] "OPTIONS /process_frame HTTP/1.1" 200 -
+2025-07-04 10:40:31,601 - INFO - Received request to /process_frame
+2025-07-04 10:40:31,649 - DEBUG - Request data keys: ['frame', 'course_id', 'schedule_id']
+2025-07-04 10:40:36,044 - INFO - Detected 1 faces
+2025-07-04 10:40:36,077 - INFO - Found schedule: student_id=6421600002, course_id=11, schedule_id=18
+2025-07-04 10:40:36,195 - INFO - Too soon to log again: student_id=6421600002, schedule_id=18
+2025-07-04 10:40:36,279 - DEBUG - Attendance status for student 6421600002: Too soon to log again
+2025-07-04 10:40:36,283 - INFO - Processed frame: course_id=11, schedule_id=18, results=1
+2025-07-04 10:40:36,536 - INFO - 127.0.0.1 - - [04/Jul/2025 10:40:36] "POST /process_frame HTTP/1.1" 200 -
+2025-07-04 10:40:37,576 - INFO - 127.0.0.1 - - [04/Jul/2025 10:40:37] "OPTIONS /process_frame HTTP/1.1" 200 -
+2025-07-04 10:40:37,864 - INFO - Received request to /process_frame
+2025-07-04 10:40:37,882 - DEBUG - Request data keys: ['frame', 'course_id', 'schedule_id']
+2025-07-04 10:40:41,900 - INFO - Detected 1 faces
+2025-07-04 10:40:41,975 - INFO - Found schedule: student_id=6421600001, course_id=11, schedule_id=18
+2025-07-04 10:40:42,704 - INFO - Too soon to log again: student_id=6421600001, schedule_id=18
+2025-07-04 10:40:42,705 - DEBUG - Attendance status for student 6421600001: Too soon to log again
+2025-07-04 10:40:42,712 - INFO - Processed frame: course_id=11, schedule_id=18, results=1
+2025-07-04 10:40:42,722 - INFO - 127.0.0.1 - - [04/Jul/2025 10:40:42] "POST /process_frame HTTP/1.1" 200 -
+2025-07-04 10:40:43,950 - INFO - 127.0.0.1 - - [04/Jul/2025 10:40:43] "OPTIONS /process_frame HTTP/1.1" 200 -
+2025-07-04 10:40:44,657 - INFO - Received request to /process_frame
+2025-07-04 10:40:44,693 - DEBUG - Request data keys: ['frame', 'course_id', 'schedule_id']
+2025-07-04 10:40:58,227 - INFO - Detected 1 faces
+2025-07-04 10:40:58,352 - INFO - Found schedule: student_id=6421600002, course_id=11, schedule_id=18
+2025-07-04 10:40:58,717 - INFO - Too soon to log again: student_id=6421600002, schedule_id=18
+2025-07-04 10:40:58,757 - DEBUG - Attendance status for student 6421600002: Too soon to log again
+2025-07-04 10:40:58,760 - INFO - Processed frame: course_id=11, schedule_id=18, results=1
+2025-07-04 10:40:58,766 - INFO - 127.0.0.1 - - [04/Jul/2025 10:40:58] "POST /process_frame HTTP/1.1" 200 -
+2025-07-04 10:40:58,923 - INFO - 127.0.0.1 - - [04/Jul/2025 10:40:58] "OPTIONS /process_frame HTTP/1.1" 200 -
+2025-07-04 10:40:59,267 - INFO - Received request to /process_frame
+2025-07-04 10:40:59,426 - DEBUG - Request data keys: ['frame', 'course_id', 'schedule_id']
+2025-07-04 10:41:05,206 - INFO - Detected 1 faces
+2025-07-04 10:41:05,261 - INFO - Found schedule: student_id=6421600001, course_id=11, schedule_id=18
+2025-07-04 10:41:05,977 - INFO - Too soon to log again: student_id=6421600001, schedule_id=18
+2025-07-04 10:41:05,993 - DEBUG - Attendance status for student 6421600001: Too soon to log again
+2025-07-04 10:41:05,995 - INFO - Processed frame: course_id=11, schedule_id=18, results=1
+2025-07-04 10:41:06,004 - INFO - 127.0.0.1 - - [04/Jul/2025 10:41:06] "POST /process_frame HTTP/1.1" 200 -
+2025-07-04 10:41:06,415 - INFO - 127.0.0.1 - - [04/Jul/2025 10:41:06] "OPTIONS /process_frame HTTP/1.1" 200 -
+2025-07-04 10:41:07,115 - INFO - Received request to /process_frame
+2025-07-04 10:41:07,237 - DEBUG - Request data keys: ['frame', 'course_id', 'schedule_id']
+2025-07-04 10:41:12,747 - INFO - Detected 1 faces
+2025-07-04 10:41:12,755 - INFO - Found schedule: student_id=6421600002, course_id=11, schedule_id=18
+2025-07-04 10:41:13,482 - INFO - Too soon to log again: student_id=6421600002, schedule_id=18
+2025-07-04 10:41:13,493 - DEBUG - Attendance status for student 6421600002: Too soon to log again
+2025-07-04 10:41:13,494 - INFO - Processed frame: course_id=11, schedule_id=18, results=1
+2025-07-04 10:41:13,501 - INFO - 127.0.0.1 - - [04/Jul/2025 10:41:13] "POST /process_frame HTTP/1.1" 200 -
+2025-07-04 10:41:13,760 - INFO - 127.0.0.1 - - [04/Jul/2025 10:41:13] "OPTIONS /process_frame HTTP/1.1" 200 -
+2025-07-04 10:41:13,877 - INFO - Received request to /process_frame
+2025-07-04 10:41:13,881 - DEBUG - Request data keys: ['frame', 'course_id', 'schedule_id']
+2025-07-04 10:41:18,929 - INFO - Detected 1 faces
+2025-07-04 10:41:18,982 - INFO - Found schedule: student_id=6421600002, course_id=11, schedule_id=18
+2025-07-04 10:41:19,911 - INFO - Too soon to log again: student_id=6421600002, schedule_id=18
+2025-07-04 10:41:19,915 - DEBUG - Attendance status for student 6421600002: Too soon to log again
+2025-07-04 10:41:19,926 - INFO - Processed frame: course_id=11, schedule_id=18, results=1
+2025-07-04 10:41:19,931 - INFO - 127.0.0.1 - - [04/Jul/2025 10:41:19] "POST /process_frame HTTP/1.1" 200 -
+2025-07-04 10:41:20,164 - INFO - 127.0.0.1 - - [04/Jul/2025 10:41:20] "OPTIONS /process_frame HTTP/1.1" 200 -
+2025-07-04 10:41:20,302 - INFO - Received request to /process_frame
+2025-07-04 10:41:20,460 - DEBUG - Request data keys: ['frame', 'course_id', 'schedule_id']
+2025-07-04 10:41:25,413 - INFO - Detected 1 faces
+2025-07-04 10:41:25,490 - INFO - Found schedule: student_id=6421600002, course_id=11, schedule_id=18
+2025-07-04 10:41:25,786 - INFO - Too soon to log again: student_id=6421600002, schedule_id=18
+2025-07-04 10:41:25,792 - DEBUG - Attendance status for student 6421600002: Too soon to log again
+2025-07-04 10:41:25,798 - INFO - Processed frame: course_id=11, schedule_id=18, results=1
+2025-07-04 10:41:25,806 - INFO - 127.0.0.1 - - [04/Jul/2025 10:41:25] "POST /process_frame HTTP/1.1" 200 -
+2025-07-04 10:41:26,073 - INFO - 127.0.0.1 - - [04/Jul/2025 10:41:26] "OPTIONS /process_frame HTTP/1.1" 200 -
+2025-07-04 10:41:26,388 - INFO - Received request to /process_frame
+2025-07-04 10:41:27,146 - DEBUG - Request data keys: ['frame', 'course_id', 'schedule_id']
+2025-07-04 10:41:34,503 - INFO - Detected 1 faces
+2025-07-04 10:41:34,672 - INFO - Found schedule: student_id=6421600002, course_id=11, schedule_id=18
+2025-07-04 10:41:35,173 - INFO - Too soon to log again: student_id=6421600002, schedule_id=18
+2025-07-04 10:41:35,184 - DEBUG - Attendance status for student 6421600002: Too soon to log again
+2025-07-04 10:41:35,185 - INFO - Processed frame: course_id=11, schedule_id=18, results=1
+2025-07-04 10:41:35,190 - INFO - 127.0.0.1 - - [04/Jul/2025 10:41:35] "POST /process_frame HTTP/1.1" 200 -
+2025-07-04 10:41:35,536 - INFO - 127.0.0.1 - - [04/Jul/2025 10:41:35] "OPTIONS /process_frame HTTP/1.1" 200 -
+2025-07-04 10:41:35,765 - INFO - Received request to /process_frame
+2025-07-04 10:41:35,969 - DEBUG - Request data keys: ['frame', 'course_id', 'schedule_id']
+2025-07-04 10:41:43,438 - INFO - Detected 1 faces
+2025-07-04 10:41:43,578 - INFO - Found schedule: student_id=6421600002, course_id=11, schedule_id=18
+2025-07-04 10:41:45,045 - INFO - Too soon to log again: student_id=6421600002, schedule_id=18
+2025-07-04 10:41:45,089 - DEBUG - Attendance status for student 6421600002: Too soon to log again
+2025-07-04 10:41:45,111 - INFO - Processed frame: course_id=11, schedule_id=18, results=1
+2025-07-04 10:41:45,114 - INFO - 127.0.0.1 - - [04/Jul/2025 10:41:45] "POST /process_frame HTTP/1.1" 200 -
+2025-07-04 10:41:45,442 - INFO - 127.0.0.1 - - [04/Jul/2025 10:41:45] "OPTIONS /process_frame HTTP/1.1" 200 -
+2025-07-04 10:41:45,657 - INFO - Received request to /process_frame
+2025-07-04 10:41:45,661 - DEBUG - Request data keys: ['frame', 'course_id', 'schedule_id']
+2025-07-04 10:41:54,189 - INFO - Detected 1 faces
+2025-07-04 10:41:54,374 - INFO - Found schedule: student_id=6421600002, course_id=11, schedule_id=18
+2025-07-04 10:41:55,370 - INFO - Too soon to log again: student_id=6421600002, schedule_id=18
+2025-07-04 10:41:55,396 - DEBUG - Attendance status for student 6421600002: Too soon to log again
+2025-07-04 10:41:55,404 - INFO - Processed frame: course_id=11, schedule_id=18, results=1
+2025-07-04 10:41:55,426 - INFO - 127.0.0.1 - - [04/Jul/2025 10:41:55] "POST /process_frame HTTP/1.1" 200 -
+2025-07-04 10:41:55,751 - INFO - 127.0.0.1 - - [04/Jul/2025 10:41:55] "OPTIONS /process_frame HTTP/1.1" 200 -
+2025-07-04 10:41:56,151 - INFO - Received request to /process_frame
+2025-07-04 10:41:56,535 - DEBUG - Request data keys: ['frame', 'course_id', 'schedule_id']
+2025-07-04 10:42:05,853 - INFO - Detected 1 faces
+2025-07-04 10:42:06,025 - INFO - Found schedule: student_id=6421600002, course_id=11, schedule_id=18
+2025-07-04 10:42:08,308 - INFO - Too soon to log again: student_id=6421600002, schedule_id=18
+2025-07-04 10:42:08,408 - DEBUG - Attendance status for student 6421600002: Too soon to log again
+2025-07-04 10:42:08,535 - INFO - Processed frame: course_id=11, schedule_id=18, results=1
+2025-07-04 10:42:08,577 - INFO - 127.0.0.1 - - [04/Jul/2025 10:42:08] "POST /process_frame HTTP/1.1" 200 -
+2025-07-04 10:42:08,940 - INFO - 127.0.0.1 - - [04/Jul/2025 10:42:08] "OPTIONS /process_frame HTTP/1.1" 200 -
+2025-07-04 10:42:09,475 - INFO - Received request to /process_frame
+2025-07-04 10:42:09,573 - DEBUG - Request data keys: ['frame', 'course_id', 'schedule_id']
+2025-07-04 10:42:16,264 - INFO - Detected 1 faces
+2025-07-04 10:42:16,378 - INFO - Found schedule: student_id=6421600002, course_id=11, schedule_id=18
+2025-07-04 10:42:19,194 - INFO - Too soon to log again: student_id=6421600002, schedule_id=18
+2025-07-04 10:42:19,429 - DEBUG - Attendance status for student 6421600002: Too soon to log again
+2025-07-04 10:42:20,172 - INFO - Processed frame: course_id=11, schedule_id=18, results=1
+2025-07-04 10:42:21,723 - INFO - 127.0.0.1 - - [04/Jul/2025 10:42:21] "POST /process_frame HTTP/1.1" 200 -
+2025-07-04 10:42:41,723 - INFO - 127.0.0.1 - - [04/Jul/2025 10:42:41] "OPTIONS /process_frame HTTP/1.1" 200 -
+2025-07-04 10:42:45,088 - INFO - Received request to /process_frame
+2025-07-04 10:42:45,872 - DEBUG - Request data keys: ['frame', 'course_id', 'schedule_id']
+2025-07-04 10:43:09,703 - INFO - Detected 1 faces
+2025-07-04 10:43:10,369 - INFO - Found schedule: student_id=6421600001, course_id=11, schedule_id=18
+2025-07-04 10:43:10,652 - INFO - 127.0.0.1 - - [04/Jul/2025 10:43:10] "OPTIONS /process_frame HTTP/1.1" 200 -
+2025-07-04 10:43:14,123 - INFO - Received request to /process_frame
+2025-07-04 10:43:21,650 - INFO - 127.0.0.1 - - [04/Jul/2025 10:43:21] "OPTIONS /process_frame HTTP/1.1" 200 -
+2025-07-04 10:43:23,709 - INFO - Too soon to log again: student_id=6421600001, schedule_id=18
+2025-07-04 10:43:24,105 - DEBUG - Request data keys: ['frame', 'course_id', 'schedule_id']
+2025-07-04 10:43:25,441 - DEBUG - Attendance status for student 6421600001: Too soon to log again
+2025-07-04 10:43:25,970 - INFO - Received request to /process_frame
+2025-07-04 10:43:26,705 - INFO - Processed frame: course_id=11, schedule_id=18, results=1
+2025-07-04 10:43:27,193 - DEBUG - Request data keys: ['frame', 'course_id', 'schedule_id']
+2025-07-04 10:43:27,662 - INFO - 127.0.0.1 - - [04/Jul/2025 10:43:27] "POST /process_frame HTTP/1.1" 200 -
+2025-07-04 10:43:54,837 - INFO - Detected 1 faces
+2025-07-04 10:44:15,145 - INFO - Detected 1 faces
+2025-07-04 10:44:15,147 - INFO - 127.0.0.1 - - [04/Jul/2025 10:44:15] "OPTIONS /process_frame HTTP/1.1" 200 -
+2025-07-04 10:44:15,276 - INFO - Found schedule: student_id=6421600001, course_id=11, schedule_id=18
+2025-07-04 10:44:15,645 - INFO - 127.0.0.1 - - [04/Jul/2025 10:44:15] "OPTIONS /start_scan HTTP/1.1" 200 -
+2025-07-04 10:44:15,645 - INFO - Found schedule: student_id=6421600001, course_id=11, schedule_id=18
+2025-07-04 10:44:22,780 - INFO - Received request to /start_scan
+2025-07-04 10:44:32,634 - INFO - 127.0.0.1 - - [04/Jul/2025 10:44:32] "OPTIONS /start_scan HTTP/1.1" 200 -
+2025-07-04 10:44:36,037 - INFO - Too soon to log again: student_id=6421600001, schedule_id=18
+2025-07-04 10:44:51,383 - INFO - Too soon to log again: student_id=6421600001, schedule_id=18
+2025-07-04 10:44:52,463 - INFO - Request data: {'course_id': '11', 'teacher_id': '5424000002', 'schedule_id': 18}
+2025-07-04 10:44:53,931 - DEBUG - Attendance status for student 6421600001: Too soon to log again
+2025-07-04 10:44:54,266 - INFO - 127.0.0.1 - - [04/Jul/2025 10:44:54] "OPTIONS /start_scan HTTP/1.1" 200 -
+2025-07-04 10:44:54,266 - DEBUG - Attendance status for student 6421600001: Too soon to log again
+2025-07-04 10:44:55,602 - INFO - Scanning started: course_id=11, teacher_id=5424000002, schedule_id=18
+2025-07-04 10:44:56,196 - INFO - Processed frame: course_id=11, schedule_id=18, results=1
+2025-07-04 10:44:58,117 - INFO - Processed frame: course_id=11, schedule_id=18, results=1
+2025-07-04 10:44:59,020 - INFO - Received request to /start_scan
+2025-07-04 10:44:59,030 - INFO - 127.0.0.1 - - [04/Jul/2025 10:44:59] "POST /start_scan HTTP/1.1" 200 -
+2025-07-04 10:45:00,553 - INFO - 127.0.0.1 - - [04/Jul/2025 10:45:00] "POST /process_frame HTTP/1.1" 200 -
+2025-07-04 10:45:02,037 - INFO - 127.0.0.1 - - [04/Jul/2025 10:45:02] "POST /process_frame HTTP/1.1" 200 -
+2025-07-04 10:45:04,037 - INFO - Request data: {'course_id': '11', 'teacher_id': '5424000002', 'schedule_id': 18}
+2025-07-04 10:45:05,738 - INFO - 127.0.0.1 - - [04/Jul/2025 10:45:05] "OPTIONS /start_scan HTTP/1.1" 200 -
+2025-07-04 10:45:07,138 - INFO - Scanning started: course_id=11, teacher_id=5424000002, schedule_id=18
+2025-07-04 10:45:09,513 - INFO - 127.0.0.1 - - [04/Jul/2025 10:45:09] "POST /start_scan HTTP/1.1" 200 -
+2025-07-04 10:45:11,192 - INFO - Received request to /start_scan
+2025-07-04 10:45:12,106 - INFO - Request data: {'course_id': '11', 'teacher_id': '5424000002', 'schedule_id': 18}
+2025-07-04 10:45:12,710 - INFO - Scanning started: course_id=11, teacher_id=5424000002, schedule_id=18
+2025-07-04 10:45:12,851 - INFO - 127.0.0.1 - - [04/Jul/2025 10:45:12] "POST /start_scan HTTP/1.1" 200 -
+2025-07-04 10:45:13,070 - INFO - 127.0.0.1 - - [04/Jul/2025 10:45:13] "OPTIONS /process_frame HTTP/1.1" 200 -
+2025-07-04 10:45:15,241 - INFO - 127.0.0.1 - - [04/Jul/2025 10:45:15] "OPTIONS /process_frame HTTP/1.1" 200 -
+2025-07-04 10:45:16,003 - INFO - Received request to /process_frame
+2025-07-04 10:45:16,741 - DEBUG - Request data keys: ['frame', 'course_id', 'schedule_id']
+2025-07-04 10:45:16,753 - INFO - Received request to /process_frame
+2025-07-04 10:45:17,793 - DEBUG - Request data keys: ['frame', 'course_id', 'schedule_id']
+2025-07-04 10:45:41,832 - INFO - Detected 1 faces
+2025-07-04 10:45:55,995 - INFO - Detected 1 faces
+2025-07-04 10:45:56,007 - INFO - 127.0.0.1 - - [04/Jul/2025 10:45:56] "OPTIONS /process_frame HTTP/1.1" 200 -
+2025-07-04 10:45:56,011 - INFO - Found schedule: student_id=6421600001, course_id=11, schedule_id=18
+2025-07-04 10:45:56,509 - INFO - Found schedule: student_id=6421600001, course_id=11, schedule_id=18
+2025-07-04 10:45:56,576 - INFO - 127.0.0.1 - - [04/Jul/2025 10:45:56] "OPTIONS /process_frame HTTP/1.1" 200 -
+2025-07-04 10:45:57,646 - INFO - 127.0.0.1 - - [04/Jul/2025 10:45:57] "OPTIONS /process_frame HTTP/1.1" 200 -
+2025-07-04 10:45:59,675 - INFO - 127.0.0.1 - - [04/Jul/2025 10:45:59] "OPTIONS /process_frame HTTP/1.1" 200 -
+2025-07-04 10:46:03,865 - INFO - Received request to /process_frame
+2025-07-04 10:46:20,005 - INFO - 127.0.0.1 - - [04/Jul/2025 10:46:20] "OPTIONS /process_frame HTTP/1.1" 200 -
+2025-07-04 10:46:20,584 - INFO - 127.0.0.1 - - [04/Jul/2025 10:46:20] "OPTIONS /process_frame HTTP/1.1" 200 -
+2025-07-04 10:46:25,522 - INFO - Too soon to log again: student_id=6421600001, schedule_id=18
+2025-07-04 10:46:59,240 - INFO - Too soon to log again: student_id=6421600001, schedule_id=18
+2025-07-04 10:47:00,051 - DEBUG - Request data keys: ['frame', 'course_id', 'schedule_id']
+2025-07-04 10:47:04,267 - DEBUG - Attendance status for student 6421600001: Too soon to log again
+2025-07-04 10:47:05,556 - DEBUG - Attendance status for student 6421600001: Too soon to log again
+2025-07-04 10:47:10,336 - INFO - Processed frame: course_id=11, schedule_id=18, results=1
+2025-07-04 10:47:11,012 - INFO - 127.0.0.1 - - [04/Jul/2025 10:47:11] "POST /process_frame HTTP/1.1" 200 -
+2025-07-04 10:47:11,641 - INFO - Processed frame: course_id=11, schedule_id=18, results=1
+2025-07-04 10:47:15,164 - INFO - 127.0.0.1 - - [04/Jul/2025 10:47:15] "POST /process_frame HTTP/1.1" 200 -
+2025-07-04 10:48:02,516 - INFO - Detected 1 faces
+2025-07-04 10:48:03,929 - INFO - Found schedule: student_id=6421600001, course_id=11, schedule_id=18
+2025-07-04 10:48:23,625 - INFO - Too soon to log again: student_id=6421600001, schedule_id=18
+2025-07-04 10:48:23,720 - DEBUG - Attendance status for student 6421600001: Too soon to log again
+2025-07-04 10:48:24,625 - INFO - Processed frame: course_id=11, schedule_id=18, results=1
+2025-07-04 10:48:25,705 - INFO - 127.0.0.1 - - [04/Jul/2025 10:48:25] "POST /process_frame HTTP/1.1" 200 -
