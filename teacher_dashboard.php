@@ -483,34 +483,37 @@ $conn->close();
         }
 
         function updateAttendanceTable(attendanceData, students) {
-            const tableBody = document.getElementById('attendanceTableBody');
-            tableBody.innerHTML = '';
+        const tableBody = document.getElementById('attendanceTableBody');
+        tableBody.innerHTML = '';
 
-            // Ensure attendanceData and students are valid objects
-            if (typeof attendanceData !== 'object' || attendanceData === null || typeof students !== 'object') {
-                console.error('Invalid attendance data or students:', { attendanceData, students });
-                return;
-            }
+    // Ensure attendanceData and students are valid objects
+    if (typeof attendanceData !== 'object' || attendanceData === null || typeof students !== 'object') {
+        console.error('Invalid attendance data or students:', { attendanceData, students });
+        return;
+    }
 
-            let index = 1;
-            for (const studentId in students) {
-                if (students.hasOwnProperty(studentId)) {
-                    const status = attendanceData[studentId] || 'None'; // Default to 'None' if no status
-                    const row = document.createElement('tr');
-                    row.innerHTML = `
-                        <td>${index++}</td>
-                        <td>${studentId}</td>
-                        <td>${students[studentId]}</td>
-                        <td>${document.getElementById('viewDate').value || 'N/A'}</td>
-                        <td class="status-${status.toLowerCase().replace(' ', '-') || 'none'}">${translateStatus(status)}</td>
-                        <td>
-                            <button onclick="editAttendance('${students[studentId]}', '${studentId}', '${document.getElementById('viewDate').value}', '${status}')" class="edit-button">แก้ไข</button>
-                        </td>
-                    `;
-                    tableBody.appendChild(row);
-                }
-            }
+    let index = 1;
+    for (const studentId in students) {
+        if (students.hasOwnProperty(studentId)) {
+            const studentAttendance = attendanceData[studentId] || {}; // Get attendance object for student
+            const status = studentAttendance.status || 'None'; // Default to 'None' if no status
+            const scanTime = studentAttendance.scan_time ? studentAttendance.scan_time.substring(11, 16) : 'N/A'; // Extract HH:MM, default to 'N/A'
+
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>${index++}</td>
+                <td>${studentId}</td>
+                <td>${students[studentId]}</td>
+                <td>${document.getElementById('viewDate').value || 'N/A'}</td>
+                <td class="status-${status.toLowerCase().replace(' ', '-') || 'none'}">${translateStatus(status)}</td>
+                <td>${scanTime}</td> <td>
+                    <button onclick="editAttendance('${students[studentId]}', '${studentId}', '${document.getElementById('viewDate').value}', '${status}')" class="edit-button">แก้ไข</button>
+                </td>
+            `;
+            tableBody.appendChild(row);
         }
+    }
+}
 
 
         function showAttendance(courseId) {
