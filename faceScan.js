@@ -250,15 +250,14 @@ function popupAttendance(result) {
         result.attendance_text.includes('ขาด') ? 'text-red-600':
         result.attendance_text.includes('มาสาย') ? 'text-yellow-600': 'text-green-600';
 
-    openStatusModel (
-    สแกนสำเร็จ
-        
+    const modelBodyContent = '
         <div> นิสิต: <strong>${result.name}</strong></div>
         <div> รหัสนิสิต: ${result.student_id}</div>
         <div> สถานะ: <span class="${statusColor} font-blod">${result.attendance_text}</span></div>
-        <div> เวลา: ${now}</div>
-    5000
-    );
+        <div> เวลา: ${now}</div>';
+
+    openStatusModel('สแกนสำเร็จ',modelBodyContent,5000);
+
     alertedStudents.add(result.student_id);
 
     setTimeout(() => alertedStudents.delete(result.student_id),30000);
