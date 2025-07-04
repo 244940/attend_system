@@ -379,7 +379,16 @@ $conn->close();
                      
 
     <script src="faceScan.js"></script>
+   
     <script>
+        function openStatusModel(title,massge, autoCloseMs = 3000) {
+            document.getElementById('modelTitle').textContent = title;
+            document.getElementById('modelBody').textContent = massage;
+            const box = document.getElementById('statusModel');
+            box.classList.remove('hidden');
+            box.classList.add('flex');
+            
+        }
         let currentChart = null;
         const courses = <?php echo json_encode($courses, JSON_UNESCAPED_UNICODE | JSON_PARTIAL_OUTPUT_ON_ERROR) ?: '[]'; ?>;
         window.courses = courses;
