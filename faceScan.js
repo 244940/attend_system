@@ -1,4 +1,5 @@
 let video, canvas, ctx, scanning = false, stream;
+const alertedStudents = new Set(); //กันการแจ้งเตือนซ้ำ 
 
 async function fetchWithRetry(url, options, retries = 3, delay = 1000, timeout = 20000) {
     for (let i = 0; i <= retries; i++) {
@@ -236,6 +237,31 @@ function getDayNameThai(day) {
         'Sunday': 'วันอาทิตย์'
     };
     return dayMapping[day] || day;
+}
+
+function popupAttendance(result) {
+    if (!result.student_id || alertedStudents.has(result.student_id)) return;
+
+    const now = new Date().toLocaleTimeString('th-TH', {
+        hour: '2-digit', minute: '2-digit', second: '2-digit'
+    });
+
+    const statusColor = 
+        result.attendance_text.includes('ขาด') ? 'text-red-600':
+        result.attendance_text.includes('มาสาย') ? 'text-yellow-600': 'text-green-600';
+
+    openStatusModel (
+    'สแกนสำเร็จ',
+        <div> นิสิต: <strong>${result.name}</strong></div>
+        <div> รหัสนิสิต: ${result.student_id}</div>
+        <div> สถานะ: <span class="${statusColor} font-blod">${result.attendance_text}</span></div>
+        <div> เวลา: ${now}</div>
+    '5000'
+    );
+    alertedStudents.add(result.student_id);
+
+    setTimeout(() => alertedStudents.delete(result.student_id),30000);
+    
 }
 
 window.startFaceScan = startFaceScan;
