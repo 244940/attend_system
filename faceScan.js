@@ -251,12 +251,13 @@ function popupAttendance(result) {
         result.attendance_text.includes('มาสาย') ? 'text-yellow-600': 'text-green-600';
 
     openStatusModel (
-    'สแกนสำเร็จ',
+    สแกนสำเร็จ
+        
         <div> นิสิต: <strong>${result.name}</strong></div>
         <div> รหัสนิสิต: ${result.student_id}</div>
         <div> สถานะ: <span class="${statusColor} font-blod">${result.attendance_text}</span></div>
         <div> เวลา: ${now}</div>
-    '5000'
+    5000
     );
     alertedStudents.add(result.student_id);
 
