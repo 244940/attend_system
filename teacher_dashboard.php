@@ -368,11 +368,11 @@ $conn->close();
         <div id="statusModel" class="fixed inset=0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50 hidden">
         <div class ="bg-white rounded-lg shadow-xl p-6 w-full max-w-sm mx-auto">
             <div class="flex justify-between items-center mb-4">
-                <h4 class="text-lg font-bold" id="modelStatusTitle">การแจ้งเตือน</h4>
+                <h4 class="text-lg font-bold" id="modelTitle">การแจ้งเตือน</h4>
                 <button class="text-gray-500 hover:text-gray-700 text-2xl font-bold" 
                     onclick="closeStatusModel()">&itemes;</button>
             </div>
-                        <div class="text-gray-700 mb-6" id="modelStatusBody">  </div>
+                        <div class="text-gray-700 mb-6" id="modelBody"> </div>
                             <div class="text-right">
                                 <button class ="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded"
                                 onclick="closeStatusModel()">ตกลง</button>
