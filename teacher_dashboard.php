@@ -397,8 +397,8 @@ $conn->close();
         }
         function closeStatusModel() {
             const box = document.getElementById('statusModel');
-            box.classList.remove('hidden');
-            box.classList.add('flex');
+            box.classList.remove('flex');
+            box.classList.add('hidden');
         }
             
         let currentChart = null;
